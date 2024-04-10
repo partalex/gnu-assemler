@@ -1,0 +1,1 @@
+const int MAX_LINE_LENGTH = 1000;
