@@ -7,7 +7,7 @@
 	int yylex(void);
 	void yyerror(const char*);
 
-  #ifdef YYDEBUG  
+  #ifdef YYDEBUG
     yydebug = 1; 
   #endif
 
