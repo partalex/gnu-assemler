@@ -11,16 +11,23 @@ CC = g++
 all: $(BIN_PATH) $(SRCS) $(HDRS)
 	$(CC) -I$(INCLUDE_PATH) $(SRCS) -o bin/main
 
-$(BIN_PATH):
-	mkdir -p $(BIN_PATH)
+lexer: $(PARSER)
+	bison -o $(SRC_PATH)/parser.cpp $(PARSER)
+# -d for debug
+
+parser: $(PARSER)
+	bison -o $(SRC_PATH)/parser.cpp $(PARSER)
+# -t for debug
 
 clean:
 	rm -rf $(BIN_PATH)
+	rm -f $(SRC_PATH)/lexer.cpp
+	rm -f $(SRC_PATH)/parser.cpp
+	rm -f $(INCLUDE_PATH)/parser.hpp
+	rm -f $(INCLUDE_PATH)/lexer.hpp
 
-$(SRC_PATH)/lexer.cpp: $(LEXER)
-	flex -o $@ $(LEXER)
-# -d for debug
+$(BIN_PATH):
+	mkdir -p $(BIN_PATH)
 
-$(SRC_PATH)/parser.cpp: $(PARSER) $(LEXER)
-	bison -o $@ $(PARSER)
-# -t for debug
+
+
