@@ -6,16 +6,25 @@ HDRS = $(wildcard $(INCLUDE_PATH)/*.hpp)
 SRCS = $(wildcard $(SRC_PATH)/*.cpp)
 LEXER = $(SRC_PATH)/lexer.l
 PARSER = $(SRC_PATH)/parser.y
+ARGS = -o $(SRC_PATH)/izlaz.o test.s
 CC = g++
 
-all: $(BIN_PATH) $(SRCS) $(HDRS)
+run: all
+	$(BIN_PATH)/main $(ARGS)
+
+all: $(BIN_PATH) parser
+	$(eval SRCS = $(wildcard $(SRC_PATH)/*.cpp))
 	$(CC) -I$(INCLUDE_PATH) $(SRCS) -o bin/main
 
-lexer: $(PARSER)
-	bison -o $(SRC_PATH)/parser.cpp $(PARSER)
+debug: $(BIN_PATH) parser
+	$(eval SRCS = $(wildcard $(SRC_PATH)/*.cpp))
+	$(CC) -I$(INCLUDE_PATH) $(SRCS) -g -o bin/main
+
+lexer: $(LEXER)
+	flex -o $(SRC_PATH)/lexer.cpp $(LEXER)
 # -d for debug
 
-parser: $(PARSER)
+parser: lexer $(PARSER)
 	bison -o $(SRC_PATH)/parser.cpp $(PARSER)
 # -t for debug
 
