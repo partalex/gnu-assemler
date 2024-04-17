@@ -32,6 +32,19 @@ int Assembler::pass(int argc, char **argv) {
     return EXIT_SUCCESS;
 }
 
+void Assembler::parseExtern(SymbolList *list) {
+#ifdef DO_DEBUG
+    Log::STRING_LN("EXTERN: ");
+    list->log();
+#endif
+}
+
+void Assembler::parseSkip(int literal) {
+#ifdef DO_DEBUG
+    Log::STRING_LN("SKIP: " + std::to_string(literal));
+#endif
+}
+
 void Assembler::parseEnd() {
 #ifdef DO_DEBUG
     Log::STRING_LN("END");
@@ -71,9 +84,9 @@ void Assembler::parseHalt() {
 #endif
 }
 
-void Assembler::parseNoAdr() {
+void Assembler::parseNoAdr(unsigned char reg) {
 #ifdef DO_DEBUG
-    Log::STRING_LN("NOADR");
+    Log::STRING_LN("NOADR: " + std::to_string(reg));
 #endif
 }
 
@@ -108,38 +121,45 @@ void Assembler::parseInt(Operand *) {
 #endif
 }
 
-void Assembler::parseXchg(Operand *) {
+void Assembler::parseXchg(unsigned char regS, unsigned char regD) {
 #ifdef DO_DEBUG
-    Log::STRING_LN("XCHG");
+    Log::STRING_LN("XCHG: " + std::to_string(regS) + ", " + std::to_string(regD));
 #endif
 }
 
-void Assembler::parseTwoReg(Operand *) {
+void Assembler::parseTwoReg(unsigned char oc, unsigned char regS, unsigned char regD) {
 #ifdef DO_DEBUG
-    Log::STRING_LN("TWO REG");
+    Log::STRING_LN("TWO REG: " + std::to_string(oc) + ", " + std::to_string(regS) + ", " + std::to_string(regD));
 #endif
 }
 
-void Assembler::parseCsrrd(Operand *) {
+void Assembler::parseCsrrd(unsigned char csr, unsigned char gpr) {
 #ifdef DO_DEBUG
-    Log::STRING_LN("CSRRD");
+    Log::STRING_LN("CSRRD: " + std::to_string(csr) + ", " + std::to_string(gpr));
 #endif
 }
 
-void Assembler::parseCsrwr(Operand *) {
+void Assembler::parseCsrwr(unsigned char gpr, unsigned char csr) {
 #ifdef DO_DEBUG
-    Log::STRING_LN("CSRRD");
+    Log::STRING_LN("CSRRD: " + std::to_string(gpr) + ", " + std::to_string(csr));
 #endif
 }
 
-void Assembler::parseLoad(Operand *) {
+void Assembler::parseLoad(Operand *operand, unsigned char gpr) {
 #ifdef DO_DEBUG
-    Log::STRING_LN("LOAD");
+    Log::STRING_LN("LOAD: " + std::to_string(gpr));
 #endif
 }
 
-void Assembler::parseStore(Operand *) {
+void Assembler::parseStore(unsigned char gpr, Operand *operand) {
 #ifdef DO_DEBUG
-    Log::STRING_LN("STORE");
+    Log::STRING_LN("STORE: " + std::to_string(gpr));
+#endif
+}
+
+void Assembler::parseGlobal(SymbolList *list) {
+#ifdef DO_DEBUG
+    Log::STRING("GLOBAL: ");
+    list->log();
 #endif
 }

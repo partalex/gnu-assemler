@@ -111,7 +111,10 @@ label
   
 directive
   : T_GLOBAL symbolList
+  { Assembler::singleton().parseGlobal($2); }
+
   | T_EXTERN symbolList
+  { Assembler::singleton().parseExtern($2); }
 
   | T_SECTION T_IDENT
   { Assembler::singleton().parseSection($2); }
@@ -120,6 +123,7 @@ directive
   { Assembler::singleton().parseWord($2); }
 
   | T_SKIP T_LITERAL
+  { Assembler::singleton().parseSkip($2); }
 
   | T_ASCII T_STRING
   { Assembler::singleton().parseAscii($2); }
@@ -129,28 +133,28 @@ directive
 
 wordOperand
   : T_LITERAL
-  { $$ = new Operand("literal"); }
+  { $$ = new Operand(0b01000000, 0, $1); }
 
   | T_LITERAL T_COMMA wordOperand
-  { $$ = new Operand("wordOperand"); }
+  { $$ = new Operand(0b01000100, 0, $1, "", 0, 0, $3); }
 
   | T_IDENT
-  { $$ = new Operand($1); }
+  { $$ = new Operand(0b00100000, 0, 0, $1); }
 
   | T_IDENT T_COMMA wordOperand
-  { $$ = new Operand("wordOperand"); } ;
+  { $$ = new Operand(0b00100100, 0, 0, $1, 0, 0, $3); };
 
 instruction
   : I_HALT
   { Assembler::singleton().parseHalt(); }
 
   | noadr
-  { /* Assembler::singleton().parseNoAdr(); */ }
+  { Assembler::singleton().parseNoAdr($1); }
 
   | jmp jmpOperand
   { Assembler::singleton().parseJmp($2); }
 
-  | I_PUSH T_PERCENT REG 
+  | I_PUSH T_PERCENT REG
   { Assembler::singleton().parsePush($3); }
 
   | I_POP T_PERCENT REG 
@@ -163,22 +167,22 @@ instruction
   { Assembler::singleton().parseInt($3); }
 
   | I_XCHG T_PERCENT REG T_COMMA T_PERCENT REG
-  { Assembler::singleton().parseXchg(nullptr); }
+  { Assembler::singleton().parseXchg($3, $6); }
 
   | tworeg T_PERCENT REG T_COMMA T_PERCENT REG
-  { Assembler::singleton().parseTwoReg(nullptr); }
+  { Assembler::singleton().parseTwoReg($1, $3, $6); }
 
   | I_CSRRD T_PERCENT csr T_COMMA T_PERCENT REG
-  { Assembler::singleton().parseCsrrd(nullptr); }
+  { Assembler::singleton().parseCsrrd($3, $6); }
 
   | I_CSRWR T_PERCENT REG T_COMMA T_PERCENT csr
-  { Assembler::singleton().parseCsrwr(nullptr); }
+  { Assembler::singleton().parseCsrwr($3, $6); }
 
   | I_LD oneRegOperand T_COMMA T_PERCENT gpr
-  { Assembler::singleton().parseLoad(nullptr); }
+  { Assembler::singleton().parseLoad($2, $5); }
 
   | I_ST T_PERCENT gpr T_COMMA oneRegOperand
-  { Assembler::singleton().parseStore(nullptr); };
+  { Assembler::singleton().parseStore($3, $5); };
 
 symbolList
   : T_IDENT
@@ -193,36 +197,38 @@ symbolList
   | csr T_COMMA symbolList
   { $$ = new SymbolList(Csr::CSR[$1], $3); };
 
+// Operand(mode, gpr1, literal, ident, csr, gpr2, * next)
+// Operand(   1,    2,       3,     4,    5,    6,    7 )
 oneRegOperand
-  : T_DOLLAR T_LITERAL 
-  { $$ = new Operand(""); }
+  : T_DOLLAR T_LITERAL
+  { $$ = new Operand(0b10000000, $2); }
 
-  | T_DOLLAR T_IDENT 
-  { $$ = new Operand(""); }
+  | T_DOLLAR T_IDENT
+  { $$ = new Operand(0b00100000, 0, 0, $2); }
 
   | T_DOLLAR csr
-  { $$ = new Operand(""); }
+  { $$ = new Operand(0b10000000, $2); }
 
-  | T_LITERAL 
-  { $$ = new Operand(""); }
+  | T_LITERAL
+  { $$ = new Operand(0b01000000, 0, $1); }
 
-  | T_IDENT 
-  { $$ = new Operand(""); }
+  | T_IDENT
+  { $$ = new Operand(0b00100000, 0, 0, $1); }
 
-  | gpr 
-  { $$ = new Operand(""); }
+  | gpr
+  { $$ = new Operand(0b10000000, $1); }
 
-  | T_OBRACKET gpr T_CBRACKET 
-  { $$ = new Operand(""); }
+  | T_OBRACKET gpr T_CBRACKET
+  { $$ = new Operand(0b10000000, $2); }
 
-  | T_OBRACKET gpr T_PLUS T_LITERAL T_CBRACKET 
-  { $$ = new Operand(""); }
+  | T_OBRACKET gpr T_PLUS T_LITERAL T_CBRACKET
+  { $$ = new Operand(0b11000000, $2, $4); }
 
-  | T_OBRACKET gpr T_PLUS T_IDENT T_CBRACKET 
-  { $$ = new Operand(""); }
+  | T_OBRACKET gpr T_PLUS T_IDENT T_CBRACKET
+  { $$ = new Operand(0b10100000, $2, 0, $4); }
 
-  | T_OBRACKET gpr T_PLUS T_DOLLAR csr T_CBRACKET 
-  { $$ = new Operand(""); };
+  | T_OBRACKET gpr T_PLUS T_DOLLAR csr T_CBRACKET
+  { $$ = new Operand(0b10010000, $2, 0, 0, $5); };
 
 csr
   : CSR_STATUS
@@ -241,13 +247,13 @@ gpr
 
 intOperand
   : REG
-  { $$ = new Operand("reg"); }
+  { $$ = new Operand(0b10000000, $1); }
 
   | T_LITERAL
-  { $$ = new Operand("reg"); }
+  { $$ = new Operand(0b01000000, 0, $1); }
 
   | T_IDENT
-  { $$ = new Operand("reg"); };
+  { $$ = new Operand(0b00100000, 0, 0, $1); };
 
 noadr
   : I_IRET
@@ -302,15 +308,15 @@ jmp
 
 jmpOperand
   : T_LITERAL
-  { $$ = new Operand("empty"); }
+  { $$ = new Operand(0b01000000, 0, $1); }
 
   | T_IDENT
-  { $$ = new Operand("empty"); }
+  { $$ = new Operand(0b00100000, 0, 0, $1); }
 
   | T_PERCENT gpr T_COMMA T_PERCENT gpr T_COMMA T_IDENT
-  { $$ = new Operand("empty"); }
+  { $$ = new Operand(0b10101000, $2, 0, $7, 0, $5); }
 
   | T_PERCENT gpr T_COMMA T_PERCENT gpr T_COMMA T_LITERAL
-  { $$ = new Operand("empty"); };
+  { $$ = new Operand(0b1100100, $2, $7, "", 0, $5); };
 
 %%

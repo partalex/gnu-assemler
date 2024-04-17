@@ -1,12 +1,31 @@
 #pragma once
 
 #include <string>
+#include <utility>
 #include <vector>
+#include <map>
 
 class Operand {
-    std::string _value;
+    uint8_t _selector;
+    uint8_t _gpr1;
+    uint32_t _literal;
+    std::string _symbol;
+    uint8_t _gpr2;
+    uint8_t _csr;
+    Operand *_next = nullptr;
+
+    void logOne();
+
 public:
-    explicit Operand(const std::string &);
+    explicit Operand(uint8_t selector = 0, uint8_t gpr1 = 0, uint32_t literal = 0, std::string symbol = "",
+                     uint8_t csr = 0,
+                     uint8_t gpr2 = 0, Operand *next = nullptr)
+            : _selector(selector), _gpr1(gpr1), _literal(literal), _symbol(std::move(symbol)), _csr(csr), _gpr2(gpr2),
+              _next(next) {}
+
+    ~Operand() { delete _next; }
+
+    void log();
 };
 
 class I {
@@ -36,6 +55,8 @@ public:
         LD = 0x90, // oruje se
         ST = 0x80, // oruje se
     };
+
+    static std::map<I::INSTRUCTION, std::string> NAMES;
 };
 
 class Csr {
@@ -48,7 +69,6 @@ public:
     };
 };
 
-
 class SymbolList {
     std::string _symbol;
     SymbolList *_next = nullptr;
@@ -59,4 +79,5 @@ public:
 
     ~SymbolList() { delete _next; }
 
+    void log();
 };

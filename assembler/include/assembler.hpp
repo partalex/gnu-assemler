@@ -11,47 +11,31 @@ class Assembler {
 
 public:
     ~Assembler() = default;
-
     void operator=(Assembler const &) = delete;
-
     static Assembler &singleton();
-
     static int pass(int, char **);
 
     void parseLabel(const std::string &);
-
-    void parseSection(const std::string &);
-
-    void parseWord(Operand *);
-
-    void parseAscii(const std::string &);
-
     void parseEnd();
+    void parseGlobal(SymbolList *);
+    void parseExtern(SymbolList *);
+    void parseSection(const std::string &);
+    void parseWord(Operand *);
+    void parseAscii(const std::string &);
+    void parseSkip(int);
 
+    // instructions
     void parseHalt();
-
-    void parseNoAdr();
-
-    void parseJmp(Operand *);
-
-    void parsePush(unsigned char);
-
-    void parsePop(unsigned char);
-
-    void parseNot(unsigned char);
-
     void parseInt(Operand *);
-
-    void parseXchg(Operand *);
-
-    void parseTwoReg(Operand *);
-
-    void parseCsrrd(Operand *);
-
-    void parseCsrwr(Operand *);
-
-    void parseLoad(Operand *);
-
-    void parseStore(Operand *);
-
+    void parseJmp(Operand *);
+    void parsePush(unsigned char);
+    void parsePop(unsigned char);
+    void parseNot(unsigned char);
+    void parseXchg(unsigned char, unsigned char);
+    void parseTwoReg(unsigned char, unsigned char, unsigned char);
+    void parseCsrrd(unsigned char, unsigned char);
+    void parseCsrwr(unsigned char, unsigned char);
+    void parseLoad(Operand *, unsigned char);
+    void parseStore(unsigned char, Operand *);
+    void parseNoAdr(unsigned char);
 };
