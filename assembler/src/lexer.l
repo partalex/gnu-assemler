@@ -1,5 +1,6 @@
 %{
 	#include "../include/parser.hpp"
+	#include "../include/structures.hpp"
     int yyerror(const char* msg);
     void yyerror_num(const int msg);
 %}
@@ -19,33 +20,32 @@ STRING      \"[^\"]+\"
 {COMMENT}           { }
 {HEX}               {
                       sscanf(yytext, "%x", &yylval.num_32);
-			          return TOKEN_LITERAL;
+			          return T_LITERAL;
                     }
 {DEC}               {
                       sscanf(yytext, "%d", &yylval.num_32);
-                      return TOKEN_LITERAL;
+                      return T_LITERAL;
                     }
-","                 { return TOKEN_COMMA; }             /* "\"" { return TOKEN_QUATATION; } */
-":"                 { return TOKEN_COLON; }
-"$"                 { return TOKEN_DOLLAR; }
-"%"                 { return TOKEN_PERCENT; }
-"["                 { return TOKEN_OBRACKET; }
-"]"                 { return TOKEN_CBRACKET; }
-"+"                 { return TOKEN_PLUS; }
-"-"                 { return TOKEN_MINUS; }
-"*"                 { return TOKEN_TIMES; }
-"/"                 { return TOKEN_SLASH; }
-".global"           { return TOKEN_GLOBAL; }
-".extern"           { return TOKEN_EXTERN; }
-".section"          { return TOKEN_SECTION; }
-".word"             { return TOKEN_WORD; }
-".skip"             { return TOKEN_SKIP; }
-".ascii"            { return TOKEN_ASCII; }
-".equ"              { return TOKEN_EQU; }
-".end"              { return TOKEN_END; }
-"."{IDENT}          {
-                      yyerror(yytext);
-                    }
+","                 { return T_COMMA; }             /* "\"" { return T_QUATATION; } */
+":"                 { return T_COLON; }
+"$"                 { return T_DOLLAR; }
+"%"                 { return T_PERCENT; }
+"["                 { return T_OBRACKET; }
+"]"                 { return T_CBRACKET; }
+"+"                 { return T_PLUS; }
+"-"                 { return T_MINUS; }
+"*"                 { return T_TIMES; }
+"/"                 { return T_SLASH; }
+
+".global"           { return T_GLOBAL; }
+".extern"           { return T_EXTERN; }
+".section"          { return T_SECTION; }
+".word"             { return T_WORD; }
+".skip"             { return T_SKIP; }
+".ascii"            { return T_ASCII; }
+".end"              { return T_END; }
+"."{IDENT}          { yyerror(yytext); }
+
 "halt"              { return I_HALT; }
 "int"               { return I_INT; }
 "iret"              { return I_IRET; } /* ? */
@@ -70,11 +70,10 @@ STRING      \"[^\"]+\"
 "shr"               { return I_SHR; }
 "ld"                { return I_LD; }
 "st"                { return I_ST; }
+
 "csrrd"             { return I_CSRRD; }
 "csrwr"             { return I_CSRWR; }
-"handler"           { return CSR_HANDLER; }
-"cause"             { return CSR_CAUSE; }
-"status"            { return CSR_STATUS; }
+
 "r0"                { yylval.num_u8 = 0; return REG; }
 "r1"                { yylval.num_u8 = 1; return REG; }
 "r2"                { yylval.num_u8 = 2; return REG; }
@@ -91,6 +90,11 @@ STRING      \"[^\"]+\"
 "r13"               { yylval.num_u8 = 13; return REG; }
 "sp"                { yylval.num_u8 = 14; return SP; }
 "pc"                { yylval.num_u8 = 15; return PC; } /* T - li treba da se vrati PC */
+
+"handler"           { return CSR_HANDLER; }
+"cause"             { return CSR_CAUSE; }
+"status"            { return CSR_STATUS; }
+
 {STRING}            {
                       /* char* temp = yytext;  */
                       /*  int size = sizeof(temp)-2; */
@@ -98,17 +102,16 @@ STRING      \"[^\"]+\"
                       /*  strncpy(ident, temp, size); */
                       /* yylval.ident = strdup(yytext+1); */
                       yylval.ident = strdup(yytext+1);;
-                      return TOKEN_STRING;
+                      return T_STRING;
                     }
 {IDENT}             {
                       yylval.ident = strdup(yytext);
-                      return TOKEN_IDENT;
+                      return T_IDENT;
                     }
 
 {WS}                {  }
-.                   {
-                      yyerror(yytext);
-                    }
+.                   { yyerror(yytext); }
+
 %%
 
 int yyerror(const char* msg)

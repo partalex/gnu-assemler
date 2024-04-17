@@ -1,12 +1,12 @@
+#define DO_DEBUG
+
 #pragma once
 
 #include <string>
 
-#define DO_DEBUG
-
 class Log {
 public:
-    static void LOG_STRING(std::string);
+    static void STRING(const std::string &str);
 
-    static void LOG_STRING_LN(std::string);
+    static void STRING_LN(std::string const &str);
 };

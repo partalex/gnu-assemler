@@ -1,9 +1,9 @@
-#include "../include/log.hpp"
+#include "log.hpp"
 
-void Log::LOG_STRING(std::string c) {
-    fprintf(stderr, "%s", c.c_str());
+void Log::STRING(std::string const& str) {
+    fprintf(stderr, "%s", str.c_str());
 }
 
-void Log::LOG_STRING_LN(std::string c) {
-    fprintf(stderr, "%s\n", c.c_str());
+void Log::STRING_LN(std::string const& str) {
+    fprintf(stderr, "%s\n", str.c_str());
 }
