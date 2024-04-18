@@ -147,13 +147,18 @@ void Assembler::parseCsrwr(unsigned char gpr, unsigned char csr) {
 
 void Assembler::parseLoad(Operand *operand, unsigned char gpr) {
 #ifdef DO_DEBUG
-    Log::STRING_LN("LOAD: " + std::to_string(gpr));
+    Log::STRING("LOAD: ");
+    operand->logOne();
+    Log::STRING_LN(", %r" + std::to_string(gpr));
 #endif
 }
 
 void Assembler::parseStore(unsigned char gpr, Operand *operand) {
 #ifdef DO_DEBUG
-    Log::STRING_LN("STORE: " + std::to_string(gpr));
+    Log::STRING("STORE: ");
+    Log::STRING("%r" + std::to_string(gpr) + ", ");
+    operand->logOne();
+    Log::STRING_LN("");
 #endif
 }
 

@@ -14,7 +14,6 @@ class Operand {
     uint8_t _csr;
     Operand *_next = nullptr;
 
-    void logOne();
 
 public:
     explicit Operand(uint8_t selector = 0, uint8_t gpr1 = 0, uint32_t literal = 0, std::string symbol = "",
@@ -24,7 +23,7 @@ public:
               _next(next) {}
 
     ~Operand() { delete _next; }
-
+    void logOne();
     void log();
 };
 

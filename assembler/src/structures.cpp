@@ -27,14 +27,16 @@ void SymbolList::log() {
 
 void Operand::logOne() {
 #ifdef DO_DEBUG
-    if(_selector & 0b10000000)
-        Log::STRING("imm, ");
-    Log::STRING("mode: " + std::to_string(_selector) + ", ");
-    Log::STRING("gpr1: " + std::to_string(_gpr1) + ", ");
-    Log::STRING("literal: " + std::to_string(_literal) + ", ");
-    Log::STRING("symbol: " + _symbol + ", ");
-    Log::STRING("gpr2: " + std::to_string(_gpr2) + ", ");
-    Log::STRING("csr: " + std::to_string(_csr));
+    if (_selector & 0b10000000)
+        Log::STRING(std::to_string(_gpr1));
+    if (_selector & 0b01000000)
+        Log::STRING(std::to_string(_literal));
+    if (_selector & 0b00100000)
+        Log::STRING(_symbol);
+    if (_selector & 0b00010000)
+        Log::STRING(std::to_string(_csr));
+    if (_selector & 0b00001000)
+        Log::STRING(std::to_string(_gpr2));
 #endif
 }
 
