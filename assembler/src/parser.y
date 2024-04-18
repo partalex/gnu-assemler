@@ -152,7 +152,7 @@ instruction
   { Assembler::singleton().parseNoAdr($1); }
 
   | jmp jmpOperand
-  { Assembler::singleton().parseJmp($2); }
+  { Assembler::singleton().parseJmp($1, $2); }
 
   | I_PUSH T_PERCENT REG
   { Assembler::singleton().parsePush($3); }
@@ -207,7 +207,7 @@ oneRegOperand
   { $$ = new Operand(0b00100000, 0, 0, $2); }
 
   | T_DOLLAR csr
-  { $$ = new Operand(0b10000000, $2); }
+  { $$ = new Operand(0b00010000, 0, 0, "", $2); }
 
   | T_LITERAL
   { $$ = new Operand(0b01000000, 0, $1); }
@@ -257,10 +257,10 @@ intOperand
 
 noadr
   : I_IRET
-  { $$ = I::INSTRUCTION::IRET; }
+  { $$ = I::INSTRUCTION::LD; }
 
   | I_RET
-  { $$ = I::INSTRUCTION::RET; };
+  { $$ = I::INSTRUCTION::LD_POST_INC; };
 
 tworeg
   : I_ADD
@@ -298,13 +298,13 @@ jmp
   { $$ = I::INSTRUCTION::JMP; }
 
   | I_BEQ
-  { $$ = I::INSTRUCTION::JMP; }
+  { $$ = I::INSTRUCTION::BEQ; }
 
   | I_BNE
-  { $$ = I::INSTRUCTION::JMP; }
+  { $$ = I::INSTRUCTION::BNE; }
 
   | I_BGT
-  { $$ = I::INSTRUCTION::JMP; };
+  { $$ = I::INSTRUCTION::BGT; };
 
 jmpOperand
   : T_LITERAL
@@ -317,6 +317,6 @@ jmpOperand
   { $$ = new Operand(0b10101000, $2, 0, $7, 0, $5); }
 
   | T_PERCENT gpr T_COMMA T_PERCENT gpr T_COMMA T_LITERAL
-  { $$ = new Operand(0b1100100, $2, $7, "", 0, $5); };
+  { $$ = new Operand(0b11001000, $2, $7, "", 0, $5); };
 
 %%

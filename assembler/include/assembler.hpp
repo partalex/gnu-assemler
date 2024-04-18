@@ -9,6 +9,14 @@ class Assembler {
     std::vector<std::string> _sections;
     std::vector<std::string> _labels;
 
+    uint32_t _lctCnt = 0;
+    int _currSect = -1;
+
+//    std::vector<SymbolTableEntry *> _symbolTable;
+//    std::map<std::string, SymbolTableEntry *> _symbolMap;
+//    std::vector<Section *> _sections;
+
+
 public:
     ~Assembler() = default;
     void operator=(Assembler const &) = delete;
@@ -27,7 +35,7 @@ public:
     // instructions
     void parseHalt();
     void parseInt(Operand *);
-    void parseJmp(Operand *);
+    void parseJmp(unsigned char, Operand *);
     void parsePush(unsigned char);
     void parsePop(unsigned char);
     void parseNot(unsigned char);

@@ -34,7 +34,7 @@ int Assembler::pass(int argc, char **argv) {
 
 void Assembler::parseExtern(SymbolList *list) {
 #ifdef DO_DEBUG
-    Log::STRING_LN("EXTERN: ");
+    Log::STRING("EXTERN: ");
     list->log();
 #endif
 }
@@ -65,11 +65,12 @@ void Assembler::parseSection(const std::string &str) {
 #endif
 }
 
-void Assembler::parseWord(Operand *) {
+void Assembler::parseWord(Operand *operand) {
 #ifdef DO_DEBUG
-    Log::STRING_LN("WORD");
+    Log::STRING("WORD: ");
+    operand->log();
+    Log::STRING_LN("");
 #endif
-
 }
 
 void Assembler::parseAscii(const std::string &str) {
@@ -84,28 +85,32 @@ void Assembler::parseHalt() {
 #endif
 }
 
-void Assembler::parseNoAdr(unsigned char reg) {
+void Assembler::parseNoAdr(unsigned char inst) {
 #ifdef DO_DEBUG
-    Log::STRING_LN("NOADR: " + std::to_string(reg));
+    auto name = static_cast<I::INSTRUCTION>(inst);
+    Log::STRING_LN(I::NAMES[name]);
 #endif
 }
 
-void Assembler::parseJmp(Operand *) {
+void Assembler::parseJmp(unsigned char inst, Operand *operand) {
 #ifdef DO_DEBUG
-    Log::STRING_LN("JMP");
-#endif
-
-}
-
-void Assembler::parsePush(unsigned char) {
-#ifdef DO_DEBUG
-    Log::STRING_LN("PUSH");
+    auto _inst = static_cast<I::INSTRUCTION>(inst);
+    std::string name = I::NAMES[_inst];
+    Log::STRING(name + ": ");
+    operand->log();
+    Log::STRING_LN("");
 #endif
 }
 
-void Assembler::parsePop(unsigned char) {
+void Assembler::parsePush(unsigned char gpr) {
 #ifdef DO_DEBUG
-    Log::STRING_LN("POP");
+    Log::STRING_LN("PUSH: %r" + std::to_string(gpr));
+#endif
+}
+
+void Assembler::parsePop(unsigned char gpr) {
+#ifdef DO_DEBUG
+    Log::STRING_LN("POP: %r" + std::to_string(gpr));
 #endif
 }
 
@@ -127,21 +132,24 @@ void Assembler::parseXchg(unsigned char regS, unsigned char regD) {
 #endif
 }
 
-void Assembler::parseTwoReg(unsigned char oc, unsigned char regS, unsigned char regD) {
+void Assembler::parseTwoReg(unsigned char inst, unsigned char regS, unsigned char regD) {
 #ifdef DO_DEBUG
-    Log::STRING_LN("TWO REG: " + std::to_string(oc) + ", " + std::to_string(regS) + ", " + std::to_string(regD));
+    auto name = static_cast<I::INSTRUCTION>(inst);
+    Log::STRING(I::NAMES[name] + ": ");
+    Log::STRING("%r" + std::to_string(regS) + ", ");
+    Log::STRING_LN("%r" + std::to_string(regD));
 #endif
 }
 
 void Assembler::parseCsrrd(unsigned char csr, unsigned char gpr) {
 #ifdef DO_DEBUG
-    Log::STRING_LN("CSRRD: " + std::to_string(csr) + ", " + std::to_string(gpr));
+    Log::STRING_LN("CSRRD: %" + Csr::CSR[csr] + ", %r" + std::to_string(gpr));
 #endif
 }
 
 void Assembler::parseCsrwr(unsigned char gpr, unsigned char csr) {
 #ifdef DO_DEBUG
-    Log::STRING_LN("CSRRD: " + std::to_string(gpr) + ", " + std::to_string(csr));
+    Log::STRING_LN("CSRRD: %r" + std::to_string(gpr) + ", %" + Csr::CSR[csr]);
 #endif
 }
 
