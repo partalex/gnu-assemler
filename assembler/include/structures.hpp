@@ -4,6 +4,7 @@
 #include <utility>
 #include <vector>
 #include <map>
+#include <unordered_map>
 
 class Operand {
     uint8_t _selector;
@@ -86,10 +87,10 @@ public:
     };
 };
 
-class SymbolList {
+struct SymbolList {
     std::string _symbol;
     SymbolList *_next = nullptr;
-public:
+
     explicit SymbolList(const std::string &);
 
     SymbolList(const std::string &, SymbolList *_next);
@@ -97,4 +98,49 @@ public:
     ~SymbolList() { delete _next; }
 
     void log();
+};
+
+enum ENTRY_TYPE {
+    UNDEFINED,
+    ASCII,
+    EQU,
+    EXTERN,
+    GLOBAL,
+    LABEL,
+    SECTION,
+    SKIP,
+    WORD,
+};
+
+
+struct SymbolTableEntry {
+    std::string _name;
+    SymbolTableEntry *_section;
+    uint32_t _value;
+    ENTRY_TYPE _type;
+    bool _isGlobal;
+    bool _isExtern;
+
+    SymbolTableEntry(
+            ENTRY_TYPE _type = UNDEFINED,
+            std::string name = "",
+            SymbolTableEntry *section = nullptr,
+            uint32_t value = 0,
+            bool isGlobal = false,
+            bool isExtern = false) :
+            _name(std::move(name)),
+            _section(section),
+            _value(value),
+            _type(_type),
+            _isGlobal(isGlobal),
+            _isExtern(isExtern) {}
+};
+
+class SymbolTable {
+    std::unordered_map<std::string, SymbolTableEntry *> _table;
+
+public:
+    void addSymbol(const std::string &, SymbolTableEntry *);
+
+    SymbolTableEntry *getSymbol(const std::string &);
 };

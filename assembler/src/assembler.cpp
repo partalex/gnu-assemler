@@ -6,7 +6,9 @@
 #include "parser.hpp"
 #include "log.hpp"
 
-//extern int yylex_destroy(void);
+extern int yylex_destroy(void);
+
+extern int yyparse(void);
 
 std::shared_ptr<Assembler> Assembler::_instance = nullptr;
 
@@ -37,6 +39,18 @@ void Assembler::parseExtern(SymbolList *list) {
     Log::STRING("EXTERN: ");
     list->log();
 #endif
+    SymbolList *temp = list;
+    while (temp) {
+        auto entry = new SymbolTableEntry(
+                EXTERN,
+                temp->_symbol,
+                nullptr,
+                0,
+                true
+        );
+        _table.addSymbol(temp->_symbol, entry);
+        temp = temp->_next;
+    }
 }
 
 void Assembler::parseSkip(int literal) {
@@ -49,20 +63,41 @@ void Assembler::parseEnd() {
 #ifdef DO_DEBUG
     Log::STRING_LN("END");
 #endif
+    if (_table.hasUnresolvedSymbols()) {
+        std::cerr << "Error: Unresolved symbols detected." << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    writeToFile();
 }
 
 void Assembler::parseLabel(const std::string &str) {
-    singleton()._labels.push_back(str);
 #ifdef DO_DEBUG
     Log::STRING_LN("LABEL: " + str);
 #endif
+    auto entry = new SymbolTableEntry(
+            LABEL,
+            str,
+            nullptr,
+            _locationCounter
+    );
+    _table.addSymbol(str, entry);
 }
 
 void Assembler::parseSection(const std::string &str) {
-    singleton()._sections.push_back(str);
 #ifdef DO_DEBUG
     Log::STRING_LN("SECTION: " + str);
 #endif
+    SymbolTableEntry *entry = _table.getSymbol(str);
+    if (entry == nullptr) {
+        entry = new SymbolTableEntry(
+                SECTION,
+                str,
+                nullptr,
+                _locationCounter
+        );
+        _table.addSymbol(str, entry);
+    }
+    _currentSection = entry;
 }
 
 void Assembler::parseWord(Operand *operand) {
@@ -77,12 +112,21 @@ void Assembler::parseAscii(const std::string &str) {
 #ifdef DO_DEBUG
     Log::STRING_LN("ASCII: " + str);
 #endif
+    auto entry = new SymbolTableEntry(
+            ASCII,
+            str,
+            _currentSection,
+            _locationCounter
+    );
+    _table.addSymbol(str, entry);
+    _locationCounter += str.length();
 }
 
 void Assembler::parseHalt() {
 #ifdef DO_DEBUG
     Log::STRING_LN("HALT");
 #endif
+
 }
 
 void Assembler::parseNoAdr(unsigned char inst) {
@@ -175,4 +219,20 @@ void Assembler::parseGlobal(SymbolList *list) {
     Log::STRING("GLOBAL: ");
     list->log();
 #endif
+    SymbolList *temp = list;
+    while (temp) {
+        auto entry = new SymbolTableEntry(
+                GLOBAL,
+                temp->_symbol,
+                nullptr,
+                0,
+                true
+        );
+        _table.addSymbol(temp->_symbol, entry);
+        temp = temp->_next;
+    }
+}
+
+void Assembler::writeToFile() {
+
 }

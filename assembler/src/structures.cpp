@@ -1,5 +1,6 @@
 #include "structures.hpp"
 #include "log.hpp"
+#include <algorithm>
 
 std::string Csr::CSR[] = {"status", "handler", "cause"};
 
@@ -51,6 +52,18 @@ void Operand::log() {
     }
 #endif
 }
+
+SymbolTableEntry *SymbolTable::getSymbol(const std::string &name) {
+    auto res = _table.find(name);
+    if (res == _table.end())
+        return nullptr;
+    return res->second;
+}
+
+void SymbolTable::addSymbol(const std::string &name, SymbolTableEntry *entry) {
+    _table[name] = entry;
+}
+
 
 std::map<I::INSTRUCTION, std::string> I::NAMES = {
         {I::INSTRUCTION::HALT,            "HALT"},
