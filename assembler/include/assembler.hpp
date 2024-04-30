@@ -11,7 +11,7 @@ class Assembler {
     SymbolTable _table;
 
     uint32_t _locationCounter = 0;
-    SymbolTableEntry *_currentSection = nullptr;
+    uint32_t _currentSection = 0;
 
 public:
     ~Assembler() = default;

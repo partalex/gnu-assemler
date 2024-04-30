@@ -100,47 +100,44 @@ struct SymbolList {
     void log();
 };
 
+enum BIND {
+    LOCAL,
+    GLOBAL
+};
 enum ENTRY_TYPE {
-    UNDEFINED,
-    ASCII,
-    EQU,
-    EXTERN,
-    GLOBAL,
-    LABEL,
+    NO_TYPE,
     SECTION,
-    SKIP,
-    WORD,
+    ASCII
 };
 
-
 struct SymbolTableEntry {
-    std::string _name;
-    SymbolTableEntry *_section;
-    uint32_t _value;
+    uint64_t _value;
+    uint64_t _size;
     ENTRY_TYPE _type;
-    bool _isGlobal;
-    bool _isExtern;
+    BIND _bind;
+    uint8_t _ndx;
+    std::string _name;
 
     SymbolTableEntry(
-            ENTRY_TYPE _type = UNDEFINED,
-            std::string name = "",
-            SymbolTableEntry *section = nullptr,
-            uint32_t value = 0,
-            bool isGlobal = false,
-            bool isExtern = false) :
-            _name(std::move(name)),
-            _section(section),
-            _value(value),
-            _type(_type),
-            _isGlobal(isGlobal),
-            _isExtern(isExtern) {}
+            uint64_t value,
+            uint64_t size,
+            ENTRY_TYPE type,
+            BIND bind,
+            uint32_t ndx,
+            std::string name
+    ) : _value(value), _size(size), _type(type), _bind(bind), _ndx(ndx), _name(std::move(name)) {}
+
 };
 
 class SymbolTable {
-    std::unordered_map<std::string, SymbolTableEntry *> _table;
+    std::vector<SymbolTableEntry> _table;
 
 public:
-    void addSymbol(const std::string &, SymbolTableEntry *);
+    void addSymbol(const SymbolTableEntry &);
 
-    SymbolTableEntry *getSymbol(const std::string &);
+    bool checkSymbol(BIND, ENTRY_TYPE,const std::string &);
+
+    bool hasUnresolvedSymbols();
+
+    SymbolTableEntry *getSymbol(BIND, ENTRY_TYPE,const std::string &);
 };

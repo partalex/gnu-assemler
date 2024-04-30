@@ -53,15 +53,34 @@ void Operand::log() {
 #endif
 }
 
-SymbolTableEntry *SymbolTable::getSymbol(const std::string &name) {
-    auto res = _table.find(name);
-    if (res == _table.end())
-        return nullptr;
-    return res->second;
+bool SymbolTable::hasUnresolvedSymbols() {
+    return false;
 }
 
-void SymbolTable::addSymbol(const std::string &name, SymbolTableEntry *entry) {
-    _table[name] = entry;
+void SymbolTable::addSymbol(const SymbolTableEntry &entry) {
+    _table.push_back(entry);
+}
+
+bool SymbolTable::checkSymbol(BIND bind, ENTRY_TYPE type, const std::string &name) {
+    auto res = std::find_if(
+            _table.begin(),
+            _table.end(),
+            [&name, bind, type](const SymbolTableEntry &entry) {
+                return entry._name == name && entry._bind == bind && entry._type == type;
+            });
+    return res != _table.end();
+}
+
+SymbolTableEntry *SymbolTable::getSymbol(BIND bind, ENTRY_TYPE type, const std::string &name) {
+    auto res = std::find_if(
+            _table.begin(),
+            _table.end(),
+            [&name, bind, type](const SymbolTableEntry &entry) {
+                return entry._name == name && entry._bind == bind && entry._type == type;
+            });
+    if (res != _table.end())
+        return &(*res);
+    return nullptr;
 }
 
 

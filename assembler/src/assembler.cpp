@@ -41,16 +41,18 @@ void Assembler::parseExtern(SymbolList *list) {
 #endif
     SymbolList *temp = list;
     while (temp) {
-        auto entry = new SymbolTableEntry(
-                EXTERN,
-                temp->_symbol,
-                nullptr,
+        auto entry = SymbolTableEntry(
                 0,
-                true
+                0,
+                NO_TYPE,
+                GLOBAL,
+                0,
+                temp->_symbol
         );
-        _table.addSymbol(temp->_symbol, entry);
+        _table.addSymbol(entry);
         temp = temp->_next;
     }
+    delete list;
 }
 
 void Assembler::parseSkip(int literal) {
@@ -74,30 +76,36 @@ void Assembler::parseLabel(const std::string &str) {
 #ifdef DO_DEBUG
     Log::STRING_LN("LABEL: " + str);
 #endif
-    auto entry = new SymbolTableEntry(
-            LABEL,
-            str,
-            nullptr,
-            _locationCounter
+    auto entry = SymbolTableEntry(
+            0,
+            0,
+            NO_TYPE,
+            LOCAL,
+            _currentSection,
+            str
     );
-    _table.addSymbol(str, entry);
+    _table.addSymbol(entry);
 }
 
 void Assembler::parseSection(const std::string &str) {
 #ifdef DO_DEBUG
     Log::STRING_LN("SECTION: " + str);
 #endif
-    SymbolTableEntry *entry = _table.getSymbol(str);
+    SymbolTableEntry *entry = _table.getSymbol(LOCAL, SECTION, str);
     if (entry == nullptr) {
-        entry = new SymbolTableEntry(
+        auto temp = SymbolTableEntry(
+                0,
+                0,
                 SECTION,
-                str,
-                nullptr,
-                _locationCounter
+                LOCAL,
+                ++_currentSection,
+                str
         );
-        _table.addSymbol(str, entry);
+        entry = &temp;
+        _table.addSymbol(*entry);
     }
-    _currentSection = entry;
+    _currentSection = entry->_ndx;
+    _locationCounter = 0;
 }
 
 void Assembler::parseWord(Operand *operand) {
@@ -112,13 +120,15 @@ void Assembler::parseAscii(const std::string &str) {
 #ifdef DO_DEBUG
     Log::STRING_LN("ASCII: " + str);
 #endif
-    auto entry = new SymbolTableEntry(
+    auto entry = SymbolTableEntry(
+            0,
+            str.length(),
             ASCII,
-            str,
+            LOCAL,
             _currentSection,
-            _locationCounter
+            str
     );
-    _table.addSymbol(str, entry);
+    _table.addSymbol(entry);
     _locationCounter += str.length();
 }
 
@@ -144,6 +154,7 @@ void Assembler::parseJmp(unsigned char inst, Operand *operand) {
     operand->log();
     Log::STRING_LN("");
 #endif
+    delete operand;
 }
 
 void Assembler::parsePush(unsigned char gpr) {
@@ -164,10 +175,11 @@ void Assembler::parseNot(unsigned char) {
 #endif
 }
 
-void Assembler::parseInt(Operand *) {
+void Assembler::parseInt(Operand *operand) {
 #ifdef DO_DEBUG
     Log::STRING_LN("INT");
 #endif
+    delete operand;
 }
 
 void Assembler::parseXchg(unsigned char regS, unsigned char regD) {
@@ -203,6 +215,7 @@ void Assembler::parseLoad(Operand *operand, unsigned char gpr) {
     operand->logOne();
     Log::STRING_LN(", %r" + std::to_string(gpr));
 #endif
+    delete operand;
 }
 
 void Assembler::parseStore(unsigned char gpr, Operand *operand) {
@@ -212,6 +225,7 @@ void Assembler::parseStore(unsigned char gpr, Operand *operand) {
     operand->logOne();
     Log::STRING_LN("");
 #endif
+    delete operand;
 }
 
 void Assembler::parseGlobal(SymbolList *list) {
@@ -221,16 +235,18 @@ void Assembler::parseGlobal(SymbolList *list) {
 #endif
     SymbolList *temp = list;
     while (temp) {
-        auto entry = new SymbolTableEntry(
-                GLOBAL,
-                temp->_symbol,
-                nullptr,
+        auto entry = SymbolTableEntry(
                 0,
-                true
+                0,
+                NO_TYPE,
+                GLOBAL,
+                0,
+                temp->_symbol
         );
-        _table.addSymbol(temp->_symbol, entry);
+        _table.addSymbol(entry);
         temp = temp->_next;
     }
+    delete list;
 }
 
 void Assembler::writeToFile() {
