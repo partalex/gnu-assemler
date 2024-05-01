@@ -28,16 +28,6 @@ void SymbolList::log() {
 
 void Operand::logOne() {
 #ifdef DO_DEBUG
-    if (_selector & 0b10000000)
-        Log::STRING(std::to_string(_gpr1));
-    if (_selector & 0b01000000)
-        Log::STRING(std::to_string(_literal));
-    if (_selector & 0b00100000)
-        Log::STRING(_symbol);
-    if (_selector & 0b00010000)
-        Log::STRING(Csr::CSR[_csr]);
-    if (_selector & 0b00001000)
-        Log::STRING(std::to_string(_gpr2));
 #endif
 }
 

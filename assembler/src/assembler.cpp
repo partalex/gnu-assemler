@@ -59,6 +59,7 @@ void Assembler::parseSkip(int literal) {
 #ifdef DO_DEBUG
     Log::STRING_LN("SKIP: " + std::to_string(literal));
 #endif
+    _locationCounter += literal;
 }
 
 void Assembler::parseEnd() {
@@ -114,6 +115,8 @@ void Assembler::parseWord(Operand *operand) {
     operand->log();
     Log::STRING_LN("");
 #endif
+    delete operand;
+    _locationCounter += 4;
 }
 
 void Assembler::parseAscii(const std::string &str) {

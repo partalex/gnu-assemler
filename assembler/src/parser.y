@@ -133,16 +133,16 @@ directive
 
 wordOperand
   : T_LITERAL
-  { $$ = new Operand(0b01000000, 0, $1); }
+  { $$ = new LiteralOp($1); }
 
   | T_LITERAL T_COMMA wordOperand
-  { $$ = new Operand(0b01000100, 0, $1, "", 0, 0, $3); }
+  { $$ = new LiteralOp($1, $3); }
 
   | T_IDENT
-  { $$ = new Operand(0b00100000, 0, 0, $1); }
+  { $$ = new IdentOp($1);  }
 
   | T_IDENT T_COMMA wordOperand
-  { $$ = new Operand(0b00100100, 0, 0, $1, 0, 0, $3); };
+  { $$ = new IdentOp($1, $3); };
 
 instruction
   : I_HALT
@@ -197,38 +197,36 @@ symbolList
   | csr T_COMMA symbolList
   { $$ = new SymbolList(Csr::CSR[$1], $3); };
 
-// Operand(mode, gpr1, literal, ident, csr, gpr2, * next)
-// Operand(   1,    2,       3,     4,    5,    6,    7 )
 oneRegOperand
   : T_DOLLAR T_LITERAL
-  { $$ = new Operand(0b10000000, $2); }
+  { $$ = new LiteralOp($2); }
 
   | T_DOLLAR T_IDENT
-  { $$ = new Operand(0b00100000, 0, 0, $2); }
+  { $$ = new IdentOp($2); }
 
   | T_DOLLAR csr
-  { $$ = new Operand(0b00010000, 0, 0, "", $2); }
+  { $$ = new CsrOp($2); }
 
   | T_LITERAL
-  { $$ = new Operand(0b01000000, 0, $1); }
+  { $$ = new LiteralOp($1); }
 
   | T_IDENT
-  { $$ = new Operand(0b00100000, 0, 0, $1); }
+  { $$ = new IdentOp($1); }
 
   | gpr
-  { $$ = new Operand(0b10000000, $1); }
+  { $$ = new GprOp($1); }
 
   | T_OBRACKET gpr T_CBRACKET
-  { $$ = new Operand(0b10000000, $2); }
+  { $$ = new GprOp($2); }
 
   | T_OBRACKET gpr T_PLUS T_LITERAL T_CBRACKET
-  { $$ = new Operand(0b11000000, $2, $4); }
+  { $$ = new GprLiteralOp($2, $4); }
 
   | T_OBRACKET gpr T_PLUS T_IDENT T_CBRACKET
-  { $$ = new Operand(0b10100000, $2, 0, $4); }
+  { $$ = new GprIdentOp($2, $4); }
 
   | T_OBRACKET gpr T_PLUS T_DOLLAR csr T_CBRACKET
-  { $$ = new Operand(0b10010000, $2, 0, 0, $5); };
+  { $$ = new GprCsrOp($2, $5); };
 
 csr
   : CSR_STATUS
@@ -247,13 +245,13 @@ gpr
 
 intOperand
   : REG
-  { $$ = new Operand(0b10000000, $1); }
+  { $$ = new GprOp($1); }
 
   | T_LITERAL
-  { $$ = new Operand(0b01000000, 0, $1); }
+  { $$ = new LiteralOp($1); }
 
   | T_IDENT
-  { $$ = new Operand(0b00100000, 0, 0, $1); };
+  { $$ = new IdentOp($1); };
 
 noadr
   : I_IRET
@@ -308,15 +306,15 @@ jmp
 
 jmpOperand
   : T_LITERAL
-  { $$ = new Operand(0b01000000, 0, $1); }
+  { $$ = new LiteralOp($1); }
 
   | T_IDENT
-  { $$ = new Operand(0b00100000, 0, 0, $1); }
+  { $$ = new IdentOp($1); }
 
   | T_PERCENT gpr T_COMMA T_PERCENT gpr T_COMMA T_IDENT
-  { $$ = new Operand(0b10101000, $2, 0, $7, 0, $5); }
+  { $$ = new GprGprIdent($2, $5, $7); }
 
   | T_PERCENT gpr T_COMMA T_PERCENT gpr T_COMMA T_LITERAL
-  { $$ = new Operand(0b11001000, $2, $7, "", 0, $5); };
+  { $$ = new GprGprLiteral($2, $5, $7); };
 
 %%

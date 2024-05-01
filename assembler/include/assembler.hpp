@@ -18,7 +18,7 @@ public:
 
     void operator=(Assembler const &) = delete;
 
-    static Assembler &singleton();
+    static Assembler &singleton();                      // done
 
     static int pass(int, char **);
 
@@ -32,11 +32,11 @@ public:
 
     void parseSection(const std::string &);             // done
 
-    void parseWord(Operand *);
+    void parseWord(Operand *);                          // done
 
     void parseAscii(const std::string &);               // done -> need label for access
 
-    void parseSkip(int);
+    void parseSkip(int);                                // done
 
     // instructions
     void parseHalt();                                   // done

@@ -7,26 +7,113 @@
 #include <unordered_map>
 
 class Operand {
-    uint8_t _selector;
-    uint8_t _gpr1;
-    uint32_t _literal;
-    std::string _symbol;
-    uint8_t _gpr2;
-    uint8_t _csr;
+protected:
     Operand *_next = nullptr;
-
 public:
-    explicit Operand(uint8_t selector = 0, uint8_t gpr1 = 0, uint32_t literal = 0, std::string symbol = "",
-                     uint8_t csr = 0,
-                     uint8_t gpr2 = 0, Operand *next = nullptr)
-            : _selector(selector), _gpr1(gpr1), _literal(literal), _symbol(std::move(symbol)), _csr(csr), _gpr2(gpr2),
-              _next(next) {}
 
-    ~Operand() { delete _next; }
+    explicit Operand() = default;
+
+    virtual ~Operand() { delete _next; }
 
     void logOne();
 
     void log();
+};
+
+class LiteralOp : public Operand {
+public:
+    explicit LiteralOp(unsigned int value, Operand *next = nullptr) : value_(value) {
+        _next = next;
+    }
+
+private:
+    unsigned int value_;
+};
+
+class IdentOp : public Operand {
+public:
+    explicit IdentOp(std::string ident, Operand *next = nullptr) : ident_(std::move(ident)) {
+        _next = next;
+    }
+
+private:
+    std::string ident_;
+};
+
+class GprOp : public Operand {
+public:
+    explicit GprOp(unsigned char gpr, Operand *next = nullptr, Operand *next2 = nullptr) : gpr_(gpr) {
+        _next = next;
+        _next2 = next2;
+    }
+
+private:
+    unsigned char gpr_;
+    Operand *_next2;
+};
+
+class GprLiteralOp : public Operand {
+public:
+    explicit GprLiteralOp(unsigned char gpr, unsigned int value) : gpr_(gpr), value_(value) {
+    }
+
+private:
+    unsigned char gpr_;
+    unsigned int value_;
+};
+
+class GprIdentOp : public Operand {
+public:
+    explicit GprIdentOp(unsigned char gpr, std::string ident) : gpr_(gpr), ident_(std::move(ident)) {
+    }
+
+private:
+    unsigned char gpr_;
+    std::string ident_;
+};
+
+class GprCsrOp : public Operand {
+public:
+    explicit GprCsrOp(unsigned char gpr, unsigned char csr) : gpr_(gpr), csr_(csr) {
+    }
+
+private:
+    unsigned char gpr_;
+    unsigned char csr_;
+};
+
+class GprGprIdent : public Operand {
+public:
+    explicit GprGprIdent(unsigned char gpr1, unsigned char gpr2, std::string ident) : _gpr1(gpr1), _gpr2(gpr2),
+                                                                                      _ident(std::move(ident)) {
+    }
+
+private:
+    unsigned char _gpr1;
+    unsigned char _gpr2;
+    std::string _ident;
+};
+
+class GprGprLiteral : public Operand {
+public:
+    explicit GprGprLiteral(unsigned char gpr1, unsigned char gpr2, unsigned int value) : _gpr1(gpr1), _gpr2(gpr2),
+                                                                                         _value(value) {
+    }
+
+private:
+    unsigned char _gpr1;
+    unsigned char _gpr2;
+    unsigned int _value;
+};
+
+class CsrOp : public Operand {
+public:
+    explicit CsrOp(unsigned char csr, Operand *next = nullptr) : csr_(csr) {
+        _next = next;
+    }
+
+private:
+    unsigned char csr_;
 };
 
 class I {
@@ -135,9 +222,9 @@ class SymbolTable {
 public:
     void addSymbol(const SymbolTableEntry &);
 
-    bool checkSymbol(BIND, ENTRY_TYPE,const std::string &);
+    bool checkSymbol(BIND, ENTRY_TYPE, const std::string &);
 
     bool hasUnresolvedSymbols();
 
-    SymbolTableEntry *getSymbol(BIND, ENTRY_TYPE,const std::string &);
+    SymbolTableEntry *getSymbol(BIND, ENTRY_TYPE, const std::string &);
 };
