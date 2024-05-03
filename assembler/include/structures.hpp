@@ -191,6 +191,7 @@ enum BIND {
     LOCAL,
     GLOBAL
 };
+
 enum ENTRY_TYPE {
     NO_TYPE,
     SECTION,
@@ -227,4 +228,45 @@ public:
     bool hasUnresolvedSymbols();
 
     SymbolTableEntry *getSymbol(BIND, ENTRY_TYPE, const std::string &);
+};
+
+enum RelocationType {
+    R_386_32,
+    R_386_PC32
+};
+
+class RelocationEntry {
+    uint32_t _offset;
+    RelocationType _type;
+    uint32_t _value;
+public:
+    RelocationEntry(uint32_t offset, RelocationType type, uint32_t value) : _offset(offset), _type(type),
+                                                                            _value(value) {}
+
+    void log();
+};
+
+class RelocationTable {
+    std::vector<RelocationEntry> _table;
+public:
+    void addRelocation(RelocationEntry &);
+
+    void log();
+};
+
+class InstructionEntry {
+    I::INSTRUCTION _instruction;
+    Operand *_operand;
+public:
+    InstructionEntry(I::INSTRUCTION instruction, Operand *operand) : _instruction(instruction), _operand(operand) {}
+
+    void log();
+};
+
+class Instructions {
+    std::vector<InstructionEntry> _table;
+public:
+    void addInstruction(InstructionEntry &);
+
+    void log();
 };

@@ -1,5 +1,7 @@
 #include "structures.hpp"
 #include "log.hpp"
+#include "../include/structures.hpp"
+
 #include <algorithm>
 
 std::string Csr::CSR[] = {"status", "handler", "cause"};
@@ -73,6 +75,40 @@ SymbolTableEntry *SymbolTable::getSymbol(BIND bind, ENTRY_TYPE type, const std::
     return nullptr;
 }
 
+void RelocationEntry::log() {
+#ifdef DO_DEBUG
+    Log::STRING_LN(_name + " " + std::to_string(_offset) + " " + std::to_string(_type));
+#endif
+}
+
+void RelocationTable::addRelocation(RelocationEntry &entry) {
+    _table.push_back(entry);
+}
+
+void RelocationTable::log() {
+#ifdef DO_DEBUG
+    for (auto &entry : _table)
+        entry.log();
+#endif
+}
+
+void InstructionEntry::log() {
+#ifdef DO_DEBUG
+    Log::STRING_LN(I::NAMES[_instruction]);
+    _operands->log();
+#endif
+}
+
+void Instructions::addInstruction(InstructionEntry &_inst) {
+    _table.push_back(_inst);
+}
+
+void Instructions::log() {
+#ifdef DO_DEBUG
+    for (auto &entry : _table)
+        entry.log();
+#endif
+}
 
 std::map<I::INSTRUCTION, std::string> I::NAMES = {
         {I::INSTRUCTION::HALT,            "HALT"},
@@ -116,3 +152,4 @@ std::map<I::INSTRUCTION, std::string> I::NAMES = {
         {I::INSTRUCTION::CSR_LD_IND,      "CSR_LD_IND"},
         {I::INSTRUCTION::CSR_LD_POST_INC, "CSR_LD_POST_INC"},
 };
+

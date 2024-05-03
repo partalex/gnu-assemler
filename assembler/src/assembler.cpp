@@ -49,7 +49,7 @@ void Assembler::parseExtern(SymbolList *list) {
                 0,
                 temp->_symbol
         );
-        _table.addSymbol(entry);
+        _symbolTable.addSymbol(entry);
         temp = temp->_next;
     }
     delete list;
@@ -66,7 +66,7 @@ void Assembler::parseEnd() {
 #ifdef DO_DEBUG
     Log::STRING_LN("END");
 #endif
-    if (_table.hasUnresolvedSymbols()) {
+    if (_symbolTable.hasUnresolvedSymbols()) {
         std::cerr << "Error: Unresolved symbols detected." << std::endl;
         exit(EXIT_FAILURE);
     }
@@ -85,14 +85,14 @@ void Assembler::parseLabel(const std::string &str) {
             _currentSection,
             str
     );
-    _table.addSymbol(entry);
+    _symbolTable.addSymbol(entry);
 }
 
 void Assembler::parseSection(const std::string &str) {
 #ifdef DO_DEBUG
     Log::STRING_LN("SECTION: " + str);
 #endif
-    SymbolTableEntry *entry = _table.getSymbol(LOCAL, SECTION, str);
+    SymbolTableEntry *entry = _symbolTable.getSymbol(LOCAL, SECTION, str);
     if (entry == nullptr) {
         auto temp = SymbolTableEntry(
                 0,
@@ -103,7 +103,7 @@ void Assembler::parseSection(const std::string &str) {
                 str
         );
         entry = &temp;
-        _table.addSymbol(*entry);
+        _symbolTable.addSymbol(*entry);
     }
     _currentSection = entry->_ndx;
     _locationCounter = 0;
@@ -131,7 +131,7 @@ void Assembler::parseAscii(const std::string &str) {
             _currentSection,
             str
     );
-    _table.addSymbol(entry);
+    _symbolTable.addSymbol(entry);
     _locationCounter += str.length();
 }
 
@@ -139,7 +139,8 @@ void Assembler::parseHalt() {
 #ifdef DO_DEBUG
     Log::STRING_LN("HALT");
 #endif
-
+    auto instr = InstructionEntry(I::HALT, nullptr);
+    _instructions.addInstruction(instr);
 }
 
 void Assembler::parseNoAdr(unsigned char inst) {
@@ -172,16 +173,19 @@ void Assembler::parsePop(unsigned char gpr) {
 #endif
 }
 
-void Assembler::parseNot(unsigned char) {
+void Assembler::parseNot(unsigned char gpr) {
 #ifdef DO_DEBUG
     Log::STRING_LN("NOT");
 #endif
+    auto instr = InstructionEntry(I::NOT, &GprOp(gpr));
+    _instructions.addInstruction(instr);
 }
 
 void Assembler::parseInt(Operand *operand) {
 #ifdef DO_DEBUG
     Log::STRING_LN("INT");
 #endif
+
     delete operand;
 }
 
@@ -246,7 +250,7 @@ void Assembler::parseGlobal(SymbolList *list) {
                 0,
                 temp->_symbol
         );
-        _table.addSymbol(entry);
+        _symbolTable.addSymbol(entry);
         temp = temp->_next;
     }
     delete list;

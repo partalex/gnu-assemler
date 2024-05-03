@@ -8,7 +8,9 @@ class Assembler {
     std::string _output = "output/obj.o";
     std::string _input;
 
-    SymbolTable _table;
+    SymbolTable _symbolTable;
+    RelocationTable _relocationTable;
+    Instructions _instructions;
 
     uint32_t _locationCounter = 0;
     uint32_t _currentSection = 0;
