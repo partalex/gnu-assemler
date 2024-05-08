@@ -139,7 +139,7 @@ void Assembler::parseHalt() {
 #ifdef DO_DEBUG
     Log::STRING_LN("HALT");
 #endif
-    auto instr = InstructionEntry(I::HALT, nullptr);
+    auto instr = Halt_Instr();
     _instructions.addInstruction(instr);
 }
 
@@ -148,6 +148,8 @@ void Assembler::parseNoAdr(unsigned char inst) {
     auto name = static_cast<I::INSTRUCTION>(inst);
     Log::STRING_LN(I::NAMES[name]);
 #endif
+    auto instr = NoAdr_Instr(static_cast<I::INSTRUCTION>(inst));
+    _instructions.addInstruction(instr);
 }
 
 void Assembler::parseJmp(unsigned char inst, Operand *operand) {
@@ -158,26 +160,31 @@ void Assembler::parseJmp(unsigned char inst, Operand *operand) {
     operand->log();
     Log::STRING_LN("");
 #endif
-    delete operand;
+    auto instr = Jmp_Instr(static_cast<I::INSTRUCTION>(inst), std::unique_ptr<Operand>(operand));
+    _instructions.addInstruction(instr);
 }
 
 void Assembler::parsePush(unsigned char gpr) {
 #ifdef DO_DEBUG
     Log::STRING_LN("PUSH: %r" + std::to_string(gpr));
 #endif
+    auto instr = Push_Instr(gpr);
+    _instructions.addInstruction(instr);
 }
 
 void Assembler::parsePop(unsigned char gpr) {
 #ifdef DO_DEBUG
     Log::STRING_LN("POP: %r" + std::to_string(gpr));
 #endif
+    auto instr = Pop_Instr(gpr);
+    _instructions.addInstruction(instr);
 }
 
 void Assembler::parseNot(unsigned char gpr) {
 #ifdef DO_DEBUG
     Log::STRING_LN("NOT");
 #endif
-    auto instr = InstructionEntry(I::NOT, &GprOp(gpr));
+    auto instr = Not_Instr(std::make_unique<GprOp>(gpr));
     _instructions.addInstruction(instr);
 }
 
@@ -185,14 +192,16 @@ void Assembler::parseInt(Operand *operand) {
 #ifdef DO_DEBUG
     Log::STRING_LN("INT");
 #endif
-
-    delete operand;
+    auto instr = Int_Instr(std::unique_ptr<Operand>(operand));
+    _instructions.addInstruction(instr);
 }
 
 void Assembler::parseXchg(unsigned char regS, unsigned char regD) {
 #ifdef DO_DEBUG
     Log::STRING_LN("XCHG: " + std::to_string(regS) + ", " + std::to_string(regD));
 #endif
+    auto instr = Xchg_Instr(std::make_unique<GprOp>(regS), std::make_unique<GprOp>(regD));
+    _instructions.addInstruction(instr);
 }
 
 void Assembler::parseTwoReg(unsigned char inst, unsigned char regS, unsigned char regD) {
@@ -202,18 +211,25 @@ void Assembler::parseTwoReg(unsigned char inst, unsigned char regS, unsigned cha
     Log::STRING("%r" + std::to_string(regS) + ", ");
     Log::STRING_LN("%r" + std::to_string(regD));
 #endif
+    auto instr = TwoReg_Instr(static_cast<I::INSTRUCTION>(inst), std::make_unique<GprOp>(regS),
+                              std::make_unique<GprOp>(regD));
+    _instructions.addInstruction(instr);
 }
 
 void Assembler::parseCsrrd(unsigned char csr, unsigned char gpr) {
 #ifdef DO_DEBUG
     Log::STRING_LN("CSRRD: %" + Csr::CSR[csr] + ", %r" + std::to_string(gpr));
 #endif
+    auto instr = Csrrd_Instr(csr, gpr);
+    _instructions.addInstruction(instr);
 }
 
 void Assembler::parseCsrwr(unsigned char gpr, unsigned char csr) {
 #ifdef DO_DEBUG
     Log::STRING_LN("CSRRD: %r" + std::to_string(gpr) + ", %" + Csr::CSR[csr]);
 #endif
+    auto instr = Csrwr_Instr(std::make_unique<GprOp>(gpr), std::make_unique<CsrOp>(csr));
+    _instructions.addInstruction(instr);
 }
 
 void Assembler::parseLoad(Operand *operand, unsigned char gpr) {
@@ -222,7 +238,8 @@ void Assembler::parseLoad(Operand *operand, unsigned char gpr) {
     operand->logOne();
     Log::STRING_LN(", %r" + std::to_string(gpr));
 #endif
-    delete operand;
+    auto instr = Load_Instr(std::unique_ptr<Operand>(operand), std::make_unique<GprOp>(gpr));
+    _instructions.addInstruction(instr);
 }
 
 void Assembler::parseStore(unsigned char gpr, Operand *operand) {
@@ -232,7 +249,8 @@ void Assembler::parseStore(unsigned char gpr, Operand *operand) {
     operand->logOne();
     Log::STRING_LN("");
 #endif
-    delete operand;
+    auto instr = Store_Instr(std::make_unique<GprOp>(gpr), std::unique_ptr<Operand>(operand));
+    _instructions.addInstruction(instr);
 }
 
 void Assembler::parseGlobal(SymbolList *list) {

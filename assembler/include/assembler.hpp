@@ -9,7 +9,7 @@ class Assembler {
     std::string _input;
 
     SymbolTable _symbolTable;
-    RelocationTable _relocationTable;
+    std::unordered_map<std::string, RelocationTable> _relTables;
     Instructions _instructions;
 
     uint32_t _locationCounter = 0;

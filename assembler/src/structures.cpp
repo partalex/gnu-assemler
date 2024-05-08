@@ -77,7 +77,6 @@ SymbolTableEntry *SymbolTable::getSymbol(BIND bind, ENTRY_TYPE type, const std::
 
 void RelocationEntry::log() {
 #ifdef DO_DEBUG
-    Log::STRING_LN(_name + " " + std::to_string(_offset) + " " + std::to_string(_type));
 #endif
 }
 
@@ -92,14 +91,7 @@ void RelocationTable::log() {
 #endif
 }
 
-void InstructionEntry::log() {
-#ifdef DO_DEBUG
-    Log::STRING_LN(I::NAMES[_instruction]);
-    _operands->log();
-#endif
-}
-
-void Instructions::addInstruction(InstructionEntry &_inst) {
+void Instructions::addInstruction(Instruction &_inst) {
     _table.push_back(_inst);
 }
 
@@ -152,4 +144,10 @@ std::map<I::INSTRUCTION, std::string> I::NAMES = {
         {I::INSTRUCTION::CSR_LD_IND,      "CSR_LD_IND"},
         {I::INSTRUCTION::CSR_LD_POST_INC, "CSR_LD_POST_INC"},
 };
+
+void Instruction::log() {
+#ifdef DO_DEBUG
+    Log::STRING_LN(I::NAMES[_instruction]);
+#endif
+}
 

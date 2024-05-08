@@ -4,7 +4,7 @@
 #include <utility>
 #include <vector>
 #include <map>
-#include <unordered_map>
+#include <memory>
 
 class Operand {
 protected:
@@ -254,19 +254,130 @@ public:
     void log();
 };
 
-class InstructionEntry {
-    I::INSTRUCTION _instruction;
-    Operand *_operand;
-public:
-    InstructionEntry(I::INSTRUCTION instruction, Operand *operand) : _instruction(instruction), _operand(operand) {}
+class Instruction {
+    uint8_t _byte_1;
+    uint8_t _byte_2{};
+    uint8_t _byte_3{};
+    uint8_t _byte_4{};
 
-    void log();
+public:
+    explicit Instruction(I::INSTRUCTION byte_1, uint8_t regA = 0, uint8_t regB = 0, uint8_t regC = 0, int offset = 0)
+            : _byte_1(byte_1), _byte_2(regA << 4 | regB), _byte_3(regC << 4) {
+        if (offset < -2048 || offset > 2047)
+            throw std::runtime_error("Displacement out of range.");
+        _byte_3 |= (offset & 0xF00) >> 8;
+        _byte_4 |= offset & 0xFF;
+    }
+
+    virtual void log();
+
+    virtual void setRegA(uint8_t regA) final { _byte_2 |= regA << 4; }
+
+    virtual void setRegB(uint8_t regB) final { _byte_2 |= regB; }
+
+    virtual void setRegC(uint8_t regC) final { _byte_3 |= regC << 4; }
+
+    virtual void setDisplacement(int16_t offset) final {
+        if (offset < -2048 || offset > 2047)
+            throw std::runtime_error("Displacement out of range.");
+        _byte_3 |= (offset & 0xF00) >> 8;
+        _byte_4 |= offset & 0xFF;
+    }
+};
+
+class Halt_Instr : public Instruction {
+public:
+    explicit Halt_Instr() : Instruction(I::HALT) {}
+};
+
+class Push_Instr : public Instruction {
+public:
+    explicit Push_Instr(uint8_t gpr)
+            : Instruction(I::ST_POST_INC, gpr) {}
+};
+
+class Pop_Instr : public Instruction {
+public:
+    explicit Pop_Instr(uint8_t grp)
+            : Instruction(I::LD_POST_INC, grp) {}
+};
+
+class Not_Instr : public Instruction {
+public:
+    explicit Not_Instr(uint8_t gpr)
+            : Instruction(I::NOT, gpr) {}
+};
+
+class Int_Instr : public Instruction {
+    std::unique_ptr<Operand> _operand;
+public:
+    explicit Int_Instr(std::unique_ptr<Operand> operand)
+            : Instruction(I::INT), _operand(std::move(operand)) {}
+};
+
+class Xchg_Instr : public Instruction {
+public:
+    explicit Xchg_Instr(uint8_t regA, uint8_t regB)
+            : Instruction(I::XCHG, regA, regB) {}
+};
+
+class Csrrd_Instr : public Instruction {
+public:
+    Csrrd_Instr(unsigned char i, unsigned char i1);
+
+    explicit Csrrd_Instr(,  operand2)
+            : Instruction(I::LD_CSR), _operand1(std::move(operand1)), _operand2(std::move(operand2)) {}
+};
+
+class Csrwr_Instr : public Instruction {
+    std::unique_ptr<Operand> _operand1;
+    std::unique_ptr<Operand> _operand2;
+public:
+    explicit Csrwr_Instr(std::unique_ptr<Operand> operand1, std::unique_ptr<Operand> operand2)
+            : Instruction(I::CSR_LD), _operand1(std::move(operand1)), _operand2(std::move(operand2)) {}
+};
+
+class Load_Instr : public Instruction {
+    std::unique_ptr<Operand> _operand1;
+    std::unique_ptr<Operand> _operand2;
+public:
+    explicit Load_Instr(std::unique_ptr<Operand> operand1, std::unique_ptr<Operand> operand2)
+            : Instruction(I::LD), _operand1(std::move(operand1)), _operand2(std::move(operand2)) {}
+};
+
+class Store_Instr : public Instruction {
+    std::unique_ptr<Operand> _operand1;
+    std::unique_ptr<Operand> _operand2;
+public:
+    explicit Store_Instr(std::unique_ptr<Operand> operand1, std::unique_ptr<Operand> operand2)
+            : Instruction(I::ST), _operand1(std::move(operand1)), _operand2(std::move(operand2)) {}
+};
+
+class TwoReg_Instr : public Instruction {
+    std::unique_ptr<Operand> _operand1;
+    std::unique_ptr<Operand> _operand2;
+public:
+    explicit TwoReg_Instr(I::INSTRUCTION instruction, std::unique_ptr<Operand> operand1,
+                          std::unique_ptr<Operand> operand2)
+            : Instruction(instruction), _operand1(std::move(operand1)), _operand2(std::move(operand2)) {}
+};
+
+class Jmp_Instr : public Instruction {
+    std::unique_ptr<Operand> _operand;
+public:
+    explicit Jmp_Instr(I::INSTRUCTION instruction, std::unique_ptr<Operand> operand)
+            : Instruction(instruction), _operand(std::move(operand)) {}
+};
+
+class NoAdr_Instr : public Instruction {
+public:
+    explicit NoAdr_Instr(I::INSTRUCTION instruction) : Instruction(instruction) {}
 };
 
 class Instructions {
-    std::vector<InstructionEntry> _table;
+    std::vector<Instruction> _table;
 public:
-    void addInstruction(InstructionEntry &);
+    void addInstruction(Instruction &);
 
     void log();
 };
