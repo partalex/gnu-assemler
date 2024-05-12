@@ -57,15 +57,15 @@ public:
 
     void parseTwoReg(unsigned char, unsigned char, unsigned char);  // done
 
-    void parseCsrrd(unsigned char, unsigned char);
+    void parseCsrrd(unsigned char, unsigned char);      // done
 
-    void parseCsrwr(unsigned char, unsigned char);
+    void parseCsrwr(unsigned char, unsigned char);      // done
 
-    void parseLoad(Operand *, unsigned char);
+    void parseLoad(Operand *, unsigned char);           // done
 
-    void parseStore(unsigned char, Operand *);
+    void parseStore(unsigned char, Operand *);          // done
 
-    void parseNoAdr(unsigned char);
+    void parseNoAdr(unsigned char);                     // done
 
     // log
     void log();                                        // done

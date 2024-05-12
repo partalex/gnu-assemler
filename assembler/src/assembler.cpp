@@ -70,6 +70,7 @@ void Assembler::parseEnd() {
         std::cerr << "Error: Unresolved symbols detected." << std::endl;
         exit(EXIT_FAILURE);
     }
+    _instructions.log();
     writeToFile();
 }
 
