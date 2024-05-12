@@ -86,18 +86,17 @@ void RelocationTable::addRelocation(RelocationEntry &entry) {
 
 void RelocationTable::log() {
 #ifdef DO_DEBUG
-    for (auto &entry : _table)
+    for (auto &entry: _table)
         entry.log();
 #endif
 }
 
-void Instructions::addInstruction(Instruction &_inst) {
+void Instructions::addInstruction(std::shared_ptr<Instruction> _inst) {
     _table.push_back(_inst);
 }
-
 void Instructions::log() {
 #ifdef DO_DEBUG
-    for (auto &entry : _table)
+    for (auto &entry: _table)
         entry.log();
 #endif
 }

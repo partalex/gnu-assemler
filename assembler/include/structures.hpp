@@ -322,44 +322,44 @@ public:
 };
 
 class Csrrd_Instr : public Instruction {
+    unsigned char _csr;
+    unsigned char _gpr;
 public:
-    Csrrd_Instr(unsigned char i, unsigned char i1);
+    explicit Csrrd_Instr(unsigned char csr, unsigned char gpr)
+            : Instruction(I::LD_CSR), _csr(csr), _gpr(gpr) {}
 
-    explicit Csrrd_Instr(,  operand2)
-            : Instruction(I::LD_CSR), _operand1(std::move(operand1)), _operand2(std::move(operand2)) {}
 };
 
 class Csrwr_Instr : public Instruction {
-    std::unique_ptr<Operand> _operand1;
-    std::unique_ptr<Operand> _operand2;
+    unsigned char _gpr;
+    unsigned char _csr;
 public:
-    explicit Csrwr_Instr(std::unique_ptr<Operand> operand1, std::unique_ptr<Operand> operand2)
-            : Instruction(I::CSR_LD), _operand1(std::move(operand1)), _operand2(std::move(operand2)) {}
+    explicit Csrwr_Instr(unsigned char gpr, unsigned char csr)
+            : Instruction(I::CSR_LD), _gpr(gpr), _csr(csr) {}
 };
 
 class Load_Instr : public Instruction {
-    std::unique_ptr<Operand> _operand1;
-    std::unique_ptr<Operand> _operand2;
+    unsigned char _gpr;
+    std::unique_ptr<Operand> _operand;
 public:
-    explicit Load_Instr(std::unique_ptr<Operand> operand1, std::unique_ptr<Operand> operand2)
-            : Instruction(I::LD), _operand1(std::move(operand1)), _operand2(std::move(operand2)) {}
+    explicit Load_Instr(std::unique_ptr<Operand> operand, unsigned char gpr)
+            : Instruction(I::LD), _gpr(gpr), _operand(std::move(operand)) {}
 };
 
 class Store_Instr : public Instruction {
-    std::unique_ptr<Operand> _operand1;
-    std::unique_ptr<Operand> _operand2;
+    unsigned char _gpr;
+    std::unique_ptr<Operand> _operand;
 public:
-    explicit Store_Instr(std::unique_ptr<Operand> operand1, std::unique_ptr<Operand> operand2)
-            : Instruction(I::ST), _operand1(std::move(operand1)), _operand2(std::move(operand2)) {}
+    explicit Store_Instr(unsigned char gpr, std::unique_ptr<Operand> operand)
+            : Instruction(I::ST), _gpr(gpr), _operand(std::move(operand)) {}
 };
 
 class TwoReg_Instr : public Instruction {
-    std::unique_ptr<Operand> _operand1;
-    std::unique_ptr<Operand> _operand2;
+    unsigned char _regD;
+    unsigned char _regS;
 public:
-    explicit TwoReg_Instr(I::INSTRUCTION instruction, std::unique_ptr<Operand> operand1,
-                          std::unique_ptr<Operand> operand2)
-            : Instruction(instruction), _operand1(std::move(operand1)), _operand2(std::move(operand2)) {}
+    explicit TwoReg_Instr(I::INSTRUCTION instruction, unsigned char regD, unsigned char regS)
+            : Instruction(instruction), _regD(regD), _regS(regS) {}
 };
 
 class Jmp_Instr : public Instruction {
@@ -375,9 +375,9 @@ public:
 };
 
 class Instructions {
-    std::vector<Instruction> _table;
+    std::vector<std::shared_ptr<Instruction>> _table;
 public:
-    void addInstruction(Instruction &);
+    void addInstruction(std::shared_ptr<Instruction>);
 
     void log();
 };
