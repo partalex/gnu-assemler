@@ -8,8 +8,8 @@
 
 class Operand {
 protected:
-    Operand *_next = nullptr;
 public:
+    Operand *_next = nullptr;
 
     explicit Operand() = default;
 
@@ -20,66 +20,94 @@ public:
     void log();
 };
 
+class WordOperand : public Operand {
+public:
+    explicit WordOperand(Operand *next = nullptr) {
+        _next = next;
+    }
+};
+
+class WordLiteral : public WordOperand {
+    unsigned int _value;
+public:
+    explicit WordLiteral(unsigned int value, Operand *next = nullptr) : _value(value) {
+        _next = next;
+    }
+};
+
+class WordIdent : public WordOperand {
+    std::string _ident;
+public:
+    explicit WordIdent(std::string ident, Operand *next = nullptr) : _ident(std::move(ident)) {
+        _next = next;
+    }
+};
+
 class LiteralOp : public Operand {
 public:
-    explicit LiteralOp(unsigned int value, Operand *next = nullptr) : value_(value) {
+    explicit LiteralOp(unsigned int value, Operand *next = nullptr) : _value(value) {
         _next = next;
     }
 
+    unsigned int fromWord();
+
 private:
-    unsigned int value_;
+    unsigned int _value;
 };
 
 class IdentOp : public Operand {
 public:
-    explicit IdentOp(std::string ident, Operand *next = nullptr) : ident_(std::move(ident)) {
+    explicit IdentOp(std::string ident, Operand *next = nullptr) : _ident(std::move(ident)) {
         _next = next;
     }
 
+    void fromWord();
+
 private:
-    std::string ident_;
+    std::string _ident;
 };
 
 class GprOp : public Operand {
 public:
-    explicit GprOp(unsigned char gpr, Operand *next = nullptr, Operand *next2 = nullptr) : gpr_(gpr) {
+    explicit GprOp(unsigned char gpr, Operand *next = nullptr) : _gpr(gpr) {
         _next = next;
-        _next2 = next2;
     }
 
 private:
-    unsigned char gpr_;
-    Operand *_next2;
+    unsigned char _gpr;
 };
 
 class GprLiteralOp : public Operand {
 public:
-    explicit GprLiteralOp(unsigned char gpr, unsigned int value) : gpr_(gpr), value_(value) {
+    explicit GprLiteralOp(unsigned char gpr, unsigned int value, Operand *next = nullptr) : _gpr(gpr), _value(value) {
+        _next = next;
     }
 
 private:
-    unsigned char gpr_;
-    unsigned int value_;
+    unsigned char _gpr;
+    unsigned int _value;
 };
 
 class GprIdentOp : public Operand {
 public:
-    explicit GprIdentOp(unsigned char gpr, std::string ident) : gpr_(gpr), ident_(std::move(ident)) {
+    explicit GprIdentOp(unsigned char gpr, std::string ident, Operand *next = nullptr) : _gpr(gpr),
+                                                                                         ident_(std::move(ident)) {
+        _next = next;
     }
 
 private:
-    unsigned char gpr_;
+    unsigned char _gpr;
     std::string ident_;
 };
 
 class GprCsrOp : public Operand {
 public:
-    explicit GprCsrOp(unsigned char gpr, unsigned char csr) : gpr_(gpr), csr_(csr) {
+    explicit GprCsrOp(unsigned char gpr, unsigned char csr) : _gpr(gpr), _csr(csr) {
     }
 
 private:
-    unsigned char gpr_;
-    unsigned char csr_;
+    unsigned char _gpr;
+    unsigned char _csr;
 };
 
 class GprGprIdent : public Operand {
@@ -195,7 +223,8 @@ enum BIND {
 enum ENTRY_TYPE {
     NO_TYPE,
     SECTION,
-    ASCII
+    ASCII,
+    WORD
 };
 
 struct SymbolTableEntry {
@@ -221,11 +250,13 @@ class SymbolTable {
     std::vector<SymbolTableEntry> _table;
 
 public:
-    void addSymbol(const SymbolTableEntry &);
+    void addSymbol(const SymbolTableEntry);
 
     bool checkSymbol(BIND, ENTRY_TYPE, const std::string &);
 
     bool hasUnresolvedSymbols();
+
+    void log();
 
     SymbolTableEntry *getSymbol(BIND, ENTRY_TYPE, const std::string &);
 };
@@ -322,44 +353,35 @@ public:
 };
 
 class Csrrd_Instr : public Instruction {
-    unsigned char _csr;
-    unsigned char _gpr;
 public:
     explicit Csrrd_Instr(unsigned char csr, unsigned char gpr)
-            : Instruction(I::LD_CSR), _csr(csr), _gpr(gpr) {}
-
+            : Instruction(I::LD_CSR, csr, gpr) {}
 };
 
 class Csrwr_Instr : public Instruction {
-    unsigned char _gpr;
-    unsigned char _csr;
 public:
     explicit Csrwr_Instr(unsigned char gpr, unsigned char csr)
-            : Instruction(I::CSR_LD), _gpr(gpr), _csr(csr) {}
+            : Instruction(I::CSR_LD, gpr, csr) {}
 };
 
 class Load_Instr : public Instruction {
-    unsigned char _gpr;
     std::unique_ptr<Operand> _operand;
 public:
     explicit Load_Instr(std::unique_ptr<Operand> operand, unsigned char gpr)
-            : Instruction(I::LD), _gpr(gpr), _operand(std::move(operand)) {}
+            : Instruction(I::LD, gpr), _operand(std::move(operand)) {}
 };
 
 class Store_Instr : public Instruction {
-    unsigned char _gpr;
     std::unique_ptr<Operand> _operand;
 public:
     explicit Store_Instr(unsigned char gpr, std::unique_ptr<Operand> operand)
-            : Instruction(I::ST), _gpr(gpr), _operand(std::move(operand)) {}
+            : Instruction(I::ST, gpr), _operand(std::move(operand)) {}
 };
 
 class TwoReg_Instr : public Instruction {
-    unsigned char _regD;
-    unsigned char _regS;
 public:
     explicit TwoReg_Instr(I::INSTRUCTION instruction, unsigned char regD, unsigned char regS)
-            : Instruction(instruction), _regD(regD), _regS(regS) {}
+            : Instruction(instruction, regD, regS) {}
 };
 
 class Jmp_Instr : public Instruction {
@@ -375,9 +397,9 @@ public:
 };
 
 class Instructions {
-    std::vector<std::shared_ptr<Instruction>> _table;
+    std::vector<std::unique_ptr<Instruction>> _table;
 public:
-    void addInstruction(std::shared_ptr<Instruction>);
+    void addInstruction(std::unique_ptr<Instruction>);
 
     void log();
 };

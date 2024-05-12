@@ -22,7 +22,7 @@ public:
 
     static Assembler &singleton();                      // done
 
-    static int pass(int, char **);
+    static int pass(int, char **);                      // done
 
     void parseLabel(const std::string &);               // done
 
@@ -34,7 +34,7 @@ public:
 
     void parseSection(const std::string &);             // done
 
-    void parseWord(Operand *);                          // done
+    void parseWord(WordOperand *);                      // done
 
     void parseAscii(const std::string &);               // done -> need label for access
 
@@ -47,15 +47,15 @@ public:
 
     void parseJmp(unsigned char, Operand *);
 
-    void parsePush(unsigned char);
+    void parsePush(unsigned char);                      // done
 
-    void parsePop(unsigned char);
+    void parsePop(unsigned char);                       // done
 
-    void parseNot(unsigned char);
+    void parseNot(unsigned char);                       // done
 
-    void parseXchg(unsigned char, unsigned char);
+    void parseXchg(unsigned char, unsigned char);       // done
 
-    void parseTwoReg(unsigned char, unsigned char, unsigned char);
+    void parseTwoReg(unsigned char, unsigned char, unsigned char);  // done
 
     void parseCsrrd(unsigned char, unsigned char);
 
@@ -66,6 +66,9 @@ public:
     void parseStore(unsigned char, Operand *);
 
     void parseNoAdr(unsigned char);
+
+    // log
+    void log();                                        // done
 
     void writeToFile();
 };

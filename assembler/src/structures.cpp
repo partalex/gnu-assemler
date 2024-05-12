@@ -6,6 +6,7 @@
 
 std::string Csr::CSR[] = {"status", "handler", "cause"};
 
+
 SymbolList::SymbolList(const std::string &str, SymbolList *next) {
     _symbol = str;
     _next = next;
@@ -49,7 +50,7 @@ bool SymbolTable::hasUnresolvedSymbols() {
     return false;
 }
 
-void SymbolTable::addSymbol(const SymbolTableEntry &entry) {
+void SymbolTable::addSymbol(const SymbolTableEntry entry) {
     _table.push_back(entry);
 }
 
@@ -75,6 +76,24 @@ SymbolTableEntry *SymbolTable::getSymbol(BIND bind, ENTRY_TYPE type, const std::
     return nullptr;
 }
 
+void SymbolTable::log() {
+//#ifdef DO_DEBUG
+    for (auto &entry: _table) {
+        Log::STRING(entry._name);
+        Log::STRING(" ");
+        Log::STRING(std::to_string(entry._value));
+        Log::STRING(" ");
+        Log::STRING(std::to_string(entry._size));
+        Log::STRING(" ");
+        Log::STRING(std::to_string(entry._type));
+        Log::STRING(" ");
+        Log::STRING(std::to_string(entry._bind));
+        Log::STRING(" ");
+        Log::STRING_LN(std::to_string(entry._ndx));
+    }
+//#endif
+}
+
 void RelocationEntry::log() {
 #ifdef DO_DEBUG
 #endif
@@ -91,13 +110,14 @@ void RelocationTable::log() {
 #endif
 }
 
-void Instructions::addInstruction(std::shared_ptr<Instruction> _inst) {
-    _table.push_back(_inst);
+void Instructions::addInstruction(std::unique_ptr<Instruction> _inst) {
+    _table.push_back(std::move(_inst));
 }
+
 void Instructions::log() {
 #ifdef DO_DEBUG
     for (auto &entry: _table)
-        entry.log();
+        entry->log();
 #endif
 }
 
@@ -150,3 +170,10 @@ void Instruction::log() {
 #endif
 }
 
+unsigned int LiteralOp::fromWord() {
+    return _value;
+}
+
+void IdentOp::fromWord() {
+
+}

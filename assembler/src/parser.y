@@ -24,6 +24,7 @@
     unsigned int        num_32;
     class SymbolList*   symbolList;
     class Operand*      operand;
+    class WordOperand*  wordOperand;
 }
 
 %token            T_COMMA
@@ -88,7 +89,7 @@
 %type <operand>     jmpOperand
 %type <operand>     intOperand
 %type <operand>     oneRegOperand
-%type <operand>     wordOperand
+%type <wordOperand> wordOperand
 %type <symbolList>  symbolList
 
 %%
@@ -133,16 +134,16 @@ directive
 
 wordOperand
   : T_LITERAL
-  { $$ = new LiteralOp($1); }
+  { $$ = new WordLiteral($1); }
 
   | T_LITERAL T_COMMA wordOperand
-  { $$ = new LiteralOp($1, $3); }
+  { $$ = new WordLiteral($1, $3); }
 
   | T_IDENT
-  { $$ = new IdentOp($1);  }
+  { $$ = new WordIdent($1);  }
 
   | T_IDENT T_COMMA wordOperand
-  { $$ = new IdentOp($1, $3); };
+  { $$ = new WordIdent($1, $3); };
 
 instruction
   : I_HALT
