@@ -33,8 +33,7 @@ class EntryType {
 public:
     static std::string ENTRY_TYPE_STR[];
     enum ENTRY_TYPE {
-        SYMBOL,
-        LABEL,
+        SYMBOL, // GLOBAL, EXTERN
         SECTION,
     };
 };
@@ -43,7 +42,7 @@ struct SymbolTableEntry {
     uint64_t _offset;
     EntryType::ENTRY_TYPE _type;
     Bind::BIND _bind;
-    uint8_t _section;
+    uint32_t _section;
     std::string _name;
     bool _resolved;
 
@@ -70,7 +69,7 @@ public:
 
     void log();
 
-    SymbolTableEntry *getSymbol(Bind::BIND, EntryType::ENTRY_TYPE, const std::string &);
+    SymbolTableEntry *getSymbol(EntryType::ENTRY_TYPE, const std::string &);
 };
 
 enum RelocationType {

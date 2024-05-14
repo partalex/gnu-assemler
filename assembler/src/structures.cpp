@@ -8,7 +8,7 @@
 
 std::string Bind::BIND_STR[] = {"LOC", "GLB"};
 
-std::string EntryType::ENTRY_TYPE_STR[] = {"SYM","LBL", "SEC"};
+std::string EntryType::ENTRY_TYPE_STR[] = {"SYM", "SEC"};
 
 SymbolList::SymbolList(const std::string &str, SymbolList *next) {
     _symbol = str;
@@ -47,12 +47,12 @@ bool SymbolTable::checkSymbol(Bind::BIND bind, EntryType::ENTRY_TYPE type, const
 
 }
 
-SymbolTableEntry *SymbolTable::getSymbol(Bind::BIND bind, EntryType::ENTRY_TYPE type, const std::string &name) {
+SymbolTableEntry *SymbolTable::getSymbol(EntryType::ENTRY_TYPE type, const std::string &name) {
     auto res = std::find_if(
             _table.begin(),
             _table.end(),
-            [&name, bind, type](const std::unique_ptr<SymbolTableEntry> &entry) {
-                return entry->_name == name && entry->_bind == bind && entry->_type == type;
+            [&name, type](const std::unique_ptr<SymbolTableEntry> &entry) {
+                return entry->_name == name && entry->_type == type;
             });
     if (res != _table.end()) return res->get();
     return nullptr;

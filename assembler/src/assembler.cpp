@@ -87,10 +87,21 @@ void Assembler::parseLabel(const std::string &str) {
     Log::STRING_LN("LABEL: " + str);
 #endif
     // find if exist
+    auto test = _symbolTable.getSymbol(EntryType::SYMBOL, str);
+    if (test != nullptr) {
+        if (test->_resolved) {
+            std::cerr << "Error: Symbol " << str << " already defined." << std::endl;
+            exit(EXIT_FAILURE);
+        }
+        if (test->_bind == Bind::GLOBAL) {
+            std::cerr << "Error: Symbol " << str << " already defined as global." << std::endl;
+            exit(EXIT_FAILURE);
+        }
+    }
 
     auto entry = std::make_unique<SymbolTableEntry>(
             _locationCounter,
-            EntryType::EntryType::LABEL,
+            EntryType::EntryType::SYMBOL,
             Bind::LOCAL,
             _currentSection,
             str,
@@ -103,7 +114,7 @@ void Assembler::parseSection(const std::string &str) {
 #ifdef LOG_PARSER
     Log::STRING_LN("EntryType::SECTION: " + str);
 #endif
-    auto entry = _symbolTable.getSymbol(Bind::LOCAL, EntryType::SECTION, str);
+    auto entry = _symbolTable.getSymbol(EntryType::SECTION, str);
     if (entry != nullptr)
         _currentSection = entry->_section;
     else {
@@ -129,7 +140,6 @@ void Assembler::parseWord(WordOperand *operand) {
     // TODO
     WordOperand *temp = operand;
     while (temp) {
-        // TODO
         // Alocirajte 4 bajta prostora za svaki Operand
         // Inicijalizujte alocirani prostor vrednostima Operand-a
         // Ovde pretpostavljamo da imate metodu koja može da vrati vrednost Operand-a
