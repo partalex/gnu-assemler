@@ -1,3 +1,5 @@
+#pragma once
+
 #include <memory>
 #include <vector>
 #include <unordered_map>
@@ -20,13 +22,15 @@ public:
 
     void operator=(Assembler const &) = delete;
 
-    static Assembler &singleton();                      // done
+    static Assembler &singleton();
 
     static int pass(int, char **);                      // done
 
+    void log();                                         // TODO
+
     void parseLabel(const std::string &);               // done
 
-    void parseEnd();
+    void parseEnd();                                    // done
 
     void parseGlobal(SymbolList *);                     // done
 
@@ -34,18 +38,22 @@ public:
 
     void parseSection(const std::string &);             // done
 
-    void parseWord(WordOperand *);                      // done
+    void parseWord(WordOperand *);                      // TODO
 
-    void parseAscii(const std::string &);               // done -> need label for access
+    void parseAscii(const std::string &);               // done
 
-    void parseSkip(int);                                // done
+    void parseSkip(int);                                // TODO
 
     // instructions
     void parseHalt();                                   // done
 
-    void parseInt(Operand *);
+    void parseInt(Operand *);                           // TODO
 
-    void parseJmp(unsigned char, Operand *);
+    void parseJmp(unsigned char, Operand *);            // TODO
+
+    void parseCall(unsigned char, Operand *);           // done
+
+    void parseCondJmp(unsigned char, Operand *);        // done
 
     void parsePush(unsigned char);                      // done
 
@@ -65,10 +73,7 @@ public:
 
     void parseStore(unsigned char, Operand *);          // done
 
-    void parseNoAdr(unsigned char);                     // done
-
-    // log
-    void log();                                        // done
+    void parseNoAdr(unsigned char);                     // TODO
 
     void writeToFile();
 };

@@ -5,6 +5,8 @@
 #include "lexer.hpp"
 #include "parser.hpp"
 #include "log.hpp"
+#include "instruction.hpp"
+#include "operand.hpp"
 
 extern int yylex_destroy(void);
 
@@ -35,89 +37,97 @@ int Assembler::pass(int argc, char **argv) {
 }
 
 void Assembler::parseExtern(SymbolList *list) {
-#ifdef DO_DEBUG
+#ifdef LOG_PARSER
     Log::STRING("EXTERN: ");
     list->log();
 #endif
     SymbolList *temp = list;
     while (temp) {
-        auto entry = SymbolTableEntry(
+        auto entry = std::make_unique<SymbolTableEntry>(
                 0,
+                EntryType::SYMBOL,
+                Bind::GLOBAL,
                 0,
-                NO_TYPE,
-                GLOBAL,
-                0,
-                temp->_symbol
+                temp->_symbol,
+                false
         );
-        _symbolTable.addSymbol(entry);
+        _symbolTable.addSymbol(std::move(entry));
         temp = temp->_next;
     }
     delete list;
 }
 
 void Assembler::parseSkip(int literal) {
-#ifdef DO_DEBUG
+#ifdef LOG_PARSER
     Log::STRING_LN("SKIP: " + std::to_string(literal));
 #endif
+    // initialise memory with 0
     _locationCounter += literal;
 }
 
 void Assembler::parseEnd() {
-#ifdef DO_DEBUG
+#ifdef LOG_PARSER
     Log::STRING_LN("END");
 #endif
     if (_symbolTable.hasUnresolvedSymbols()) {
         std::cerr << "Error: Unresolved symbols detected." << std::endl;
         exit(EXIT_FAILURE);
     }
+#ifdef LOG_SYMBOL_TABLE
+    _symbolTable.log();
+#endif
+#ifdef LOG_INSTRUCTIONS
     _instructions.log();
+#endif
     writeToFile();
 }
 
 void Assembler::parseLabel(const std::string &str) {
-#ifdef DO_DEBUG
+#ifdef LOG_PARSER
     Log::STRING_LN("LABEL: " + str);
 #endif
-    auto entry = SymbolTableEntry(
-            0,
-            0,
-            NO_TYPE,
-            LOCAL,
+    // find if exist
+
+    auto entry = std::make_unique<SymbolTableEntry>(
+            _locationCounter,
+            EntryType::EntryType::LABEL,
+            Bind::LOCAL,
             _currentSection,
-            str
+            str,
+            true
     );
-    _symbolTable.addSymbol(entry);
+    _symbolTable.addSymbol(std::move(entry));
 }
 
 void Assembler::parseSection(const std::string &str) {
-#ifdef DO_DEBUG
-    Log::STRING_LN("SECTION: " + str);
+#ifdef LOG_PARSER
+    Log::STRING_LN("EntryType::SECTION: " + str);
 #endif
-    SymbolTableEntry *entry = _symbolTable.getSymbol(LOCAL, SECTION, str);
-    if (entry == nullptr) {
-        auto temp = SymbolTableEntry(
+    auto entry = _symbolTable.getSymbol(Bind::LOCAL, EntryType::SECTION, str);
+    if (entry != nullptr)
+        _currentSection = entry->_section;
+    else {
+        auto temp = std::make_unique<SymbolTableEntry>(
                 0,
-                0,
-                SECTION,
-                LOCAL,
+                EntryType::SECTION,
+                Bind::LOCAL,
                 ++_currentSection,
-                str
+                str,
+                true
         );
-        entry = &temp;
-        _symbolTable.addSymbol(*entry);
+        _symbolTable.addSymbol(std::move(temp));
     }
-    _currentSection = entry->_ndx;
     _locationCounter = 0;
 }
 
 void Assembler::parseWord(WordOperand *operand) {
-#ifdef DO_DEBUG
+#ifdef LOG_PARSER
     Log::STRING("WORD: ");
     operand->log();
     Log::STRING_LN("");
 #endif
     // TODO
-    Operand *temp = operand;
+    WordOperand *temp = operand;
     while (temp) {
         // TODO
         // Alocirajte 4 bajta prostora za svaki Operand
@@ -128,29 +138,28 @@ void Assembler::parseWord(WordOperand *operand) {
         // Dodajte kod za alociranje i inicijalizaciju prostora ovde
         temp = temp->_next;
     }
-
     delete operand;
     _locationCounter += 4;
 }
 
 void Assembler::parseAscii(const std::string &str) {
-#ifdef DO_DEBUG
-    Log::STRING_LN("ASCII: " + str);
+#ifdef LOG_PARSER
+    Log::STRING_LN("EntryType::ASCII: " + str);
 #endif
-    auto entry = SymbolTableEntry(
-            0,
-            str.length(),
-            ASCII,
-            LOCAL,
-            _currentSection,
-            str
-    );
-    _symbolTable.addSymbol(entry);
+//    auto entry = std::make_unique<SymbolTableEntry>(
+//            0,
+//            str.length(),
+//            EntryType::ASCII,
+//            Bind::LOCAL,
+//            _currentSection,
+//            str
+//    );
+//    _symbolTable.addSymbol(std::move(entry));
     _locationCounter += str.length();
 }
 
 void Assembler::parseHalt() {
-#ifdef DO_DEBUG
+#ifdef LOG_PARSER
     Log::STRING_LN("HALT");
 #endif
     auto instr = std::make_unique<Halt_Instr>();
@@ -158,7 +167,7 @@ void Assembler::parseHalt() {
 }
 
 void Assembler::parseNoAdr(unsigned char inst) {
-#ifdef DO_DEBUG
+#ifdef LOG_PARSER
     auto name = static_cast<I::INSTRUCTION>(inst);
     Log::STRING_LN(I::NAMES[name]);
 #endif
@@ -167,19 +176,46 @@ void Assembler::parseNoAdr(unsigned char inst) {
 }
 
 void Assembler::parseJmp(unsigned char inst, Operand *operand) {
-#ifdef DO_DEBUG
+#ifdef LOG_PARSER
     auto _inst = static_cast<I::INSTRUCTION>(inst);
     std::string name = I::NAMES[_inst];
     Log::STRING(name + ": ");
     operand->log();
     Log::STRING_LN("");
 #endif
-    auto instr = std::make_unique<Jmp_Instr>(static_cast<I::INSTRUCTION>(inst), std::unique_ptr<Operand>(operand));
+    auto instr = std::make_unique<Jmp_Instr>(static_cast<I::INSTRUCTION>(inst),
+                                             std::unique_ptr<Operand>(operand));
+    _instructions.addInstruction(std::move(instr));
+}
+
+void Assembler::parseCall(unsigned char inst, Operand *operand) {
+#ifdef LOG_PARSER
+    auto _inst = static_cast<I::INSTRUCTION>(inst);
+    std::string name = I::NAMES[_inst];
+    Log::STRING(name + ": ");
+    operand->log();
+    Log::STRING_LN("");
+#endif
+    auto instr = std::make_unique<Call_Instr>(static_cast<I::INSTRUCTION>(inst),
+                                              std::unique_ptr<Operand>(operand));
+    _instructions.addInstruction(std::move(instr));
+}
+
+void Assembler::parseCondJmp(unsigned char inst, Operand *operand) {
+#ifdef LOG_PARSER
+    auto _inst = static_cast<I::INSTRUCTION>(inst);
+    std::string name = I::NAMES[_inst];
+    Log::STRING(name + ": ");
+    operand->log();
+    Log::STRING_LN("");
+#endif
+    auto instr = std::make_unique<JmpCond_Instr>(static_cast<I::INSTRUCTION>(inst),
+                                                 std::unique_ptr<Operand>(operand));
     _instructions.addInstruction(std::move(instr));
 }
 
 void Assembler::parsePush(unsigned char gpr) {
-#ifdef DO_DEBUG
+#ifdef LOG_PARSER
     Log::STRING_LN("PUSH: %r" + std::to_string(gpr));
 #endif
     auto instr = std::make_unique<Push_Instr>(gpr);
@@ -187,7 +223,7 @@ void Assembler::parsePush(unsigned char gpr) {
 }
 
 void Assembler::parsePop(unsigned char gpr) {
-#ifdef DO_DEBUG
+#ifdef LOG_PARSER
     Log::STRING_LN("POP: %r" + std::to_string(gpr));
 #endif
     auto instr = std::make_unique<Pop_Instr>(gpr);
@@ -195,7 +231,7 @@ void Assembler::parsePop(unsigned char gpr) {
 }
 
 void Assembler::parseNot(unsigned char gpr) {
-#ifdef DO_DEBUG
+#ifdef LOG_PARSER
     Log::STRING_LN("NOT");
 #endif
     auto instr = std::make_unique<Not_Instr>(gpr);
@@ -203,7 +239,7 @@ void Assembler::parseNot(unsigned char gpr) {
 }
 
 void Assembler::parseInt(Operand *operand) {
-#ifdef DO_DEBUG
+#ifdef LOG_PARSER
     Log::STRING_LN("INT");
 #endif
     // TODO
@@ -212,7 +248,7 @@ void Assembler::parseInt(Operand *operand) {
 }
 
 void Assembler::parseXchg(unsigned char regS, unsigned char regD) {
-#ifdef DO_DEBUG
+#ifdef LOG_PARSER
     Log::STRING_LN("XCHG: " + std::to_string(regS) + ", " + std::to_string(regD));
 #endif
     auto instr = std::make_unique<Xchg_Instr>(regS, regD);
@@ -220,7 +256,7 @@ void Assembler::parseXchg(unsigned char regS, unsigned char regD) {
 }
 
 void Assembler::parseTwoReg(unsigned char inst, unsigned char regS, unsigned char regD) {
-#ifdef DO_DEBUG
+#ifdef LOG_PARSER
     auto name = static_cast<I::INSTRUCTION>(inst);
     Log::STRING(I::NAMES[name] + ": ");
     Log::STRING("%r" + std::to_string(regS) + ", ");
@@ -231,7 +267,7 @@ void Assembler::parseTwoReg(unsigned char inst, unsigned char regS, unsigned cha
 }
 
 void Assembler::parseCsrrd(unsigned char csr, unsigned char gpr) {
-#ifdef DO_DEBUG
+#ifdef LOG_PARSER
     Log::STRING_LN("CSRRD: %" + Csr::CSR[csr] + ", %r" + std::to_string(gpr));
 #endif
     auto instr = std::make_unique<Csrrd_Instr>(csr, gpr);
@@ -239,7 +275,7 @@ void Assembler::parseCsrrd(unsigned char csr, unsigned char gpr) {
 }
 
 void Assembler::parseCsrwr(unsigned char gpr, unsigned char csr) {
-#ifdef DO_DEBUG
+#ifdef LOG_PARSER
     Log::STRING_LN("CSRRD: %r" + std::to_string(gpr) + ", %" + Csr::CSR[csr]);
 #endif
     auto instr = std::make_unique<Csrwr_Instr>(gpr, csr);
@@ -247,9 +283,9 @@ void Assembler::parseCsrwr(unsigned char gpr, unsigned char csr) {
 }
 
 void Assembler::parseLoad(Operand *operand, unsigned char gpr) {
-#ifdef DO_DEBUG
+#ifdef LOG_PARSER
     Log::STRING("LOAD: ");
-    operand->logOne();
+    operand->log();
     Log::STRING_LN(", %r" + std::to_string(gpr));
 #endif
     auto instr = std::make_unique<Load_Instr>(std::unique_ptr<Operand>(operand), gpr);
@@ -257,10 +293,10 @@ void Assembler::parseLoad(Operand *operand, unsigned char gpr) {
 }
 
 void Assembler::parseStore(unsigned char gpr, Operand *operand) {
-#ifdef DO_DEBUG
+#ifdef LOG_PARSER
     Log::STRING("STORE: ");
     Log::STRING("%r" + std::to_string(gpr) + ", ");
-    operand->logOne();
+    operand->log();
     Log::STRING_LN("");
 #endif
     auto instr = std::make_unique<Store_Instr>(gpr, std::unique_ptr<Operand>(operand));
@@ -268,31 +304,35 @@ void Assembler::parseStore(unsigned char gpr, Operand *operand) {
 }
 
 void Assembler::parseGlobal(SymbolList *list) {
-#ifdef DO_DEBUG
-    Log::STRING("GLOBAL: ");
+#ifdef LOG_PARSER
+    Log::STRING("Bind::GLOBAL: ");
     list->log();
 #endif
     SymbolList *temp = list;
     while (temp) {
-        auto entry = SymbolTableEntry(
+        auto entry = std::make_unique<SymbolTableEntry>(
                 0,
+                EntryType::SYMBOL,
+                Bind::GLOBAL,
                 0,
-                NO_TYPE,
-                GLOBAL,
-                0,
-                temp->_symbol
+                temp->_symbol,
+                false
         );
-        _symbolTable.addSymbol(entry);
+        _symbolTable.addSymbol(std::move(entry));
         temp = temp->_next;
     }
     delete list;
 }
 
 void Assembler::writeToFile() {
-
+    Log::STRING_LN("Writing to file: " + _output);
 }
 
 void Assembler::log() {
+#ifdef LOG_SYMBOL_TABLE
     _symbolTable.log();
+#endif
+#ifdef LOG_INSTRUCTIONS
     _instructions.log();
+#endif
 }

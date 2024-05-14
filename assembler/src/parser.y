@@ -1,10 +1,11 @@
 %{
-//    #include <cstdint>
     #include <stdint.h> // Izmenite ovu liniju
 	#include <cstdio>
 	#include "../include/log.hpp"
 	#include "../include/assembler.hpp"
+	#include "../include/instruction.hpp"
 	#include "../include/structures.hpp"
+	#include "../include/operand.hpp"
 
 	int yylex(void);
 	void yyerror(const char*);
@@ -84,9 +85,10 @@
 %type <num_u8>      gpr
 %type <num_u8>      csr
 %type <num_u8>      noadr
-%type <num_u8>      jmp
+%type <num_u8>      jmpCond
 %type <num_u8>      tworeg
 %type <operand>     jmpOperand
+%type <operand>     jmpCondOperand
 %type <operand>     intOperand
 %type <operand>     oneRegOperand
 %type <wordOperand> wordOperand
@@ -152,8 +154,14 @@ instruction
   | noadr
   { Assembler::singleton().parseNoAdr($1); }
 
-  | jmp jmpOperand
-  { Assembler::singleton().parseJmp($1, $2); }
+  | I_CALL jmpOperand
+  { Assembler::singleton().parseJmp(I::INSTRUCTION::CALL, $2); }
+
+  | I_JMP jmpOperand
+  { Assembler::singleton().parseCall(I::INSTRUCTION::JMP, $2); }
+
+  | jmpCond jmpCondOperand
+  { Assembler::singleton().parseCondJmp($1, $2); }
 
   | I_PUSH T_PERCENT REG
   { Assembler::singleton().parsePush($3); }
@@ -200,34 +208,34 @@ symbolList
 
 oneRegOperand
   : T_DOLLAR T_LITERAL
-  { $$ = new LiteralOp($2); }
+  { $$ = new LiteralImm($2); }
 
   | T_DOLLAR T_IDENT
-  { $$ = new IdentOp($2); }
+  { $$ = new IdentDir($2); }
 
   | T_DOLLAR csr
   { $$ = new CsrOp($2); }
 
   | T_LITERAL
-  { $$ = new LiteralOp($1); }
+  { $$ = new LiteralInDir($1); }
 
   | T_IDENT
-  { $$ = new IdentOp($1); }
+  { $$ = new IdentDir($1); }
 
   | gpr
-  { $$ = new GprOp($1); }
+  { $$ = new RegDir($1); }
 
   | T_OBRACKET gpr T_CBRACKET
-  { $$ = new GprOp($2); }
+  { $$ = new RegInDir($2); }
 
   | T_OBRACKET gpr T_PLUS T_LITERAL T_CBRACKET
-  { $$ = new GprLiteralOp($2, $4); }
+  { $$ = new RegInDirOffLiteral($2, $4); }
 
   | T_OBRACKET gpr T_PLUS T_IDENT T_CBRACKET
-  { $$ = new GprIdentOp($2, $4); }
+  { $$ = new RegInDirOffIdent($2, $4); }
 
   | T_OBRACKET gpr T_PLUS T_DOLLAR csr T_CBRACKET
-  { $$ = new GprCsrOp($2, $5); };
+  { $$ = new GprCsr($2, $5); };
 
 csr
   : CSR_STATUS
@@ -246,13 +254,13 @@ gpr
 
 intOperand
   : REG
-  { $$ = new GprOp($1); }
+  { $$ = new RegDir($1); }
 
   | T_LITERAL
-  { $$ = new LiteralOp($1); }
+  { $$ = new LiteralImm($1); }
 
   | T_IDENT
-  { $$ = new IdentOp($1); };
+  { $$ = new IdentDir($1); };
 
 noadr
   : I_IRET
@@ -289,14 +297,8 @@ tworeg
   | I_SHR
   { $$ = I::INSTRUCTION::SHR; };
 
-jmp
-  : I_CALL
-  { $$ = I::INSTRUCTION::CALL; }
-
-  | I_JMP
-  { $$ = I::INSTRUCTION::JMP; }
-
-  | I_BEQ
+jmpCond
+  : I_BEQ
   { $$ = I::INSTRUCTION::BEQ; }
 
   | I_BNE
@@ -307,12 +309,13 @@ jmp
 
 jmpOperand
   : T_LITERAL
-  { $$ = new LiteralOp($1); }
+  { $$ = new LiteralImm($1); }
 
   | T_IDENT
-  { $$ = new IdentOp($1); }
+  { $$ = new IdentDir($1); };
 
-  | T_PERCENT gpr T_COMMA T_PERCENT gpr T_COMMA T_IDENT
+jmpCondOperand
+  : T_PERCENT gpr T_COMMA T_PERCENT gpr T_COMMA T_IDENT
   { $$ = new GprGprIdent($2, $5, $7); }
 
   | T_PERCENT gpr T_COMMA T_PERCENT gpr T_COMMA T_LITERAL

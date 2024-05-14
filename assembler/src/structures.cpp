@@ -1,11 +1,14 @@
+#include <iostream>
+#include <algorithm>
+#include <iomanip>
+#include <memory>
+
 #include "structures.hpp"
 #include "log.hpp"
-#include "../include/structures.hpp"
 
-#include <algorithm>
+std::string Bind::BIND_STR[] = {"LOC", "GLB"};
 
-std::string Csr::CSR[] = {"status", "handler", "cause"};
-
+std::string EntryType::ENTRY_TYPE_STR[] = {"SYM","LBL", "SEC"};
 
 SymbolList::SymbolList(const std::string &str, SymbolList *next) {
     _symbol = str;
@@ -17,7 +20,7 @@ SymbolList::SymbolList(const std::string &str) {
 }
 
 void SymbolList::log() {
-#ifdef DO_DEBUG
+#ifdef LOG_PARSER
     SymbolList *current = this;
     while (current != nullptr) {
         Log::STRING(current->_symbol);
@@ -29,73 +32,60 @@ void SymbolList::log() {
 #endif
 }
 
-void Operand::logOne() {
-#ifdef DO_DEBUG
-#endif
-}
-
-void Operand::log() {
-#ifdef DO_DEBUG
-    Operand *current = this;
-    while (current != nullptr) {
-        current->logOne();
-        current = current->_next;
-        if (current)
-            Log::STRING_LN("");
-    }
-#endif
-}
-
 bool SymbolTable::hasUnresolvedSymbols() {
     return false;
 }
 
-void SymbolTable::addSymbol(const SymbolTableEntry entry) {
-    _table.push_back(entry);
-}
-
-bool SymbolTable::checkSymbol(BIND bind, ENTRY_TYPE type, const std::string &name) {
+bool SymbolTable::checkSymbol(Bind::BIND bind, EntryType::ENTRY_TYPE type, const std::string &name) {
     auto res = std::find_if(
             _table.begin(),
             _table.end(),
-            [&name, bind, type](const SymbolTableEntry &entry) {
-                return entry._name == name && entry._bind == bind && entry._type == type;
+            [&name, bind, type](const std::unique_ptr<SymbolTableEntry> &entry) {
+                return entry->_name == name && entry->_bind == bind && entry->_type == type;
             });
     return res != _table.end();
+
 }
 
-SymbolTableEntry *SymbolTable::getSymbol(BIND bind, ENTRY_TYPE type, const std::string &name) {
+SymbolTableEntry *SymbolTable::getSymbol(Bind::BIND bind, EntryType::ENTRY_TYPE type, const std::string &name) {
     auto res = std::find_if(
             _table.begin(),
             _table.end(),
-            [&name, bind, type](const SymbolTableEntry &entry) {
-                return entry._name == name && entry._bind == bind && entry._type == type;
+            [&name, bind, type](const std::unique_ptr<SymbolTableEntry> &entry) {
+                return entry->_name == name && entry->_bind == bind && entry->_type == type;
             });
-    if (res != _table.end())
-        return &(*res);
+    if (res != _table.end()) return res->get();
     return nullptr;
 }
 
 void SymbolTable::log() {
-//#ifdef DO_DEBUG
-    for (auto &entry: _table) {
-        Log::STRING(entry._name);
-        Log::STRING(" ");
-        Log::STRING(std::to_string(entry._value));
-        Log::STRING(" ");
-        Log::STRING(std::to_string(entry._size));
-        Log::STRING(" ");
-        Log::STRING(std::to_string(entry._type));
-        Log::STRING(" ");
-        Log::STRING(std::to_string(entry._bind));
-        Log::STRING(" ");
-        Log::STRING_LN(std::to_string(entry._ndx));
+    std::cerr << std::left;
+    std::cerr << std::setw(7) << "Index"
+              << std::setw(8) << "Offset"
+              << std::setw(6) << "Type"
+              << std::setw(6) << "Bind"
+              << std::setw(10) << "Section"
+              << std::setw(10) << "Resolved"
+              << std::setw(17) << "Name"
+              << std::endl;
+    for (int i = 0; i < _table.size(); ++i) {
+        std::cerr << std::setw(7) << i
+                  << std::setw(8) << _table[i]->_offset
+                  << std::setw(6) << EntryType::ENTRY_TYPE_STR[_table[i]->_type]
+                  << std::setw(6) << Bind::BIND_STR[_table[i]->_bind]
+                  << std::setw(10) << _table[i]->_section
+                  << std::setw(10) << _table[i]->_resolved
+                  << std::setw(10) << _table[i]->_name
+                  << std::endl;
     }
-//#endif
+}
+
+void SymbolTable::addSymbol(std::unique_ptr<SymbolTableEntry> entry) {
+    _table.push_back(std::move(entry));
 }
 
 void RelocationEntry::log() {
-#ifdef DO_DEBUG
+#ifdef LOG_PARSER
 #endif
 }
 
@@ -104,76 +94,9 @@ void RelocationTable::addRelocation(RelocationEntry &entry) {
 }
 
 void RelocationTable::log() {
-#ifdef DO_DEBUG
+#ifdef LOG_PARSER
     for (auto &entry: _table)
         entry.log();
 #endif
 }
 
-void Instructions::addInstruction(std::unique_ptr<Instruction> _inst) {
-    _table.push_back(std::move(_inst));
-}
-
-void Instructions::log() {
-#ifdef DO_DEBUG
-    for (auto &entry: _table)
-        entry->log();
-#endif
-}
-
-std::map<I::INSTRUCTION, std::string> I::NAMES = {
-        {I::INSTRUCTION::HALT,            "HALT"},
-        {I::INSTRUCTION::INT,             "INT"},
-        {I::INSTRUCTION::CALL,            "CALL"},
-        {I::INSTRUCTION::CALL_MEM,        "CALL_MEM"},
-
-        {I::INSTRUCTION::JMP,             "JMP"},
-        {I::INSTRUCTION::BEQ,             "BEQ"},
-        {I::INSTRUCTION::BNE,             "BNE"},
-        {I::INSTRUCTION::BGT,             "BGT"},
-        {I::INSTRUCTION::JMP_MEM,         "JMP_MEM"},
-        {I::INSTRUCTION::BEQ_MEM,         "BEQ_MEM"},
-        {I::INSTRUCTION::BNE_MEM,         "BNE_MEM"},
-        {I::INSTRUCTION::BGT_MEM,         "BGT_MEM"},
-
-        {I::INSTRUCTION::XCHG,            "XCHG"},
-        {I::INSTRUCTION::ADD,             "ADD"},
-        {I::INSTRUCTION::SUB,             "SUB"},
-        {I::INSTRUCTION::MUL,             "MUL"},
-        {I::INSTRUCTION::DIV,             "DIV"},
-
-        {I::INSTRUCTION::NOT,             "NOT"},
-        {I::INSTRUCTION::AND,             "AND"},
-        {I::INSTRUCTION::OR,              "OR"},
-        {I::INSTRUCTION::XOR,             "XOR"},
-        {I::INSTRUCTION::SHL,             "SHL"},
-        {I::INSTRUCTION::SHR,             "SHR"},
-
-        {I::INSTRUCTION::ST,              "ST"},
-        {I::INSTRUCTION::ST_IND,          "ST_IND"},
-        {I::INSTRUCTION::ST_POST_INC,     "ST_POST_INC (PUSH)"},
-
-        {I::INSTRUCTION::LD_CSR,          "LD_CSR (CSRRD)"},
-        {I::INSTRUCTION::LD,              "LD_CSR (IRET)"},
-        {I::INSTRUCTION::LD_IND,          "LD_IND"},
-        {I::INSTRUCTION::LD_POST_INC,     "LD_POST_INC (POP, RET)"},
-
-        {I::INSTRUCTION::CSR_LD,          "CSRWR"},
-        {I::INSTRUCTION::CSR_LD_OR,       "CSR_LD_OR"},
-        {I::INSTRUCTION::CSR_LD_IND,      "CSR_LD_IND"},
-        {I::INSTRUCTION::CSR_LD_POST_INC, "CSR_LD_POST_INC"},
-};
-
-void Instruction::log() {
-#ifdef DO_DEBUG
-    Log::STRING_LN(I::NAMES[_instruction]);
-#endif
-}
-
-unsigned int LiteralOp::fromWord() {
-    return _value;
-}
-
-void IdentOp::fromWord() {
-
-}

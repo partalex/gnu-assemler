@@ -1,6 +1,8 @@
-//#define DO_DEBUG
-
 #pragma once
+
+#define LOG_PARSER
+//#define LOG_INSTRUCTIONS
+#define LOG_SYMBOL_TABLE
 
 #include <string>
 
