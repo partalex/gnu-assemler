@@ -86,28 +86,26 @@ void Assembler::parseLabel(const std::string &str) {
 #ifdef LOG_PARSER
     Log::STRING_LN("LABEL: " + str);
 #endif
-    // find if exist
     auto test = _symbolTable.getSymbol(EntryType::SYMBOL, str);
     if (test != nullptr) {
         if (test->_resolved) {
             std::cerr << "Error: Symbol " << str << " already defined." << std::endl;
             exit(EXIT_FAILURE);
         }
-        if (test->_bind == Bind::GLOBAL) {
-            std::cerr << "Error: Symbol " << str << " already defined as global." << std::endl;
-            exit(EXIT_FAILURE);
-        }
+        test->_offset = _locationCounter;
+        test->_section = _currentSection;
+        test->_resolved = true;
+    } else {
+        auto newEntry = std::make_unique<SymbolTableEntry>(
+                _locationCounter,
+                EntryType::EntryType::SYMBOL,
+                Bind::LOCAL,
+                _currentSection,
+                str,
+                true
+        );
+        _symbolTable.addSymbol(std::move(newEntry));
     }
-
-    auto entry = std::make_unique<SymbolTableEntry>(
-            _locationCounter,
-            EntryType::EntryType::SYMBOL,
-            Bind::LOCAL,
-            _currentSection,
-            str,
-            true
-    );
-    _symbolTable.addSymbol(std::move(entry));
 }
 
 void Assembler::parseSection(const std::string &str) {
@@ -183,6 +181,7 @@ void Assembler::parseNoAdr(unsigned char inst) {
 #endif
     auto instr = std::make_unique<NoAdr_Instr>(static_cast<I::INSTRUCTION>(inst));
     _instructions.addInstruction(std::move(instr));
+    _locationCounter += 4;
 }
 
 void Assembler::parseJmp(unsigned char inst, Operand *operand) {
@@ -196,6 +195,7 @@ void Assembler::parseJmp(unsigned char inst, Operand *operand) {
     auto instr = std::make_unique<Jmp_Instr>(static_cast<I::INSTRUCTION>(inst),
                                              std::unique_ptr<Operand>(operand));
     _instructions.addInstruction(std::move(instr));
+    _locationCounter += 4;
 }
 
 void Assembler::parseCall(unsigned char inst, Operand *operand) {
@@ -209,6 +209,7 @@ void Assembler::parseCall(unsigned char inst, Operand *operand) {
     auto instr = std::make_unique<Call_Instr>(static_cast<I::INSTRUCTION>(inst),
                                               std::unique_ptr<Operand>(operand));
     _instructions.addInstruction(std::move(instr));
+    _locationCounter += 4;
 }
 
 void Assembler::parseCondJmp(unsigned char inst, Operand *operand) {
@@ -222,6 +223,7 @@ void Assembler::parseCondJmp(unsigned char inst, Operand *operand) {
     auto instr = std::make_unique<JmpCond_Instr>(static_cast<I::INSTRUCTION>(inst),
                                                  std::unique_ptr<Operand>(operand));
     _instructions.addInstruction(std::move(instr));
+    _locationCounter += 4;
 }
 
 void Assembler::parsePush(unsigned char gpr) {
@@ -230,6 +232,7 @@ void Assembler::parsePush(unsigned char gpr) {
 #endif
     auto instr = std::make_unique<Push_Instr>(gpr);
     _instructions.addInstruction(std::move(instr));
+    _locationCounter += 4;
 }
 
 void Assembler::parsePop(unsigned char gpr) {
@@ -238,6 +241,7 @@ void Assembler::parsePop(unsigned char gpr) {
 #endif
     auto instr = std::make_unique<Pop_Instr>(gpr);
     _instructions.addInstruction(std::move(instr));
+    _locationCounter += 4;
 }
 
 void Assembler::parseNot(unsigned char gpr) {
@@ -246,6 +250,7 @@ void Assembler::parseNot(unsigned char gpr) {
 #endif
     auto instr = std::make_unique<Not_Instr>(gpr);
     _instructions.addInstruction(std::move(instr));
+    _locationCounter += 4;
 }
 
 void Assembler::parseInt(Operand *operand) {
@@ -255,6 +260,7 @@ void Assembler::parseInt(Operand *operand) {
     // TODO
     auto instr = std::make_unique<Int_Instr>(std::unique_ptr<Operand>(operand));
     _instructions.addInstruction(std::move(instr));
+    _locationCounter += 4;
 }
 
 void Assembler::parseXchg(unsigned char regS, unsigned char regD) {
@@ -263,6 +269,7 @@ void Assembler::parseXchg(unsigned char regS, unsigned char regD) {
 #endif
     auto instr = std::make_unique<Xchg_Instr>(regS, regD);
     _instructions.addInstruction(std::move(instr));
+    _locationCounter += 4;
 }
 
 void Assembler::parseTwoReg(unsigned char inst, unsigned char regS, unsigned char regD) {
@@ -274,6 +281,7 @@ void Assembler::parseTwoReg(unsigned char inst, unsigned char regS, unsigned cha
 #endif
     auto instr = std::make_unique<TwoReg_Instr>(static_cast<I::INSTRUCTION>(inst), regS, regD);
     _instructions.addInstruction(std::move(instr));
+    _locationCounter += 4;
 }
 
 void Assembler::parseCsrrd(unsigned char csr, unsigned char gpr) {
@@ -282,6 +290,7 @@ void Assembler::parseCsrrd(unsigned char csr, unsigned char gpr) {
 #endif
     auto instr = std::make_unique<Csrrd_Instr>(csr, gpr);
     _instructions.addInstruction(std::move(instr));
+    _locationCounter += 4;
 }
 
 void Assembler::parseCsrwr(unsigned char gpr, unsigned char csr) {
@@ -290,6 +299,7 @@ void Assembler::parseCsrwr(unsigned char gpr, unsigned char csr) {
 #endif
     auto instr = std::make_unique<Csrwr_Instr>(gpr, csr);
     _instructions.addInstruction(std::move(instr));
+    _locationCounter += 4;
 }
 
 void Assembler::parseLoad(Operand *operand, unsigned char gpr) {
@@ -300,6 +310,7 @@ void Assembler::parseLoad(Operand *operand, unsigned char gpr) {
 #endif
     auto instr = std::make_unique<Load_Instr>(std::unique_ptr<Operand>(operand), gpr);
     _instructions.addInstruction(std::move(instr));
+    _locationCounter += 4;
 }
 
 void Assembler::parseStore(unsigned char gpr, Operand *operand) {
@@ -311,6 +322,7 @@ void Assembler::parseStore(unsigned char gpr, Operand *operand) {
 #endif
     auto instr = std::make_unique<Store_Instr>(gpr, std::unique_ptr<Operand>(operand));
     _instructions.addInstruction(std::move(instr));
+    _locationCounter += 4;
 }
 
 void Assembler::parseGlobal(SymbolList *list) {
