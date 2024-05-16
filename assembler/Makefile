@@ -6,7 +6,7 @@ HDRS = $(wildcard $(INCLUDE_PATH)/*.hpp)
 SRCS = $(wildcard $(SRC_PATH)/*.cpp)
 LEXER = $(SRC_PATH)/lexer.l
 PARSER = $(SRC_PATH)/parser.y
-ARGS = -o $(SRC_PATH)/izlaz.o test.s
+ARGS = -o $(SRC_PATH)/izlaz.o ../test/handler.s
 CC = g++
 
 run: all
