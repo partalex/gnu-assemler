@@ -1,9 +1,6 @@
 INCLUDE_AS = include
-INCLUDE_COMMON = ../common/include
-
 SRC_AS = src
 SRC_COMMON = ../common/src
-
 BIN_PATH = bin
 
 SRCS = $(wildcard $(SRC_AS)/*.cpp) $(SRC_COMMON)/*
@@ -17,7 +14,7 @@ run: debug
 	$(BIN_PATH)/main $(ARGS)
 
 all: $(BIN_PATH) parser
-	$(CC) -I$(INCLUDE_AS) -I$(INCLUDE_COMMON) $(SRCS) -o $(BIN_PATH)/main
+	$(CC) -I$(INCLUDE_AS) $(SRCS) -o $(BIN_PATH)/main
 
 debug: $(BIN_PATH) parser
 	$(CC) -I$(INCLUDE_AS) -I$(INCLUDE_COMMON) $(SRCS) -g -o $(BIN_PATH)/main

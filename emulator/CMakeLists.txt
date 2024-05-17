@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 20)
 include_directories(include)
 
 add_executable(emulator main.cpp
-        include/emulator.hpp
+        include/emulator.h
         src/emulator.cpp
-        include/program.hpp
+        include/program.h
         src/program.cpp)

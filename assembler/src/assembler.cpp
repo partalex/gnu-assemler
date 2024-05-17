@@ -1,8 +1,7 @@
-#include "assembler.h"
-#include "lexer.h"
-#include "parser.h"
-#include "instruction.h"
-#include "operand.h"
+#include "../include/assembler.h"
+#include "../include/lexer.h"
+#include "../include/parser.h"
+#include "../../common/include/operand.h"
 
 #include <iostream>
 #include <cstring>

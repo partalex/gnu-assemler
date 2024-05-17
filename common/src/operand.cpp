@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "operand.h"
+#include "../include/operand.h"
 
 std::string Csr::CSR[] = {"status", "handler", "cause"};
 

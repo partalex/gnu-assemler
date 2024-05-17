@@ -1,6 +1,6 @@
 #pragma once
 
-#include "structures.h"
+#include "../../common/include/structures.h"
 
 #include <memory>
 #include <vector>

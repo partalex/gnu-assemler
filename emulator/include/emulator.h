@@ -1,6 +1,8 @@
-#include <fstream>
+#pragma once
 
-#include "program.hpp"
+#include "program.h"
+
+#include <fstream>
 
 class Emulator {
 public:

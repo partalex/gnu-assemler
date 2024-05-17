@@ -1,6 +1,6 @@
 #include <iostream>
-#include "operand.h"
-#include "instruction.h"
+#include "../include/instruction.h"
+#include "../include/operand.h"
 
 void Instructions::log() {
     for (auto &entry: _table)
