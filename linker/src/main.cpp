@@ -2,7 +2,7 @@
 #include <memory>
 #include <vector>
 #include <fstream>
-#include "linker.hpp"
+#include "linker.h"
 
 int main(int argc, char *argv[]) {
 

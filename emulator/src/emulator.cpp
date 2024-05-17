@@ -1,5 +1,5 @@
 #include <iostream>
-#include "emulator.hpp"
+#include "emulator.h"
 
 Emulator::Emulator() = default;
 

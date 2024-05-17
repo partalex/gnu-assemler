@@ -1,4 +1,4 @@
-#include "loader_script_file.hpp"
+#include "loader_script_file.h"
 
 #include <regex>
 #include <string>
@@ -121,7 +121,7 @@ u_int32_t ParseOperand(std::string token, int dotVal, unordered_map <std::string
     return ret;
 }
 
-void AddSymbol(std::unordered_map<std::string, Symbol> &symbols, Symbol &sym) {
+void AddSymbol(std::unordered_map <std::string, Symbol> &symbols, Symbol &sym) {
     auto symbolOld = symbols.find(sym.name);
 
     if (symbolOld == symbols.end()) {
@@ -139,7 +139,7 @@ void AddSymbol(std::unordered_map<std::string, Symbol> &symbols, Symbol &sym) {
     }
 }
 
-void splitExpression(const std::string &s, std::vector<std::pair<std::string, bool>> &v) {
+void splitExpression(const std::string &s, std::vector <std::pair<std::string, bool>> &v) {
     // to avoid modifying original string
     // first duplicate the original string and return a char pointer then free the memory
     static std::regex r("^([\\+-])(" + allowedChars + "+).*");
@@ -163,7 +163,7 @@ void splitExpression(const std::string &s, std::vector<std::pair<std::string, bo
     throw std::runtime_error("Irregular expression !");
 }
 
-void LoaderScriptFile::FillSymbolsAndSectionPositions(std::unordered_map<std::string, Symbol> &symbols,
+void LoaderScriptFile::FillSymbolsAndSectionPositions(std::unordered_map <std::string, Symbol> &symbols,
                                                       std::unordered_map<std::string, int> &sectionPositions) {
     u_int32_t locationCounter = 0;
 
@@ -204,7 +204,7 @@ void LoaderScriptFile::FillSymbolsAndSectionPositions(std::unordered_map<std::st
             expressionVal += (negative ? -1 : 1) * firstRightOperandVal;
 
             if (!base_match[3].str().empty()) {
-                std::vector<std::pair<std::string, bool>> expressionTokens;
+                std::vector <std::pair<std::string, bool>> expressionTokens;
                 splitExpression(base_match[3].str(), expressionTokens);
 
                 for (auto &expr: expressionTokens) {
@@ -228,7 +228,4 @@ void LoaderScriptFile::FillSymbolsAndSectionPositions(std::unordered_map<std::st
     }
 
 }
-
-
-
 

@@ -5,6 +5,8 @@
 #include <functional>
 #include <unordered_map>
 
+class Instruction;
+
 class Program {
 public:
     Program();

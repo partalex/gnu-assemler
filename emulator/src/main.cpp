@@ -1,8 +1,8 @@
 #include <iostream>
 #include <memory>
 
-#include "emulator.hpp"
-#include "program.hpp"
+#include "emulator.h"
+#include "program.h"
 
 int main(int argc, char *argv[]) {
 

@@ -1,7 +1,7 @@
 #include <iostream>
 #include <cstring>
-#include "program.hpp"
-#include "emulator.hpp"
+#include "program.h"
+#include "emulator.h"
 
 Program::Program() = default;
 

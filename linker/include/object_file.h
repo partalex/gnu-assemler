@@ -12,5 +12,4 @@ public:
     std::unordered_map<std::string,Symbol> symbols;
     std::vector<Relocation> relocations;
 
-
 };
