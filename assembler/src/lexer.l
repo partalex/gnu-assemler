@@ -1,11 +1,11 @@
 %{
-	#include "../include/parser.hpp"
-	#include "../include/structures.hpp"
+	#include "../include/parser.h"
+	#include "../../common/include/structures.h"
     int yyerror(const char* msg);
     void yyerror_num(const int msg);
 %}
 
-%option outfile="src/lexer.cpp" header-file="include/lexer.hpp"
+%option outfile="src/lexer.cpp" header-file="include/lexer.h"
 
 %option noyywrap
 

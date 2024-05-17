@@ -5,8 +5,7 @@
 #include <memory>
 #include <vector>
 
-#include "operand.hpp"
-#include "log.hpp"
+class Operand;
 
 class I {
 public:
@@ -95,91 +94,78 @@ public:
 
 class Push_Instr : public Instruction {
 public:
-    explicit Push_Instr(uint8_t gpr)
-            : Instruction(I::ST_POST_INC, gpr) {}
+    explicit Push_Instr(uint8_t);
 };
 
 class Pop_Instr : public Instruction {
 public:
-    explicit Pop_Instr(uint8_t grp)
-            : Instruction(I::LD_POST_INC, grp) {}
+    explicit Pop_Instr(uint8_t);
 };
 
 class Not_Instr : public Instruction {
 public:
-    explicit Not_Instr(uint8_t gpr)
-            : Instruction(I::NOT, gpr) {}
+    explicit Not_Instr(uint8_t gpr);
 };
 
 class Int_Instr : public Instruction {
     std::unique_ptr<Operand> _operand;
 public:
-    explicit Int_Instr(std::unique_ptr<Operand> operand)
-            : Instruction(I::INT), _operand(std::move(operand)) {}
+    explicit Int_Instr(std::unique_ptr<Operand>);
 };
 
 class Xchg_Instr : public Instruction {
 public:
-    explicit Xchg_Instr(uint8_t regA, uint8_t regB)
-            : Instruction(I::XCHG, regA, regB) {}
+    explicit Xchg_Instr(uint8_t, uint8_t);
 };
 
 class Csrrd_Instr : public Instruction {
 public:
-    explicit Csrrd_Instr(unsigned char csr, unsigned char gpr)
-            : Instruction(I::LD_CSR, csr, gpr) {}
+    explicit Csrrd_Instr(uint8_t, uint8_t);
 };
 
 class Csrwr_Instr : public Instruction {
 public:
-    explicit Csrwr_Instr(unsigned char gpr, unsigned char csr)
-            : Instruction(I::CSR_LD, gpr, csr) {}
+    explicit Csrwr_Instr(uint8_t, uint8_t);
 };
 
 class Load_Instr : public Instruction {
     std::unique_ptr<Operand> _operand;
 public:
-    explicit Load_Instr(std::unique_ptr<Operand> operand, unsigned char gpr)
-            : Instruction(I::LD, gpr), _operand(std::move(operand)) {}
+    explicit Load_Instr(std::unique_ptr<Operand>, uint8_t);
 };
 
 class Store_Instr : public Instruction {
     std::unique_ptr<Operand> _operand;
 public:
-    explicit Store_Instr(unsigned char gpr, std::unique_ptr<Operand> operand)
-            : Instruction(I::ST, gpr), _operand(std::move(operand)) {}
+    explicit Store_Instr(uint8_t, std::unique_ptr<Operand>);
 };
 
 class TwoReg_Instr : public Instruction {
 public:
-    explicit TwoReg_Instr(I::INSTRUCTION instruction, unsigned char regD, unsigned char regS)
-            : Instruction(instruction, regD, regS) {}
+    explicit TwoReg_Instr(I::INSTRUCTION, uint8_t, uint8_t);
 };
 
 class Jmp_Instr : public Instruction {
     std::unique_ptr<Operand> _operand;
 public:
-    explicit Jmp_Instr(I::INSTRUCTION instruction, std::unique_ptr<Operand> operand)
-            : Instruction(instruction), _operand(std::move(operand)) {}
+    explicit Jmp_Instr(I::INSTRUCTION instruction, std::unique_ptr<Operand>);
 };
 
 class Call_Instr : public Instruction {
     std::unique_ptr<Operand> _operand;
 public:
-    explicit Call_Instr(I::INSTRUCTION instruction, std::unique_ptr<Operand> operand)
-            : Instruction(instruction), _operand(std::move(operand)) {}
+    explicit Call_Instr(I::INSTRUCTION, std::unique_ptr<Operand>);
 };
 
 class JmpCond_Instr : public Instruction {
     std::unique_ptr<Operand> _operand;
 public:
-    explicit JmpCond_Instr(I::INSTRUCTION instruction, std::unique_ptr<Operand> operand)
-            : Instruction(instruction), _operand(std::move(operand)) {}
+    explicit JmpCond_Instr(I::INSTRUCTION, std::unique_ptr<Operand>);
 };
 
 class NoAdr_Instr : public Instruction {
 public:
-    explicit NoAdr_Instr(I::INSTRUCTION instruction) : Instruction(instruction) {}
+    explicit NoAdr_Instr(I::INSTRUCTION);
 };
 
 class Instructions {

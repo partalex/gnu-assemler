@@ -1,12 +1,10 @@
 %{
     #include <stdint.h> // Izmenite ovu liniju
 	#include <cstdio>
-	#include "../include/log.hpp"
-	#include "../include/assembler.hpp"
-	#include "../include/instruction.hpp"
-	#include "../include/structures.hpp"
-	#include "../include/operand.hpp"
-
+	#include "../include/assembler.h"
+	#include "../../common/include/instruction.h"
+	#include "../../common/include/operand.h"
+	#include "../../common/include/structures.h"
 	int yylex(void);
 	void yyerror(const char*);
 
@@ -17,7 +15,7 @@
 %}
 
 %output "./src/parser.cpp"
-%defines "./include/parser.hpp"
+%defines "./include/parser.h"
 
 %union {
 	char*               ident;

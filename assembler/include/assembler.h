@@ -1,9 +1,12 @@
 #pragma once
 
+#include "structures.h"
+
 #include <memory>
 #include <vector>
 #include <unordered_map>
-#include "structures.hpp"
+
+class WordOperand;
 
 class Assembler {
     static std::shared_ptr<Assembler> _instance;

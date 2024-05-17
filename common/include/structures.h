@@ -1,11 +1,11 @@
 #pragma once
 
+#include "instruction.h"
+
 #include <string>
 #include <utility>
 #include <vector>
 #include <memory>
-
-#include "instruction.hpp"
 
 struct SymbolList {
     std::string _symbol;

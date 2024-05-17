@@ -3,8 +3,8 @@
 #include <iomanip>
 #include <memory>
 
-#include "structures.hpp"
-#include "log.hpp"
+#include "../include/structures.h"
+
 
 std::string Bind::BIND_STR[] = {"LOC", "GLB"};
 
