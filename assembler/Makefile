@@ -1,5 +1,3 @@
-.PHONY: all run debug lexer parser clean
-
 INCLUDE_AS = include
 INCLUDE_COMMON = ../common/include
 
