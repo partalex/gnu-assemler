@@ -66,7 +66,7 @@ int Linker::addSection(Symbol &sym, Section &section) {
     return offset;
 }
 
-void Linker::loadFile(std::string inputFile) {
+void Linker::loadFile(const std::string& inputFile) {
     ObjectFile objectFile;
     objectFile.loadFromFile(inputFile);
     std::unordered_map<std::string, int> sectionOffsets;
@@ -76,12 +76,13 @@ void Linker::loadFile(std::string inputFile) {
             _sections.insert({section->first, section->second});
             _logFile << "Adding section symbol " << symbol.second._name << "\n";
             sectionOffsets[symbol.second._name] = addSection(symbol.second,
+                                                             objectFile._sections.find(symbol.second._name)->second);
         }
     for (auto &symbol: objectFile._symbols)
         if (symbol.second._symbolType == SYMBOL::LABEL) {
             _logFile << "Adding label symbol " << symbol.second._name << "\n";
             symbol.second._offset += sectionOffsets[symbol.second._sectionName];
-            AddSymbol(symbol.second);
+            addSymbol(symbol.second);
         }
     for (auto &relocation: objectFile._relocations) {
         relocation._offset += sectionOffsets[relocation._section];
@@ -109,8 +110,8 @@ void Linker::fillRemainingSections() {
     }
 }
 
-u_int32_t Linker::getSymbolVal(std::string symbolName) {
-    u_int32_t ret = 0;
+uint32_t Linker::getSymbolVal(const std::string& symbolName) {
+    uint32_t ret = 0;
     auto symbol = _symbols.find(symbolName);
     if (symbol == _symbols.end())
         throw std::runtime_error("Symbol not found " + symbolName);
@@ -133,7 +134,7 @@ void Linker::fixRelocations() {
         if (symbol == _symbols.end())
             throw std::runtime_error("rand err");
         if (symbol->second._defined) {
-            u_int32_t symbolVal = getSymbolVal(symbol->second._name);
+            uint32_t symbolVal = getSymbolVal(symbol->second._name);
             auto section = _sections.find(rel._section);
             if (section == _sections.end())
                 throw std::runtime_error("random errr");
@@ -142,12 +143,12 @@ void Linker::fixRelocations() {
                 throw std::runtime_error("randddddom err");
             }
             if (rel._relocationType == RELOCATION::R_386_32)
-                section->second.Write(&symbolVal, rel._offset, 4);
+                section->second.write(&symbolVal, rel._offset, 4);
             else if (rel._relocationType == RELOCATION::R_386_PC32) {
                 u_int16_t high = symbolVal >> 16;
                 u_int16_t low = symbolVal;
-                section->second.Write(&high, rel._offset + 2, 2);
-                section->second.Write(&low, rel._offset + 6, 2);
+                section->second.write(&high, rel._offset + 2, 2);
+                section->second.write(&low, rel._offset + 6, 2);
             }
         } else
             newRelocations.push_back(rel);

@@ -14,5 +14,5 @@ public:
     std::unordered_map<std::string, Section> _sections;
     std::unordered_map<std::string, Symbol> _symbols;
     std::vector<Relocation> _relocations;
-    void loadFromFile(std::string);
+    void loadFromFile(const std::string&);
 };

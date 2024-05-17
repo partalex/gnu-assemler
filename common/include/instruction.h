@@ -18,7 +18,7 @@ public:
     uint8_t _byte_3{};
     uint8_t _byte_4{};
 
-    explicit Instruction(INSTRUCTION byte_1, uint8_t regA = 0, uint8_t regB = 0, uint8_t regC = 0, int offset = 0)
+    explicit Instruction(enum INSTRUCTION byte_1, uint8_t regA = 0, uint8_t regB = 0, uint8_t regC = 0, int offset = 0)
             : _byte_1(byte_1), _byte_2(regA << 4 | regB), _byte_3(regC << 4) {
         if (offset < -2048 || offset > 2047)
             throw std::runtime_error("Displacement out of range.");
@@ -95,35 +95,34 @@ public:
 
 class TwoReg_Instr : public Instruction {
 public:
-    explicit TwoReg_Instr(INSTRUCTION, uint8_t, uint8_t);
+    explicit TwoReg_Instr(enum INSTRUCTION, uint8_t, uint8_t);
 };
 
 class Jmp_Instr : public Instruction {
     std::unique_ptr<Operand> _operand;
 public:
-    explicit Jmp_Instr(INSTRUCTION instruction, std::unique_ptr<Operand>);
+    explicit Jmp_Instr(enum INSTRUCTION instruction, std::unique_ptr<Operand>);
 };
 
 class Call_Instr : public Instruction {
     std::unique_ptr<Operand> _operand;
 public:
-    explicit Call_Instr(INSTRUCTION, std::unique_ptr<Operand>);
+    explicit Call_Instr(enum INSTRUCTION, std::unique_ptr<Operand>);
 };
 
 class JmpCond_Instr : public Instruction {
     std::unique_ptr<Operand> _operand;
 public:
-    explicit JmpCond_Instr(INSTRUCTION, std::unique_ptr<Operand>);
+    explicit JmpCond_Instr(enum INSTRUCTION, std::unique_ptr<Operand>);
 };
 
 class NoAdr_Instr : public Instruction {
 public:
-    explicit NoAdr_Instr(INSTRUCTION);
+    explicit NoAdr_Instr(enum INSTRUCTION);
 };
 
 class Instructions {
     std::vector<std::unique_ptr<Instruction>> _table;
 public:
     void addInstruction(std::unique_ptr<Instruction>);
-
 };

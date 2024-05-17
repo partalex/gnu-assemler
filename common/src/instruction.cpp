@@ -30,19 +30,19 @@ Csrrd_Instr::Csrrd_Instr(uint8_t csr, uint8_t gpr)
 Xchg_Instr::Xchg_Instr(uint8_t regA, uint8_t regB)
         : Instruction(INSTRUCTION::XCHG, regA, regB) {}
 
-NoAdr_Instr::NoAdr_Instr(INSTRUCTION instruction) :
+NoAdr_Instr::NoAdr_Instr(enum INSTRUCTION instruction) :
         Instruction(instruction) {}
 
-JmpCond_Instr::JmpCond_Instr(INSTRUCTION instruction, std::unique_ptr<Operand> operand)
+JmpCond_Instr::JmpCond_Instr(enum INSTRUCTION instruction, std::unique_ptr<Operand> operand)
         : Instruction(instruction), _operand(std::move(operand)) {}
 
-Call_Instr::Call_Instr(INSTRUCTION instruction, std::unique_ptr<Operand> operand)
+Call_Instr::Call_Instr(enum INSTRUCTION instruction, std::unique_ptr<Operand> operand)
         : Instruction(instruction), _operand(std::move(operand)) {}
 
-Jmp_Instr::Jmp_Instr(INSTRUCTION instruction, std::unique_ptr<Operand> operand)
+Jmp_Instr::Jmp_Instr(enum INSTRUCTION instruction, std::unique_ptr<Operand> operand)
         : Instruction(instruction), _operand(std::move(operand)) {}
 
-TwoReg_Instr::TwoReg_Instr(INSTRUCTION instruction, uint8_t regD, uint8_t regS)
+TwoReg_Instr::TwoReg_Instr(enum INSTRUCTION instruction, uint8_t regD, uint8_t regS)
         : Instruction(instruction, regD, regS) {}
 
 Store_Instr::Store_Instr(uint8_t gpr, std::unique_ptr<Operand> operand)

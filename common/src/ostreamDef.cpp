@@ -6,28 +6,28 @@
 #include <iostream>
 #include <iomanip>
 
-std::ostream &operator<<(std::ostream &out, SYMBOL s) {
-    switch (s) {
-        case SYMBOL::TEXT:
+std::ostream &operator<<(std::ostream &out, SECTION_TYPE sec) {
+    switch (sec) {
+        case SECTION_TYPE::TEXT:
             return out << "TEXT";
-        case SYMBOL::DATA:
+        case SECTION_TYPE::DATA:
             return out << "DATA";
-        case SYMBOL::BSS:
+        case SECTION_TYPE::BSS:
             return out << "BSS";
         default:
             return out << "UNDEFINED";
     }
 }
 
-std::istream &operator>>(std::istream &in, SYMBOL &s) {
+std::istream &operator>>(std::istream &in, SECTION_TYPE &sec) {
     std::string token;
     in >> token;
     if (token == "TEXT")
-        s = SYMBOL::TEXT;
+        sec = SECTION_TYPE::TEXT;
     if (token == "DATA")
-        s = SYMBOL::DATA;
+        sec = SECTION_TYPE::DATA;
     if (token == "BSS")
-        s = SYMBOL::BSS;
+        sec = SECTION_TYPE::BSS;
     return in;
 }
 
@@ -74,8 +74,8 @@ std::istream &operator>>(std::istream &in, RELOCATION &s) {
     return in;
 }
 
-std::ostream &operator<<(std::ostream &out, INSTRUCTION s) {
-    switch (s) {
+std::ostream &operator<<(std::ostream &out, enum INSTRUCTION instr) {
+    switch (instr) {
         case INSTRUCTION::HALT:
             return out << "INT";
         case INSTRUCTION::INT:

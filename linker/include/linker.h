@@ -19,7 +19,7 @@ class Linker {
     LoaderScriptFile _loaderScript;
     uint32_t _locationCounter;
 
-    void loadFile(std::string inputFile);
+    void loadFile(const std::string &inputFile);
 
     void fixRelocations();
 
@@ -33,7 +33,7 @@ class Linker {
 
     void generateOutput();
 
-    u_int32_t getSymbolVal(std::string);
+    uint32_t getSymbolVal(const std::string &);
 
 public:
     void link(std::ifstream &, std::vector<std::string> &, std::ofstream &);

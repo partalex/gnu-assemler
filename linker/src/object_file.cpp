@@ -3,7 +3,7 @@
 #include <fstream>
 #include <iostream>
 
-void ObjectFile::loadFromFile(std::string inputFile) {
+void ObjectFile::loadFromFile(const std::string& inputFile) {
 
     std::ifstream inFile(inputFile);
 

@@ -5,6 +5,13 @@ enum RELOCATION {
 };
 
 enum SYMBOL {
+    LABEL,
+    SECTION,
+    INSTRUCTION,
+    SYMBOL,
+};
+
+enum SECTION_TYPE {
     TEXT, DATA, BSS
 };
 

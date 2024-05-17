@@ -14,9 +14,9 @@ public:
 
     ~Section();
 
-    void Write(void *, int, uint64_t);
+    void write(void *, int, uint64_t);
 
-    void WriteZeros(int, size_t);
+    void writeZeros(int, size_t);
 
     Section &operator+=(Section &);
 

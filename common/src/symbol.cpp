@@ -8,12 +8,12 @@ std::istream &operator>>(std::istream &, SCOPE &);
 
 std::ostream &operator<<(std::ostream &, SCOPE);
 
-std::istream &operator>>(std::istream &, SYMBOL &);
+std::istream &operator>>(std::istream &, SECTION_TYPE &);
 
-std::ostream &operator<<(std::ostream &, SYMBOL);
+std::ostream &operator<<(std::ostream &, SECTION_TYPE);
 
 Symbol::Symbol(std::string name, bool defined, std::string sectionName, SCOPE scope, uint64_t offset,
-               SYMBOL symbolType, int32_t size) :
+               SECTION_TYPE symbolType, int32_t size) :
         _name(name),
         _defined(defined),
         _sectionName(sectionName),
@@ -62,7 +62,7 @@ Symbol Symbol::deserialize(std::string instr) {
     int size;
     in >> size;
 
-    SYMBOL symbolType;
+    SECTION_TYPE symbolType;
     in >> symbolType;
 
     Symbol sym(name, defined, sectionName, scope, offset, symbolType, size);
