@@ -43,6 +43,6 @@ int main(int argc, char *argv[]) {
     }
 //    if (err) return 1;
 
-    linker->Link(loaderFile, inputFiles, outputFile);
+    linker->link(loaderFile, inputFiles, outputFile);
     return 0;
 }

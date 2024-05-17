@@ -1,13 +1,49 @@
 #include "../include/relocation.h"
 
-void RelocationEntry::log() {
+#include <iostream>
+#include <iomanip>
+
+std::istream &operator>>(std::istream &, RELOCATION &);
+
+std::ostream &operator<<(std::ostream &, RELOCATION);
+
+Relocation::Relocation(std::string symbolName, std::string section, u_int32_t offset, RELOCATION relocationType)
+        : _section(section), _offset(offset), _relocationType(relocationType), _symbolName(symbolName) {
 }
 
-void RelocationTable::addRelocation(RelocationEntry &entry) {
-    _table.push_back(entry);
+std::string Relocation::serialize() {
+    std::stringstream out;
+
+    out << std::right <<
+        std::setw(15) << "-" <<
+        std::setw(15) << _symbolName <<
+        std::setw(15) << _section <<
+        std::setw(15) << _offset <<
+        std::setw(15) << _relocationType << "\n";
+
+    return out.str();
 }
 
-void RelocationTable::log() {
-    for (auto &entry: _table)
-        entry.log();
+Relocation Relocation::deserialize(std::string instr) {
+    std::stringstream in;
+    in << instr;
+
+    std::string token;
+    in >> token;
+
+    std::string symbolName;
+    in >> symbolName;
+
+    std::string section;
+    in >> section;
+
+    u_int32_t offset;
+    in >> offset;
+
+    RELOCATION relType;
+    in >> relType;
+
+    Relocation rel(symbolName, section, offset, relType);
+
+    return rel;
 }

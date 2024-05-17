@@ -1,20 +1,21 @@
 #pragma once
 
+#include "../../common/include/symbol.h"
+
 #include <iostream>
 #include <vector>
 #include <unordered_map>
 
 
 class LoaderScriptFile {
+    std::vector<std::string> scriptInput;
+    //unordered_map<string, Symbol> symbols;
 public:
 
-    void LoadFromFile(std::istream &);
+    void loadFromFile(std::istream &);
 
-    void
-    FillSymbolsAndSectionPositions(std::unordered_map<std::string, Symbol> &, std::unordered_map<std::string, int> &);
+    void fillSymbolsAndSectPos(std::unordered_map<std::string, Symbol> &, std::unordered_map<std::string, int> &);
 
-    //unordered_map<string, Symbol> symbols;
 
-    std::vector<std::string> scriptInput;
 };
 

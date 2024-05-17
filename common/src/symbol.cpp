@@ -4,58 +4,68 @@
 #include <iostream>
 #include <iomanip>
 
-std::string Bind::BIND_STR[] = {"LOC", "GLB"};
+std::istream &operator>>(std::istream &, SCOPE &);
 
-std::string EntryType::ENTRY_TYPE_STR[] = {"SYM", "SEC"};
+std::ostream &operator<<(std::ostream &, SCOPE);
 
-bool SymbolTable::hasUnresolvedSymbols() {
-    return false;
+std::istream &operator>>(std::istream &, SYMBOL &);
+
+std::ostream &operator<<(std::ostream &, SYMBOL);
+
+Symbol::Symbol(std::string name, bool defined, std::string sectionName, SCOPE scope, uint64_t offset,
+               SYMBOL symbolType, int32_t size) :
+        _name(name),
+        _defined(defined),
+        _sectionName(sectionName),
+        _scope(scope),
+        _offset(offset),
+        _size(size),
+        _symbolType(symbolType) {}
+
+
+std::string Symbol::serialize() {
+    std::stringstream ss;
+    ss << std::right <<
+       std::setw(15) << "-" <<
+       std::setw(15) << _name <<
+       std::setw(15) << _defined <<
+       std::setw(15) << _sectionName <<
+       std::setw(15) << _offset <<
+       std::setw(15) << _scope <<
+       std::setw(15) << _size <<
+       std::setw(15) << _symbolType << "\n";
+    return ss.str();
 }
 
-bool SymbolTable::checkSymbol(Bind::BIND bind, EntryType::ENTRY_TYPE type, const std::string &name) {
-    auto res = std::find_if(
-            _table.begin(),
-            _table.end(),
-            [&name, bind, type](const std::unique_ptr <SymbolTableEntry> &entry) {
-                return entry->_name == name && entry->_bind == bind && entry->_type == type;
-            });
-    return res != _table.end();
+Symbol Symbol::deserialize(std::string instr) {
+    std::stringstream in;
+    in << instr;
 
-}
+    std::string token;
+    in >> token;
 
-SymbolTableEntry *SymbolTable::getSymbol(EntryType::ENTRY_TYPE type, const std::string &name) {
-    auto res = std::find_if(
-            _table.begin(),
-            _table.end(),
-            [&name, type](const std::unique_ptr <SymbolTableEntry> &entry) {
-                return entry->_name == name && entry->_type == type;
-            });
-    if (res != _table.end()) return res->get();
-    return nullptr;
-}
+    std::string name;
+    in >> name;
 
-void SymbolTable::log() {
-    std::cout << std::left
-              << std::setw(7) << "Index"
-              << std::setw(8) << "Offset"
-              << std::setw(6) << "Type"
-              << std::setw(6) << "Bind"
-              << std::setw(10) << "Section"
-              << std::setw(10) << "Resolved"
-              << std::setw(17) << "Name"
-              << "\n";
-    for (int i = 0; i < _table.size(); ++i) {
-        std::cout << std::setw(7) << i
-                  << std::setw(8) << _table[i]->_offset
-                  << std::setw(6) << EntryType::ENTRY_TYPE_STR[_table[i]->_type]
-                  << std::setw(6) << Bind::BIND_STR[_table[i]->_bind]
-                  << std::setw(10) << _table[i]->_section
-                  << std::setw(10) << _table[i]->_resolved
-                  << std::setw(10) << _table[i]->_name
-                  << "\n";
-    }
-}
+    bool defined;
+    in >> defined;
 
-void SymbolTable::addSymbol(std::unique_ptr <SymbolTableEntry> entry) {
-    _table.push_back(std::move(entry));
+    std::string sectionName;
+    in >> sectionName;
+
+    int offset;
+    in >> offset;
+
+    SCOPE scope;
+    in >> scope;
+
+    int size;
+    in >> size;
+
+    SYMBOL symbolType;
+    in >> symbolType;
+
+    Symbol sym(name, defined, sectionName, scope, offset, symbolType, size);
+
+    return sym;
 }

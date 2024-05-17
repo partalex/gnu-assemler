@@ -1,26 +1,23 @@
+#include "enum.h"
+
 #include <cstdint>
 #include <vector>
+#include <string>
 
-enum RelocationType {
-    R_386_32,
-    R_386_PC32
-};
-
-class RelocationEntry {
+class Relocation {
+public:
+    std::string _section;
+    std::string _symbolName;
     uint32_t _offset;
-    RelocationType _type;
-    uint32_t _value;
-public:
-    RelocationEntry(uint32_t offset, RelocationType type, uint32_t value) : _offset(offset), _type(type),
-                                                                            _value(value) {}
+    RELOCATION _relocationType;
 
-    void log();
+    Relocation(std::string, std::string, u_int32_t, RELOCATION);
+
+    std::string serialize();
+
+    static Relocation deserialize(std::string);
+
+    friend std::ostream &operator<<(std::ostream &out, Relocation &);
+
 };
 
-class RelocationTable {
-    std::vector <RelocationEntry> _table;
-public:
-    void addRelocation(RelocationEntry &);
-
-    void log();
-};

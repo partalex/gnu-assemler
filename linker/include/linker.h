@@ -1,45 +1,41 @@
 #pragma once
 
+#include "./loader_script_file.h"
+#include "../../common/include/section.h"
+#include "../../common/include/relocation.h"
+#include "../../common/include/symbol.h"
+
 #include <string>
 #include <vector>
 #include <unordered_map>
 
 class Linker {
+    static std::ofstream _logFile;
+    std::unordered_map<std::string, Section> _sections;
+    std::unordered_map<std::string, Symbol> _symbols;
+    std::vector<Relocation> _relocations;
+    std::unordered_map<std::string, int> _sectionPositions;
+    Section *outputSection = nullptr;
+    LoaderScriptFile _loaderScript;
+    uint32_t _locationCounter;
 
+    void loadFile(std::string inputFile);
 
-public:
-    void Link(std::ifstream &, std::vector<std::string> &inputFiles, std::ofstream &outputFile);
+    void fixRelocations();
 
-private:
-    void LoadFile(std::string inputFile);
+    void fillRemainingSections();
 
-    void FixRelocations();
+    void writeOutputFile(std::ofstream &);
 
-    void FillRemainingSections();
+    void addSymbol(Symbol &);
 
-    void WriteOutputFile(std::ofstream &outputFile);
-
-    static std::ofstream logFile;
-
-    std::unordered_map<std::string, Section> sections;
-    std::unordered_map<std::string, Symbol> symbols;
-    std::vector<Relocation> relocations;
-    std::unordered_map<std::string, int> sectionPositions;
-
-    LoaderScriptFile loaderScript;
-
-    u_int32_t locationCounter;
-
-    void AddSymbol(Symbol &);
-
-    int AddSection(Symbol &, Section &);
+    int addSection(Symbol &, Section &);
 
     void generateOutput();
 
-    //u_int8_t *memory = nullptr;
-    Section *outputSection = nullptr;
+    u_int32_t getSymbolVal(std::string);
 
-    u_int32_t GetSymbolVal(std::string symbolName);
-
+public:
+    void link(std::ifstream &, std::vector<std::string> &, std::ofstream &);
 
 };

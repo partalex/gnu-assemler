@@ -3,7 +3,7 @@
 #include <fstream>
 #include <iostream>
 
-void ObjectFile::LoadFromFile(std::string inputFile) {
+void ObjectFile::loadFromFile(std::string inputFile) {
 
     std::ifstream inFile(inputFile);
 
@@ -35,22 +35,18 @@ void ObjectFile::LoadFromFile(std::string inputFile) {
             symbolsSection = relocationSection = sectionsSection = false;
             continue;
         }
-
         if (symbolsSection) {
-            Symbol sym = Symbol::Deserialize(line);
-            symbols.insert({sym.name, sym});
+            Symbol sym = Symbol::deserialize(line);
+            _symbols.insert({sym._name, sym});
         }
-
         if (relocationSection) {
-            Relocation rel = Relocation::Deserialize(line);
-            relocations.push_back(rel);
+            Relocation rel = Relocation::deserialize(line);
+            _relocations.push_back(rel);
         }
-
         if (sectionsSection) {
             if (line == ".end") {
-                Section section = Section::Deserialize(sectionCumulate);
-                sections.insert({section.name, section});
-
+                Section section = Section::deserialize(sectionCumulate);
+                _sections.insert({section._name, section});
                 sectionCumulate.clear();
             } else
                 sectionCumulate += line + "\n";
