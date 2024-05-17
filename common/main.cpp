@@ -1,7 +1,7 @@
 #include "./include/structures.h"
 
 int main(int argc, char *argv[]) {
-    SymbolList *list =
+    auto *list =
             new SymbolList(
                     "a", new SymbolList(
                             "b", new SymbolList("c")));
