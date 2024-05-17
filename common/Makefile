@@ -7,7 +7,7 @@ run: debug
 	$(BIN_PATH)/main
 
 all: $(BIN_PATH)
-	$(CC) $(SRCS) -o $(BIN_PATH)/main
+	$(CC) $(SRCS) main.cpp -o $(BIN_PATH)/main
 
 debug: $(BIN_PATH)
 	$(CC) $(SRCS) main.cpp -g -o $(BIN_PATH)/main

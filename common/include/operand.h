@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <cstdint>
 
 class Csr {
 public:
@@ -36,9 +37,9 @@ public:
 };
 
 class WordLiteral : public WordOperand {
-    unsigned int _value;
+    uint32_t _value;
 public:
-    explicit WordLiteral(unsigned int value, WordOperand *next = nullptr) : _value(value) {
+    explicit WordLiteral(uint32_t value, WordOperand *next = nullptr) : _value(value) {
         _next = next;
     }
 
@@ -55,22 +56,22 @@ public:
 
 class LiteralImm : public Operand {
 public:
-    explicit LiteralImm(unsigned int value) : _value(value) {}
+    explicit LiteralImm(uint32_t value) : _value(value) {}
 
     void log() override;
 
 private:
-    unsigned int _value;
+    uint32_t _value;
 };
 
 class LiteralInDir : public Operand {
 public:
-    explicit LiteralInDir(unsigned int value) : _value(value) {}
+    explicit LiteralInDir(uint32_t value) : _value(value) {}
 
     void log() override;
 
 private:
-    unsigned int _value;
+    uint32_t _value;
 
 };
 
@@ -86,92 +87,92 @@ private:
 
 class RegInDir : public Operand {
 public:
-    explicit RegInDir(unsigned char gpr) : _gpr(gpr) {}
+    explicit RegInDir(uint8_t gpr) : _gpr(gpr) {}
 
     void log() override;
 
 private:
-    unsigned char _gpr;
+    uint8_t _gpr;
 };
 
 class RegDir : public Operand {
 public:
-    explicit RegDir(unsigned char gpr) : _gpr(gpr) {}
+    explicit RegDir(uint8_t gpr) : _gpr(gpr) {}
 
     void log() override;
 
 private:
-    unsigned char _gpr;
+    uint8_t _gpr;
 };
 
 class RegInDirOffLiteral : public Operand {
 public:
-    explicit RegInDirOffLiteral(unsigned char gpr, unsigned int offset) : _gpr(gpr), _offset(offset) {}
+    explicit RegInDirOffLiteral(uint8_t gpr, uint32_t offset) : _gpr(gpr), _offset(offset) {}
 
     void log() override;
 
 private:
-    unsigned char _gpr;
-    unsigned int _offset;
+    uint8_t _gpr;
+    uint32_t _offset;
 };
 
 class RegInDirOffIdent : public Operand {
 public:
-    explicit RegInDirOffIdent(unsigned char gpr, std::string ident) : _gpr(gpr), _ident(std::move(ident)) {}
+    explicit RegInDirOffIdent(uint8_t gpr, std::string ident) : _gpr(gpr), _ident(std::move(ident)) {}
 
     void log() override;
 
 private:
-    unsigned char _gpr;
+    uint8_t _gpr;
     std::string _ident;
 };
 
 class GprCsr : public Operand {
 public:
-    explicit GprCsr(unsigned char gpr, unsigned char csr) : _gpr(gpr), _csr(csr) {
+    explicit GprCsr(uint8_t gpr, uint8_t csr) : _gpr(gpr), _csr(csr) {
     }
 
     void log() override;
 
 private:
-    unsigned char _gpr;
-    unsigned char _csr;
+    uint8_t _gpr;
+    uint8_t _csr;
 };
 
 class GprGprIdent : public Operand {
 public:
-    explicit GprGprIdent(unsigned char gpr1, unsigned char gpr2, std::string ident) : _gpr1(gpr1), _gpr2(gpr2),
-                                                                                      _ident(std::move(ident)) {
+    explicit GprGprIdent(uint8_t gpr1, uint8_t gpr2, std::string ident) : _gpr1(gpr1), _gpr2(gpr2),
+                                                                          _ident(std::move(ident)) {
     }
 
     void log() override;
 
 private:
-    unsigned char _gpr1;
-    unsigned char _gpr2;
+    uint8_t _gpr1;
+    uint8_t _gpr2;
     std::string _ident;
 };
 
 class GprGprLiteral : public Operand {
 public:
-    explicit GprGprLiteral(unsigned char gpr1, unsigned char gpr2, unsigned int value) : _gpr1(gpr1), _gpr2(gpr2),
-                                                                                         _value(value) {
+    explicit GprGprLiteral(uint8_t gpr1, uint8_t gpr2, uint32_t value) : _gpr1(gpr1), _gpr2(gpr2),
+                                                                         _value(value) {
     }
 
     void log() override;
 
 private:
-    unsigned char _gpr1;
-    unsigned char _gpr2;
-    unsigned int _value;
+    uint8_t _gpr1;
+    uint8_t _gpr2;
+    uint32_t _value;
 };
 
 class CsrOp : public Operand {
 public:
-    explicit CsrOp(unsigned char csr) : _csr(csr) {}
+    explicit CsrOp(uint8_t csr) : _csr(csr) {}
 
     void log() override;
 
 private:
-    unsigned char _csr;
+    uint8_t _csr;
 };
