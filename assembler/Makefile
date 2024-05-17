@@ -3,11 +3,11 @@ SRC_AS = src
 SRC_COMMON = ../common/src
 BIN_PATH = bin
 
-SRCS = $(wildcard $(SRC_LN)/*.cpp) $(SRC_COMMON)/*
+SRCS = $(wildcard $(SRC_AS)/*.cpp) $(SRC_COMMON)/*
 
 LEXER = src/lexer.l
 PARSER = src/parser.y
-ARGS = -o $(SRC_LN)/izlaz.o ../test/handler.s
+ARGS = -o $(SRC_AS)/izlaz.o ../test/handler.s
 CC = g++
 
 run: debug
@@ -29,8 +29,8 @@ parser: lexer $(PARSER)
 
 clean:
 	rm -rf $(BIN_PATH)
-	rm -f $(SRC_LN)/lexer.cpp
-	rm -f $(SRC_LN)/parser.cpp
+	rm -f $(SRC_AS)/lexer.cpp
+	rm -f $(SRC_AS)/parser.cpp
 	rm -f $(INCLUDE_AS)/parser.h
 	rm -f $(INCLUDE_AS)/lexer.h
 
