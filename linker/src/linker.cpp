@@ -70,28 +70,23 @@ void Linker::loadFile(std::string inputFile) {
     ObjectFile objectFile;
     objectFile.loadFromFile(inputFile);
     std::unordered_map<std::string, int> sectionOffsets;
-
     for (auto &symbol: objectFile._symbols)
         if (symbol.second._symbolType == SYMBOL::SECTION) {
             auto section = objectFile._sections.find(symbol.second._name);
             _sections.insert({section->first, section->second});
             _logFile << "Adding section symbol " << symbol.second._name << "\n";
             sectionOffsets[symbol.second._name] = addSection(symbol.second,
-                                                             objectFile._sections.find(symbol.second._name)->second);
         }
-
     for (auto &symbol: objectFile._symbols)
         if (symbol.second._symbolType == SYMBOL::LABEL) {
             _logFile << "Adding label symbol " << symbol.second._name << "\n";
             symbol.second._offset += sectionOffsets[symbol.second._sectionName];
             AddSymbol(symbol.second);
         }
-
     for (auto &relocation: objectFile._relocations) {
         relocation._offset += sectionOffsets[relocation._section];
         _relocations.push_back(relocation);
     }
-
 }
 
 void Linker::fillRemainingSections() {
@@ -121,7 +116,6 @@ u_int32_t Linker::getSymbolVal(std::string symbolName) {
         throw std::runtime_error("Symbol not found " + symbolName);
     if (symbol->second._symbolType == SYMBOL::LABEL || symbol->second._symbolType == SYMBOL::OPERAND_DEC)
         ret += symbol->second._offset;
-
     if (symbol->second._symbolType == SYMBOL::LABEL || symbol->second._symbolType == SYMBOL::SECTION) {
         std::string sectionName = symbol->second._sectionName;
         auto sectionPos = _sectionPositions.find(sectionName);
@@ -136,23 +130,17 @@ void Linker::fixRelocations() {
     std::vector<Relocation> newRelocations;
     for (auto &rel: _relocations) {
         auto symbol = _symbols.find(rel._symbolName);
-
         if (symbol == _symbols.end())
             throw std::runtime_error("rand err");
-
         if (symbol->second._defined) {
             u_int32_t symbolVal = getSymbolVal(symbol->second._name);
-
             auto section = _sections.find(rel._section);
-
             if (section == _sections.end())
                 throw std::runtime_error("random errr");
-
             if (section->second._size <= rel._offset) {
                 std::cout << section->second._size << " " << rel._offset << "\n";
                 throw std::runtime_error("randddddom err");
             }
-
             if (rel._relocationType == RELOCATION::R_386_32)
                 section->second.Write(&symbolVal, rel._offset, 4);
             else if (rel._relocationType == RELOCATION::R_386_PC32) {
@@ -183,8 +171,7 @@ void Linker::writeOutputFile(std::ofstream &outputFile) {
                std::setw(15) << "Offset" <<
                std::setw(15) << "Type" <<
                std::setw(15) << "Size" <<
-               std::setw(15) << "SymbolType" <<
-               "\n";
+               std::setw(15) << "SymbolType" << "\n";
     for (auto &symbol: _symbols)
         outputFile << symbol.second.serialize();
     outputFile << "%END%" << "\n";
@@ -195,12 +182,9 @@ void Linker::writeOutputFile(std::ofstream &outputFile) {
                std::setw(15) << "SymbolName" <<
                std::setw(15) << "SectionName" <<
                std::setw(15) << "Offset" <<
-               std::setw(15) << "Type" <<
-               "\n";
-
+               std::setw(15) << "Type" << "\n";
     for (auto &rel: _relocations)
         outputFile << rel.serialize();
-
     outputFile << "%END%" << "\n";
     outputFile << "\n" << std::left;
     outputFile << "%SECTIONS SECTION%" << "\n";
