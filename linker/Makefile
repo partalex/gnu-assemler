@@ -1,11 +1,11 @@
 INCLUDE = include
-SRC_AS = src
+SRC_LN = src
 SRC_COMMON = ../common/src
 BIN_PATH = bin
 
-SRCS = $(wildcard $(SRC_AS)/*.cpp) $(SRC_COMMON)/*
+SRCS = $(wildcard $(SRC_LN)/*.cpp) $(SRC_COMMON)/*
 
-ARGS = -o $(SRC_AS)/izlaz.o ../test/handler.s
+ARGS = -o $(SRC_LN)/izlaz.o ../test/handler.s
 CC = g++
 
 run: debug
