@@ -1,4 +1,4 @@
-#include "loader_script_file.h"
+#include "../include/loader_script_file.h"
 
 #include <regex>
 #include <string>

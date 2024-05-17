@@ -1,4 +1,4 @@
-#include "object_file.h"
+#include "../include/object_file.h"
 
 #include <fstream>
 #include <iostream>

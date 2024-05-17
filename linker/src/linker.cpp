@@ -1,7 +1,8 @@
+#include "../include/linker.h"
+
 #include <regex>
 #include <iostream>
 #include <iomanip>
-#include "linker.h"
 
 std::ofstream Linker::logFile("linker/log");
 

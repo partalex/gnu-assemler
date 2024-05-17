@@ -1,5 +1,6 @@
-#include <iostream>
 #include "emulator.h"
+
+#include <iostream>
 
 Emulator::Emulator() = default;
 

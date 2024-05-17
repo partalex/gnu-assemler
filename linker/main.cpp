@@ -1,13 +1,14 @@
+#include "./include/linker.h"
+
 #include <iostream>
 #include <memory>
 #include <vector>
 #include <fstream>
-#include "linker.h"
 
 int main(int argc, char *argv[]) {
 
     if (argc < 4) {
-        std::cout << "Please call this program as ./linker scriptfile outputfile [inputfiles]+" << endl;
+        std::cout << "Please call this program as ./linker scriptfile outputfile [inputfiles]+" << "\n";
         return 1;
     }
 
@@ -17,12 +18,12 @@ int main(int argc, char *argv[]) {
     std::unique_ptr<Linker> linker(new Linker());
 
     if (!loaderFile.is_open()) {
-        std::cerr << "Error opening loader file" << std::endl;
+        std::cout << "Error opening loader file" << "\n";
         return 1;
     }
 
     if (!outputFile.is_open()) {
-        std::cerr << "Error opening output file" << std::endl;
+        std::cout << "Error opening output file" << "\n";
         return 1;
     }
 

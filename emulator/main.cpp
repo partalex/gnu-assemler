@@ -1,8 +1,7 @@
+#include "./include/emulator.h"
+
 #include <iostream>
 #include <memory>
-
-#include "emulator.h"
-#include "program.h"
 
 int main(int argc, char *argv[]) {
 
