@@ -67,7 +67,7 @@ GetLabelVal(std::string label, std::unordered_map<std::string, Symbol> &symbols,
     if (symbol->second._symbolTypesymbolType == SYMBOL::LABEL || symbol->second._symbolType == SYMBOL::OPERAND_DEC)
         ret += symbol->second._offset;
 
-    if (symbol->second._symbolType == SYMBOL::LABEL || symbol->second.symbolType == SYMBOL::SECTION) {
+    if (symbol->second._symbolType == SYMBOL::LABEL || symbol->second._symbolType == SYMBOL::SECTION) {
         std::string sectionName = symbol->second._sectionName;
         auto sectionPos = sectionPositions.find(sectionName);
         if (sectionPos == sectionPositions.end()) {
@@ -156,19 +156,11 @@ GetLabelVal(std::string label, std::unordered_map<std::string, Symbol> &symbols,
             //cout << line << endl;
             std::smatch base_match;
             if (regex_match(line, base_match, section)) {
-                //TODO: check if section exists
                 sectionPositions[symbols.find(line)->second.name] = locationCounter;
                 locationCounter += symbols.find(line)->second.size;
             } else if (regex_match(line, base_match, assignment)) {
-                //TODO: what have youuuu doneeeeeeeee
-//            cout << "Whaaa" << endl;
-//            cout << "left val " << base_match[1] << endl;
-//            cout << "right val first " << base_match[2] << endl;
-//            cout << "right val rest " << base_match[3] << endl;
                 u_int32_t expressionVal = 0;
-
                 ScriptOperandType SYMBOL1 = GetType(base_match[1]);
-
                 if (SYMBOL1 != DOT && SYMBOL1 != SCRIPTLABEL)
                     throw std::runtime_error("Bad left operand ! " + base_match[1].str());
                 std::string firstRightOperand = base_match[2];
@@ -186,7 +178,6 @@ GetLabelVal(std::string label, std::unordered_map<std::string, Symbol> &symbols,
                         expressionVal += (expr.second ? -1 : 1) *
                                          ParseOperand(expr.first, locationCounter, symbols, sectionPositions);
                 }
-
                 if (SYMBOL1 == DOT) {
                     if (locationCounter > expressionVal)
                         throw std::runtime_error("Cannot assing smaller value to current address");

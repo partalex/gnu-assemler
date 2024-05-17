@@ -3,9 +3,24 @@
 #include <iostream>
 #include <iomanip>
 
-std::istream &operator>>(std::istream &, RELOCATION &);
+std::istream &operator>>(std::istream &in, RELOCATION &rel) {
+    std::string token;
+    in >> token;
+    if (token == "R_386_32")
+        rel = RELOCATION::R_386_32;
+    if (token == "R_386_PC32")
+        rel = RELOCATION::R_386_PC32;
+    return in;
+}
 
-std::ostream &operator<<(std::ostream &, RELOCATION);
+std::ostream &operator<<(std::ostream &out, Relocation &rel) {
+    out << "Relocation: " << "\n";
+    out << "\tSymbol:\t" << rel._symbolName << "\n";
+    out << "\tSection:\t" << rel._section << "\n";
+    out << "\tOffset:\t" << rel._offset << "\n";
+    out << "\tRelocationType:\t" << rel._relocationType << "\n" << "\n";
+    return out;
+}
 
 Relocation::Relocation(std::string symbolName, std::string section, u_int32_t offset, RELOCATION relocationType)
         : _section(section), _offset(offset), _relocationType(relocationType), _symbolName(symbolName) {

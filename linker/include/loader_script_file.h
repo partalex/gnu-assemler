@@ -9,13 +9,11 @@
 
 class LoaderScriptFile {
     std::vector<std::string> scriptInput;
-    //unordered_map<string, Symbol> symbols;
 public:
 
     void loadFromFile(std::istream &);
 
     void fillSymbolsAndSectPos(std::unordered_map<std::string, Symbol> &, std::unordered_map<std::string, int> &);
-
 
 };
 

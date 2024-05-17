@@ -17,7 +17,9 @@ public:
 
     static Relocation deserialize(std::string);
 
-    friend std::ostream &operator<<(std::ostream &out, Relocation &);
+    friend std::ostream &operator<<(std::ostream &, Relocation &);
+
+    friend std::istream &operator>>(std::istream &, Relocation &);
 
 };
 

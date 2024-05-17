@@ -14,6 +14,20 @@ Section::~Section() {
     delete[] _memory;
 }
 
+std::ostream &operator<<(std::ostream &out, Section &sec) {
+    const int tokensByLine = 8;
+    out << "Section: " << sec._name << "\n";
+    out << "Size: " << std::dec << sec._size;
+    for (int i = 0; i < sec._size; ++i) {
+        if (i % tokensByLine == 0)
+            out << "\n";
+        out << std::setfill('0') << std::setw(2) << std::hex
+            << (u_int32_t) sec._memory[i] << " ";
+    }
+    out << "\n" << "\n";
+    return out;
+}
+
 void Section::write(void *src, int pos, uint64_t length) {
     memcpy(_memory + pos, src, length);
 }
@@ -33,7 +47,6 @@ Section &Section::operator+=(Section &other) {
     _size = newSize;
     return *this;
 }
-
 
 std::string Section::serialize() {
     std::stringstream out;

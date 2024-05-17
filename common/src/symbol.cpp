@@ -4,16 +4,8 @@
 #include <iostream>
 #include <iomanip>
 
-std::istream &operator>>(std::istream &, SCOPE &);
-
-std::ostream &operator<<(std::ostream &, SCOPE);
-
-std::istream &operator>>(std::istream &, SECTION_TYPE &);
-
-std::ostream &operator<<(std::ostream &, SECTION_TYPE);
-
 Symbol::Symbol(std::string name, bool defined, std::string sectionName, SCOPE scope, uint64_t offset,
-               SECTION_TYPE symbolType, int32_t size) :
+               enum SYMBOL symbolType, int32_t size) :
         _name(name),
         _defined(defined),
         _sectionName(sectionName),
@@ -22,6 +14,26 @@ Symbol::Symbol(std::string name, bool defined, std::string sectionName, SCOPE sc
         _size(size),
         _symbolType(symbolType) {}
 
+std::istream &operator>>(std::istream &in, Symbol &scope) {
+    in >> scope._name;
+    in >> scope._defined;
+    in >> scope._sectionName;
+    in >> scope._offset;
+    in >> scope._scope;
+    in >> scope._size;
+    in >> scope._symbolType;
+    return in;
+}
+
+std::ostream &operator<<(std::ostream &out, Symbol &sym) {
+    out << "Symbol: " << sym._name << "\n";
+    out << "\tDefined:\t" << sym._defined << "\n";
+    out << "\tSectionName:\t" << sym._sectionName << "\n";
+    out << "\tOffset:\t" << sym._offset << "\n";
+    out << "\tType:\t" << sym._scope << "\n" << "\n";
+    out << "\tSize:\t" << sym._size << "\n" << "\n";
+    return out;
+}
 
 std::string Symbol::serialize() {
     std::stringstream ss;
@@ -62,7 +74,7 @@ Symbol Symbol::deserialize(std::string instr) {
     int size;
     in >> size;
 
-    SECTION_TYPE symbolType;
+    enum SYMBOL symbolType;
     in >> symbolType;
 
     Symbol sym(name, defined, sectionName, scope, offset, symbolType, size);

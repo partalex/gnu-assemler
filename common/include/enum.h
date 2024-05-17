@@ -1,5 +1,7 @@
 #pragma once
 
+#include <iostream>
+
 enum RELOCATION {
     R_386_32, R_386_PC32
 };
@@ -61,3 +63,17 @@ enum INSTRUCTION {
     CSR_LD_IND = 0b10010110,        // csr[A]<=mem32[gpr[B]+gpr[C]+D]
     CSR_LD_POST_INC = 0b10010111,   // csr[A]<=mem32[gpr[B]]; gpr[B]<=gpr[B]+D
 };
+
+std::istream &operator>>(std::istream &, enum SYMBOL &);
+
+std::istream &operator>>(std::istream &, SECTION_TYPE &);
+
+std::ostream &operator<<(std::ostream &, SECTION_TYPE);
+
+std::istream &operator>>(std::istream &, SCOPE &);
+
+std::ostream &operator<<(std::ostream &, SCOPE);
+
+std::ostream &operator<<(std::ostream &, enum INSTRUCTION);
+
+std::ostream &operator<<(std::ostream &, RELOCATION);

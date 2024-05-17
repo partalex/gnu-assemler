@@ -1,6 +1,19 @@
 #include "../include/instruction.h"
 #include "../include/operand.h"
 
+#include <iostream>
+
+std::ostream &operator<<(std::ostream &out, Instruction &instr) {
+    out << "";
+//    out << "Instruction: " << instr.instructionSymbol << "\n";
+//    out << "Condition: " << instr.instructionCondition << "\n";
+//    out << "setflags: " << instr.setFlags << "\n";
+//    for (auto &temp: instr.parameters)
+//        out << "\t" << temp << "\n";
+//    out << "\tcode:" << std::hex << instr.instrCode.binaryCode << "\n";
+//    out << "\n";
+    return out;
+}
 
 void Instructions::addInstruction(std::unique_ptr<Instruction> _inst) {
     _table.push_back(std::move(_inst));

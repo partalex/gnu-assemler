@@ -20,11 +20,10 @@ public:
 
     Section &operator+=(Section &);
 
-    friend std::ostream &operator<<(std::ostream &, Section &);
-
     std::string serialize();
 
     static Section deserialize(std::string);
 
+    friend std::ostream &operator<<(std::ostream &, Section &);
 };
 

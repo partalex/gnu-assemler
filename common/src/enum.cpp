@@ -3,20 +3,18 @@
 #include "../include/relocation.h"
 #include "../include/section.h"
 
-#include <iostream>
-#include <iomanip>
-
-std::ostream &operator<<(std::ostream &out, SECTION_TYPE sec) {
-    switch (sec) {
-        case SECTION_TYPE::TEXT:
-            return out << "TEXT";
-        case SECTION_TYPE::DATA:
-            return out << "DATA";
-        case SECTION_TYPE::BSS:
-            return out << "BSS";
-        default:
-            return out << "UNDEFINED";
-    }
+std::istream &operator>>(std::istream &in, enum SYMBOL &sym) {
+    std::string token;
+    in >> token;
+    if (token == "LABEL")
+        sym = SYMBOL::LABEL;
+    else if (token == "SECTION")
+        sym = SYMBOL::SECTION;
+    else if (token == "INSTRUCTION")
+        sym = SYMBOL::INSTRUCTION;
+    else if (token == "SYMBOL")
+        sym = SYMBOL::SYMBOL;
+    return in;
 }
 
 std::istream &operator>>(std::istream &in, SECTION_TYPE &sec) {
@@ -31,13 +29,14 @@ std::istream &operator>>(std::istream &in, SECTION_TYPE &sec) {
     return in;
 }
 
-
-std::ostream &operator<<(std::ostream &out, SCOPE s) {
-    switch (s) {
-        case SCOPE::GLOBAL:
-            return out << "GLOBAL";
-        case SCOPE::LOCAL:
-            return out << "LOCAL";
+std::ostream &operator<<(std::ostream &out, SECTION_TYPE sec) {
+    switch (sec) {
+        case SECTION_TYPE::TEXT:
+            return out << "TEXT";
+        case SECTION_TYPE::DATA:
+            return out << "DATA";
+        case SECTION_TYPE::BSS:
+            return out << "BSS";
         default:
             return out << "UNDEFINED";
     }
@@ -53,25 +52,15 @@ std::istream &operator>>(std::istream &in, SCOPE &s) {
     return in;
 }
 
-std::ostream &operator<<(std::ostream &out, RELOCATION s) {
+std::ostream &operator<<(std::ostream &out, SCOPE s) {
     switch (s) {
-        case RELOCATION::R_386_32:
-            return out << "R_386_32";
-        case RELOCATION::R_386_PC32:
-            return out << "R_386_PC32";
+        case SCOPE::GLOBAL:
+            return out << "GLOBAL";
+        case SCOPE::LOCAL:
+            return out << "LOCAL";
         default:
             return out << "UNDEFINED";
     }
-}
-
-std::istream &operator>>(std::istream &in, RELOCATION &s) {
-    std::string token;
-    in >> token;
-    if (token == "R_386_32")
-        s = RELOCATION::R_386_32;
-    if (token == "R_386_PC32")
-        s = RELOCATION::R_386_PC32;
-    return in;
 }
 
 std::ostream &operator<<(std::ostream &out, enum INSTRUCTION instr) {
@@ -149,47 +138,13 @@ std::ostream &operator<<(std::ostream &out, enum INSTRUCTION instr) {
     }
 }
 
-std::ostream &operator<<(std::ostream &out, Instruction &instr) {
-    out << "";
-//    out << "Instruction: " << instr.instructionSymbol << "\n";
-//    out << "Condition: " << instr.instructionCondition << "\n";
-//    out << "setflags: " << instr.setFlags << "\n";
-//    for (auto &temp: instr.parameters)
-//        out << "\t" << temp << "\n";
-//    out << "\tcode:" << std::hex << instr.instrCode.binaryCode << "\n";
-//    out << "\n";
-    return out;
-}
-
-std::ostream &operator<<(std::ostream &out, Symbol &symbol) {
-    out << "Symbol: " << symbol._name << "\n";
-    out << "\tDefined:\t" << symbol._defined << "\n";
-    out << "\tSectionName:\t" << symbol._sectionName << "\n";
-    out << "\tOffset:\t" << symbol._offset << "\n";
-    out << "\tType:\t" << symbol._scope << "\n" << "\n";
-    out << "\tSize:\t" << symbol._size << "\n" << "\n";
-    return out;
-}
-
-std::ostream &operator<<(std::ostream &out, Relocation &rel) {
-    out << "Relocation: " << "\n";
-    out << "\tSymbol:\t" << rel._symbolName << "\n";
-    out << "\tSection:\t" << rel._section << "\n";
-    out << "\tOffset:\t" << rel._offset << "\n";
-    out << "\tRelocationType:\t" << rel._relocationType << "\n" << "\n";
-    return out;
-}
-
-std::ostream &operator<<(std::ostream &out, Section &section) {
-    const int tokensByLine = 8;
-    out << "Section: " << section._name << "\n";
-    out << "Size: " << std::dec << section._size;
-    for (int i = 0; i < section._size; ++i) {
-        if (i % tokensByLine == 0) out << "\n";
-        out << std::setfill('0') << std::setw(2) << std::hex
-            << (u_int32_t) section._memory[i] << " ";
+std::ostream &operator<<(std::ostream &out, RELOCATION rel) {
+    switch (rel) {
+        case RELOCATION::R_386_32:
+            return out << "R_386_32";
+        case RELOCATION::R_386_PC32:
+            return out << "R_386_PC32";
+        default:
+            return out << "UNDEFINED";
     }
-    out << "\n" << "\n";
-    return out;
 }
-
