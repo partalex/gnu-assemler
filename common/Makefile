@@ -1,16 +1,16 @@
-INCLUDE = include
-SRC_COMMON = src
 BIN_PATH = bin
 
-SRCS = $(SRC_COMMON)/*
-
+SRCS = src/*
 CC = g++
 
+run: debug
+	$(BIN_PATH)/main
+
 all: $(BIN_PATH)
-	$(CC) -I$(INCLUDE) $(SRCS) -o $(BIN_PATH)/main
+	$(CC) $(SRCS) -o $(BIN_PATH)/main
 
 debug: $(BIN_PATH)
-	$(CC) -I$(INCLUDE) -I$(INCLUDE_COMMON) $(SRCS) -g -o $(BIN_PATH)/main
+	$(CC) $(SRCS) main.cpp -g -o $(BIN_PATH)/main
 
 clean:
 	rm -rf $(BIN_PATH)
