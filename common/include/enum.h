@@ -14,7 +14,7 @@ enum SYMBOL {
 };
 
 enum SECTION_TYPE {
-    TEXT, DATA, BSS
+    UND, TEXT, DATA, BSS
 };
 
 enum SCOPE {

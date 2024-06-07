@@ -1,6 +1,10 @@
 #pragma once
 
 #include "../../common/include/structures.h"
+#include "../../common/include/symbol.h"
+#include "../../common/include/relocation.h"
+#include "../../common/include/instruction.h"
+#include "../../common/include/section.h"
 
 #include <memory>
 #include <vector>
@@ -13,9 +17,10 @@ class Assembler {
     std::string _output = "output/obj.o";
     std::string _input;
 
-    SymbolTable _symbolTable;
-    std::unordered_map<std::string, RelocationTable> _relTables;
-    Instructions _instructions;
+    std::vector<std::unique_ptr<Symbol>> _symbols;
+    std::vector<Relocation> _relocations;
+    std::vector<std::unique_ptr<Instruction>> _instructions;
+    std::vector<std::unique_ptr<Section>> _sections;
 
     uint32_t _locationCounter = 0;
     uint32_t _currentSection = 0;
@@ -79,4 +84,12 @@ public:
     void parseNoAdr(unsigned char);                     // TODO
 
     void writeToFile();
+
+    void addNewSymbol(std::string, bool, enum SYMBOL, SECTION_TYPE, std::string, SCOPE, uint32_t);
+
+    Symbol *findSymbol(std::string, enum SYMBOL);
+
+    bool hasUnresolvedSymbols();
+
+
 };

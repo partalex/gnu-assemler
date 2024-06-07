@@ -66,7 +66,7 @@ int Linker::addSection(Symbol &sym, Section &section) {
     return offset;
 }
 
-void Linker::loadFile(const std::string& inputFile) {
+void Linker::loadFile(const std::string &inputFile) {
     ObjectFile objectFile;
     objectFile.loadFromFile(inputFile);
     std::unordered_map<std::string, int> sectionOffsets;
@@ -110,7 +110,7 @@ void Linker::fillRemainingSections() {
     }
 }
 
-uint32_t Linker::getSymbolVal(const std::string& symbolName) {
+uint32_t Linker::getSymbolVal(const std::string &symbolName) {
     uint32_t ret = 0;
     auto symbol = _symbols.find(symbolName);
     if (symbol == _symbols.end())
