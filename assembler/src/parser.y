@@ -1,12 +1,12 @@
 %{
     #include <stdint.h> // Izmenite ovu liniju
-	#include <cstdio>
-	#include "../include/assembler.h"
-	#include "../../common/include/instruction.h"
-	#include "../../common/include/operand.h"
-	#include "../../common/include/structures.h"
-	int yylex(void);
-	void yyerror(const char*);
+    #include <cstdio>
+    #include "../include/assembler.h"
+    #include "../../common/include/instruction.h"
+    #include "../../common/include/operand.h"
+    #include "../../common/include/structures.h"
+    int yylex(void);
+    void yyerror(const char*);
 
     #ifdef YYDEBUG
         yydebug = 1;
@@ -153,10 +153,10 @@ instruction
   { Assembler::singleton().parseNoAdr($1); }
 
   | I_CALL jmpOperand
-  { Assembler::singleton().parseJmp(I::INSTRUCTION::CALL, $2); }
+  { Assembler::singleton().parseJmp(INSTRUCTION::CALL, $2); }
 
   | I_JMP jmpOperand
-  { Assembler::singleton().parseCall(I::INSTRUCTION::JMP, $2); }
+  { Assembler::singleton().parseCall(INSTRUCTION::JMP, $2); }
 
   | jmpCond jmpCondOperand
   { Assembler::singleton().parseCondJmp($1, $2); }
@@ -262,48 +262,48 @@ intOperand
 
 noadr
   : I_IRET
-  { $$ = I::INSTRUCTION::LD; }
+  { $$ = INSTRUCTION::LD; }
 
   | I_RET
-  { $$ = I::INSTRUCTION::LD_POST_INC; };
+  { $$ = INSTRUCTION::LD_POST_INC; };
 
 tworeg
   : I_ADD
-  { $$ = I::INSTRUCTION::ADD; }
+  { $$ = INSTRUCTION::ADD; }
 
   | I_SUB
-  { $$ = I::INSTRUCTION::SUB; }
+  { $$ = INSTRUCTION::SUB; }
 
   | I_MUL
-  { $$ = I::INSTRUCTION::MUL; }
+  { $$ = INSTRUCTION::MUL; }
 
   | I_DIV
-  { $$ = I::INSTRUCTION::DIV; }
+  { $$ = INSTRUCTION::DIV; }
 
   | I_AND
-  { $$ = I::INSTRUCTION::AND; }
+  { $$ = INSTRUCTION::AND; }
 
   | I_OR
-  { $$ = I::INSTRUCTION::OR; }
+  { $$ = INSTRUCTION::OR; }
 
   | I_XOR
-  { $$ = I::INSTRUCTION::XOR; }
+  { $$ = INSTRUCTION::XOR; }
 
   | I_SHL
-  { $$ = I::INSTRUCTION::SHL; }
+  { $$ = INSTRUCTION::SHL; }
 
   | I_SHR
-  { $$ = I::INSTRUCTION::SHR; };
+  { $$ = INSTRUCTION::SHR; };
 
 jmpCond
   : I_BEQ
-  { $$ = I::INSTRUCTION::BEQ; }
+  { $$ = INSTRUCTION::BEQ; }
 
   | I_BNE
-  { $$ = I::INSTRUCTION::BNE; }
+  { $$ = INSTRUCTION::BNE; }
 
   | I_BGT
-  { $$ = I::INSTRUCTION::BGT; };
+  { $$ = INSTRUCTION::BGT; };
 
 jmpOperand
   : T_LITERAL

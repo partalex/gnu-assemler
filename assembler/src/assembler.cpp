@@ -42,7 +42,7 @@ void Assembler::parseExtern(SymbolList *list) {
 #endif
     SymbolList *temp = list;
     while (temp) {
-        addNewSymbol(temp->_symbol, false, SYMBOL::SYMBOL, SECTION_TYPE::UND, "", SCOPE::GLOBAL, 0);
+        addNewSymbol(temp->_symbol, false, SYMBOL::SYMBOL, SECTION_TYPE::UND, SCOPE::GLOBAL, 0);
         temp = temp->_next;
     }
     delete list;
@@ -168,7 +168,7 @@ void Assembler::parseNoAdr(unsigned char inst) {
     auto name = static_cast<I::INSTRUCTION>(inst);
     std::cout << I::NAMES[name] << "\n";;
 #endif
-    _instructions.emplace_back(std::make_unique<NoAdr_Instr>(static_cast<I::INSTRUCTION>(inst)));
+    _instructions.emplace_back(std::make_unique<NoAdr_Instr>(static_cast<enum INSTRUCTION>(inst)));
     _locationCounter += 4;
 }
 
@@ -179,33 +179,33 @@ void Assembler::parseJmp(unsigned char inst, Operand *operand) {
     operand->log();
     std::cout << "\n";
 #endif
-    _instructions.emplace_back(std::make_unique<Jmp_Instr>(static_cast<I::INSTRUCTION>(inst),
+    _instructions.emplace_back(std::make_unique<Jmp_Instr>(static_cast<enum INSTRUCTION>(inst),
                                                            std::unique_ptr<Operand>(operand)));
     _locationCounter += 4;
 }
 
 void Assembler::parseCall(unsigned char inst, Operand *operand) {
 #ifdef LOG_PARSER
-    auto _inst = static_cast<I::INSTRUCTION>(inst);
+    auto _inst = static_cast<enum INSTRUCTION>(inst);
     std::cout << I::NAMES[_inst] << ": ";
     operand->log();
     std::cout << "\n";
 #endif
-    _instructions.addInstruction(std::make_unique<Call_Instr>(static_cast<I::INSTRUCTION>(inst),
-                                                              std::unique_ptr<Operand>(operand)));
+    _instructions.emplace_back(std::make_unique<Call_Instr>(static_cast<enum INSTRUCTION>(inst),
+                                                            std::unique_ptr<Operand>(operand)));
     _locationCounter += 4;
 }
 
 void Assembler::parseCondJmp(unsigned char inst, Operand *operand) {
 #ifdef LOG_PARSER
-    auto _inst = static_cast<I::INSTRUCTION>(inst);
+    auto _inst = static_cast<enum INSTRUCTION>(inst);
     std::cout << I::NAMES[_inst] << ": ";
     operand->log();
     std::cout << "\n";
 #endif
     std::cout << "\n";
 
-    _instructions.emplace_back(std::make_unique<JmpCond_Instr>(static_cast<I::INSTRUCTION>(inst),
+    _instructions.emplace_back(std::make_unique<JmpCond_Instr>(static_cast<enum INSTRUCTION>(inst),
                                                                std::unique_ptr<Operand>(operand)));
     _locationCounter += 4;
 }
@@ -254,11 +254,11 @@ void Assembler::parseXchg(unsigned char regS, unsigned char regD) {
 
 void Assembler::parseTwoReg(unsigned char inst, unsigned char regS, unsigned char regD) {
 #ifdef LOG_PARSER
-    std::cout << static_cast<I::INSTRUCTION>(inst) << ": ";
+    std::cout << static_cast<enum INSTRUCTION>(inst) << ": ";
     std::cout << "%r" << regD << "\n";;
     std::cout << "%r" << regS << ", %r" << regD << "\n";;
 #endif
-    _instructions.emplace_back(std::make_unique<TwoReg_Instr>(static_cast<I::INSTRUCTION>(inst), regS, regD));
+    _instructions.emplace_back(std::make_unique<TwoReg_Instr>(static_cast<enum INSTRUCTION>(inst), regS, regD));
     _locationCounter += 4;
 }
 
@@ -296,7 +296,7 @@ void Assembler::parseStore(unsigned char gpr, Operand *operand) {
     operand->log();
     std::cout << "\n";
 #endif
-    _instructions.emplace_back(std::make_unique<Store_Instr>(gpr, std::unique_ptr<Operand>(operand));
+    _instructions.emplace_back(std::make_unique<Store_Instr>(gpr, std::unique_ptr<Operand>(operand)));
     _locationCounter += 4;
 }
 
@@ -307,7 +307,7 @@ void Assembler::parseGlobal(SymbolList *list) {
 #endif
     SymbolList *temp = list;
     while (temp) {
-        addNewSymbol(temp->_symbol, false, SYMBOL::SYMBOL, SECTION_TYPE::UND, "", SCOPE::GLOBAL, 0);
+        addNewSymbol(temp->_symbol, false, SYMBOL::SYMBOL, SECTION_TYPE::UND, SCOPE::GLOBAL, 0);
         temp = temp->_next;
     }
     delete list;
@@ -327,28 +327,29 @@ void Assembler::log() {
 }
 
 void Assembler::addNewSymbol(std::string symName, bool symDefined, enum SYMBOL symbolType, SECTION_TYPE symSection,
-                             std::string symSectionName, SCOPE symScope,
-                             uint32_t locationCounter) {
-    if (std::find(_symbols.begin(), _symbols.end(), symName) != _symbols.end()) {
-        std::cerr << "Error: Symbol " << symName << " already defined." << "\n";;
+                             SCOPE symScope, uint32_t locationCounter) {
+    if (std::any_of(_symbols.begin(), _symbols.end(), [&](const auto &symbol) {
+        return symbol->_name == symName && symbol->_symbolType == symbolType && symbol->_defined;
+    })) {
+        std::cerr << "Error: Symbol " << symName << " already defined." << "\n";
         exit(EXIT_FAILURE);
     }
     _symbols.emplace_back(
-            std::make_unique<Symbol>(symName, symDefined, symSectionName, symScope, locationCounter, symbolType));
+            std::make_unique<Symbol>(symName, symDefined, _currentSection, symScope, locationCounter, symbolType));
 }
 
 Symbol *Assembler::findSymbol(std::string symName, enum SYMBOL symType) {
-    auto it = std::find_if(_symbols.begin(), _symbols.end(), [&](const auto &pair) {
-        return pair.second._name == symName && pair.second._type == symType;
+    auto it = std::find_if(_symbols.begin(), _symbols.end(), [&](const auto &symbol) {
+        return symbol->_name == symName && symbol->_symbolType == symType;
     });
     if (it == _symbols.end())
         return nullptr;
-    return &(it->second);
+    return it->get();
 }
 
 bool Assembler::hasUnresolvedSymbols() {
     for (auto &sym: _symbols)
-        if (!sym._defined)
+        if (!sym->_defined)
             return true;
     return false;
 }

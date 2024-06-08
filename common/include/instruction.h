@@ -18,26 +18,17 @@ public:
     uint8_t _byte_3{};
     uint8_t _byte_4{};
 
-    explicit Instruction(enum INSTRUCTION byte_1, uint8_t regA = 0, uint8_t regB = 0, uint8_t regC = 0, int offset = 0)
-            : _byte_1(byte_1), _byte_2(regA << 4 | regB), _byte_3(regC << 4) {
-        if (offset < -2048 || offset > 2047)
-            throw std::runtime_error("Displacement out of range.");
-        _byte_3 |= (offset & 0xF00) >> 8;
-        _byte_4 |= offset & 0xFF;
-    }
+    explicit Instruction(enum INSTRUCTION byte_1, uint8_t regA = 0, uint8_t regB = 0, uint8_t regC = 0, int offset = 0);
 
-    virtual void setRegA(uint8_t regA) final { _byte_2 |= regA << 4; }
+    virtual void setRegA(uint8_t) final;
 
-    virtual void setRegB(uint8_t regB) final { _byte_2 |= regB; }
+    virtual void setRegB(uint8_t) final;
 
-    virtual void setRegC(uint8_t regC) final { _byte_3 |= regC << 4; }
+    virtual void setRegC(uint8_t) final;
 
-    virtual void setDisplacement(int16_t offset) final {
-        if (offset < -2048 || offset > 2047)
-            throw std::runtime_error("Displacement out of range.");
-        _byte_3 |= (offset & 0xF00) >> 8;
-        _byte_4 |= offset & 0xFF;
-    }
+    virtual void setDisplacement(int16_t) final;
+
+    static Instruction deserialize(uint32_t);
 };
 
 class Halt_Instr : public Instruction {

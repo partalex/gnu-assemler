@@ -85,11 +85,10 @@ public:
 
     void writeToFile();
 
-    void addNewSymbol(std::string, bool, enum SYMBOL, SECTION_TYPE, std::string, SCOPE, uint32_t);
+    void addNewSymbol(std::string, bool, enum SYMBOL, SECTION_TYPE, SCOPE, uint32_t);
 
     Symbol *findSymbol(std::string, enum SYMBOL);
 
     bool hasUnresolvedSymbols();
-
 
 };

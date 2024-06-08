@@ -15,6 +15,33 @@ std::ostream &operator<<(std::ostream &out, Instruction &instr) {
     return out;
 }
 
+void Instruction::setDisplacement(int16_t offset) {
+    if (offset < -2048 || offset > 2047)
+        throw std::runtime_error("Displacement out of range.");
+    _byte_3 |= (offset & 0xF00) >> 8;
+    _byte_4 |= offset & 0xFF;
+}
+
+Instruction::Instruction(enum INSTRUCTION instruction, uint8_t regA, uint8_t regB, uint8_t regC, int offset)
+        : _byte_1(instruction), _byte_2(regA << 4 | regB), _byte_3(regC << 4) {
+    if (offset < -2048 || offset > 2047)
+        throw std::runtime_error("Displacement out of range.");
+    _byte_3 |= (offset & 0xF00) >> 8;
+    _byte_4 |= offset & 0xFF;
+}
+
+void Instruction::setRegA(uint8_t regA) {
+    _byte_2 |= regA << 4;
+}
+
+void Instruction::setRegB(uint8_t regC) {
+    _byte_2 |= regC;
+}
+
+void Instruction::setRegC(uint8_t regC) {
+    _byte_3 |= regC << 4;
+}
+
 void Instructions::addInstruction(std::unique_ptr<Instruction> _inst) {
     _table.push_back(std::move(_inst));
 }
@@ -60,3 +87,14 @@ TwoReg_Instr::TwoReg_Instr(enum INSTRUCTION instruction, uint8_t regD, uint8_t r
 
 Store_Instr::Store_Instr(uint8_t gpr, std::unique_ptr<Operand> operand)
         : Instruction(INSTRUCTION::ST, gpr), _operand(std::move(operand)) {}
+
+Instruction Instruction::deserialize(uint32_t instructionCode) {
+    Instruction instruction(INSTRUCTION::HALT);
+    // TODO
+//    Instruction instruction(INSTRUCTION::HALT, NO_CONDITION, false);
+//    instruction.instrCode.binaryCode = instructionCode;
+//    instruction.instructionSymbol = (InstructionSymbol) instruction.instrCode.instruction.instr;
+//    instruction.instructionCondition = (InstructionCondition) instruction.instrCode.instruction.cond;
+//    instruction.setFlags = instruction.instrCode.instruction.flag != 0;
+    return instruction;
+}
