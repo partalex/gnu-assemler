@@ -2,15 +2,15 @@
 
 #include <iostream>
 
-void SymbolList::log() {
+void SymbolList::log(std::ostream &out) {
     SymbolList *current = this;
     while (current != nullptr) {
-        std::cout << current->_symbol;
+        out << current->_symbol;
         current = current->_next;
         if (current)
-            std::cout << ", ";
+            out << ", ";
     }
-    std::cout << "\n";
+    out << "\n";
 }
 
 SymbolList::SymbolList(const std::string &str, SymbolList *next) {

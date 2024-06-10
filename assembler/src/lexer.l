@@ -96,12 +96,9 @@ STRING      \"[^\"]+\"
 "status"            { return CSR_STATUS; }
 
 {STRING}            {
-                      /* char* temp = yytext;  */
-                      /*  int size = sizeof(temp)-2; */
-                      /*  char* ident = new char[size]; */
-                      /*  strncpy(ident, temp, size); */
-                      /* yylval.ident = strdup(yytext+1); */
-                      yylval.ident = strdup(yytext+1);;
+                      char* temp = strdup(yytext+1);
+                      temp[strlen(temp)-1] = '\0';
+                      yylval.ident = temp;
                       return T_STRING;
                     }
 {IDENT}             {

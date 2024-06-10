@@ -15,10 +15,9 @@ run: debug
 
 all: $(BIN_PATH) parser
 	$(CC) -I$(INCLUDE_AS) $(SRCS) -o $(BIN_PATH)/main
-	#$(CC) $(SRCS) -o $(BIN_PATH)/main
 
 debug: $(BIN_PATH) parser
-	$(CC) -I$(INCLUDE_AS) -I$(INCLUDE_COMMON) $(SRCS) -g -o $(BIN_PATH)/main
+	$(CC) -I$(INCLUDE_AS) $(SRCS) -g -o $(BIN_PATH)/main
 
 lexer: $(LEXER)
 	flex -o src/lexer.cpp $(LEXER)

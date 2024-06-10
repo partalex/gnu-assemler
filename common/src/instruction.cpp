@@ -2,9 +2,15 @@
 #include "../include/operand.h"
 
 #include <iostream>
+#include <iomanip>
 
 std::ostream &operator<<(std::ostream &out, Instruction &instr) {
-    out << "";
+    // print byte 4 byte 3 byte 2 byte 1 as hex
+    out << std::left <<
+        std::setw(15) << std::hex << (short) instr._byte_1 <<
+        std::setw(15) << std::hex << (short) instr._byte_2 <<
+        std::setw(15) << std::hex << (short) instr._byte_3 <<
+        std::setw(15) << std::hex << (short) instr._byte_4 << "\n";
 //    out << "Instruction: " << instr.instructionSymbol << "\n";
 //    out << "Condition: " << instr.instructionCondition << "\n";
 //    out << "setflags: " << instr.setFlags << "\n";
@@ -97,4 +103,12 @@ Instruction Instruction::deserialize(uint32_t instructionCode) {
 //    instruction.instructionCondition = (InstructionCondition) instruction.instrCode.instruction.cond;
 //    instruction.setFlags = instruction.instrCode.instruction.flag != 0;
     return instruction;
+}
+
+void Instruction::tableHeader(std::ostream &out) {
+    out << std::left <<
+        std::setw(15) << "BYTE[3]" <<
+        std::setw(15) << "BYTE[2]" <<
+        std::setw(15) << "BYTE[1]" <<
+        std::setw(15) << "BYTE[0]" << "\n";
 }

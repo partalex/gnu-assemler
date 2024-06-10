@@ -13,9 +13,9 @@ public:
 
     Relocation(std::string, std::string, u_int32_t, RELOCATION);
 
-    std::string serialize();
+    std::string serialize() const;
 
-    static Relocation deserialize(std::string);
+    static Relocation deserialize(const std::string&);
 
     friend std::ostream &operator<<(std::ostream &, Relocation &);
 

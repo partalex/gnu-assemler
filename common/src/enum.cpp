@@ -17,6 +17,23 @@ std::istream &operator>>(std::istream &in, enum SYMBOL &sym) {
     return in;
 }
 
+std::ostream &operator<<(std::ostream &out, enum SYMBOL sym) {
+    switch (sym) {
+        case SYMBOL::LABEL:
+            return out << "LABEL";
+        case SYMBOL::ASCII:
+            return out << "ASCII";
+        case SYMBOL::SECTION:
+            return out << "SECTION";
+        case SYMBOL::INSTRUCTION:
+            return out << "INSTRUCTION";
+        case SYMBOL::SYMBOL:
+            return out << "SYMBOL";
+        default:
+            return out << "UNDEFINED";
+    }
+}
+
 std::istream &operator>>(std::istream &in, SECTION_TYPE &sec) {
     std::string token;
     in >> token;
@@ -65,8 +82,6 @@ std::ostream &operator<<(std::ostream &out, SCOPE s) {
 
 std::ostream &operator<<(std::ostream &out, enum INSTRUCTION instr) {
     switch (instr) {
-        case INSTRUCTION::HALT:
-            return out << "INT";
         case INSTRUCTION::INT:
             return out << "INT";
         case INSTRUCTION::CALL:

@@ -9,7 +9,7 @@ class Symbol {
 public:
     std::string _name;
     bool _defined;
-    uint64_t _offset;
+    uint32_t _offset;
     uint32_t _sectionIndex;
     SCOPE _scope;
     int32_t _size;
@@ -21,8 +21,10 @@ public:
 
     Symbol(std::string, bool, uint32_t, SCOPE, uint32_t, enum SYMBOL, int32_t size = 0);
 
-    std::string serialize();
+    [[nodiscard]] std::string serialize() const;
 
-    static Symbol deserialize(std::string);
+    static Symbol deserialize(const std::string &);
+
+    static void tableHeader(std::ostream &);
 
 };

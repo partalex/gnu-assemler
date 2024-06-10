@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <iomanip>
+#include <utility>
 
 std::istream &operator>>(std::istream &in, RELOCATION &rel) {
     std::string token;
@@ -23,10 +24,11 @@ std::ostream &operator<<(std::ostream &out, Relocation &rel) {
 }
 
 Relocation::Relocation(std::string symbolName, std::string section, u_int32_t offset, RELOCATION relocationType)
-        : _section(section), _offset(offset), _relocationType(relocationType), _symbolName(symbolName) {
+        : _section(std::move(section)), _offset(offset), _relocationType(relocationType),
+          _symbolName(std::move(symbolName)) {
 }
 
-std::string Relocation::serialize() {
+std::string Relocation::serialize() const {
     std::stringstream out;
 
     out << std::right <<
@@ -39,7 +41,7 @@ std::string Relocation::serialize() {
     return out.str();
 }
 
-Relocation Relocation::deserialize(std::string instr) {
+Relocation Relocation::deserialize(const std::string &instr) {
     std::stringstream in;
     in << instr;
 

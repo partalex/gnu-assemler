@@ -29,7 +29,13 @@ public:
     virtual void setDisplacement(int16_t) final;
 
     static Instruction deserialize(uint32_t);
+
+    void static tableHeader(std::ostream &);
+
+    friend std::ostream &operator<<(std::ostream &, Instruction &);
+
 };
+
 
 class Halt_Instr : public Instruction {
 public:

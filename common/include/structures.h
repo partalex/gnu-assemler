@@ -13,6 +13,6 @@ struct SymbolList {
 
     ~SymbolList() { delete _next; }
 
-    void log();
+    void log(std::ostream &);
 };
 

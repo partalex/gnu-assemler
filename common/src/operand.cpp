@@ -4,67 +4,81 @@
 
 std::string Csr::CSR[] = {"status", "handler", "cause"};
 
-void WordOperand::logOne() {
-}
-
-void WordOperand::log() {
+void WordOperand::log(std::ostream & out) {
     WordOperand *current = this;
     while (current != nullptr) {
-        current->logOne();
+        current->logOne(out);
         current = current->_next;
         if (current)
-            std::cout << ", ";
+            out << ", ";
     }
 }
 
-void GprGprLiteral::log() {
-    std::cout << "%r" << _gpr1;
-    std::cout << ", %r" << _gpr2;
-    std::cout << ", " << _value;
+void GprGprLiteral::log(std::ostream & out) {
+    out << "%r" << _gpr1;
+    out << ", %r" << _gpr2;
+    out << ", " << _value;
 }
 
-void GprGprIdent::log() {
-    std::cout << "%r" + std::to_string(_gpr1);
-    std::cout << ", %r" + std::to_string(_gpr2);
-    std::cout << ", ";
-    std::cout << _ident;
+void GprGprIdent::log(std::ostream & out) {
+    out << "%r" + std::to_string(_gpr1);
+    out << ", %r" + std::to_string(_gpr2);
+    out << ", ";
+    out << _ident;
 }
 
-void LiteralImm::log() {
-    std::cout << _value;
+void LiteralImm::log(std::ostream & out) {
+    out << _value;
 }
 
-void LiteralInDir::log() {
-    std::cout << _value;
+void LiteralInDir::log(std::ostream & out) {
+    out << _value;
 }
 
-void GprCsr::log() {
-    std::cout << "%r" << _gpr;
-    std::cout << ", %" + Csr::CSR[_csr];
+void GprCsr::log(std::ostream & out) {
+    out << "%r" << _gpr;
+    out << ", %" + Csr::CSR[_csr];
 }
 
-void IdentDir::log() {
-    std::cout << _ident;
+void IdentDir::log(std::ostream & out) {
+    out << _ident;
 }
 
-void RegInDir::log() {
-    std::cout << "%r" << _gpr;
+void RegInDir::log(std::ostream & out) {
+    out << "%r" << _gpr;
 }
 
-void RegDir::log() {
-    std::cout << "%r" << _gpr;
+void RegDir::log(std::ostream & out) {
+    out << "%r" << _gpr;
 }
 
-void RegInDirOffLiteral::log() {
-    std::cout << "%r" << _gpr;
-    std::cout << ", " << _offset;
+void RegInDirOffLiteral::log(std::ostream & out) {
+    out << "%r" << _gpr;
+    out << ", " << _offset;
 }
 
-void RegInDirOffIdent::log() {
-    std::cout << "%r" << _gpr;
-    std::cout << ", " << _ident;
+void RegInDirOffIdent::log(std::ostream & out) {
+    out << "%r" << _gpr;
+    out << ", " << _ident;
 }
 
-void CsrOp::log() {
-    std::cout << "%" << Csr::CSR[_csr];
+void CsrOp::log(std::ostream & out) {
+    out << "%" << Csr::CSR[_csr];
+}
+
+void *WordLiteral::getValue() {
+    return &_value;
+}
+
+void WordLiteral::logOne(std::ostream &out) {
+    out << _value;
+}
+
+void *WordIdent::getValue() {
+    // TODO
+    throw std::runtime_error("Needed to get value from table symbol");
+}
+
+void WordIdent::logOne(std::ostream &out) {
+    out << _ident;
 }

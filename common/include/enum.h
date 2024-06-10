@@ -8,6 +8,7 @@ enum RELOCATION {
 
 enum SYMBOL {
     LABEL,
+    ASCII,
     SECTION,
     INSTRUCTION,
     SYMBOL,
@@ -65,6 +66,8 @@ enum INSTRUCTION {
 };
 
 std::istream &operator>>(std::istream &, enum SYMBOL &);
+
+std::ostream &operator<<(std::ostream &, enum SYMBOL);
 
 std::istream &operator>>(std::istream &, SECTION_TYPE &);
 
