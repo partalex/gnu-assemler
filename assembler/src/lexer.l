@@ -15,6 +15,7 @@ HEX         0[Xx][0-9A-Fa-f]+
 DEC         [0-9]+
 IDENT       [A-Za-z_][A-Za-z0-9_]*
 STRING      \"[^\"]+\"
+OFFSET      [\+\-]({HEX}|{DEC})
 
 %%
 {COMMENT}           { }
@@ -23,9 +24,16 @@ STRING      \"[^\"]+\"
 			          return T_LITERAL;
                     }
 {DEC}               {
-                      sscanf(yytext, "%d", &yylval.num_32);
-                      return T_LITERAL;
+                        sscanf(yytext, "%d", &yylval.num_32);
+                        return T_LITERAL;
                     }
+{OFFSET}            {
+                        sscanf(yytext, "%d", &yylval.num_32);
+                        if (yytext[0] == '-')
+                            yylval.num_32 *= -1;
+                        return T_OFFSET;
+                    }
+
 ","                 { return T_COMMA; }             /* "\"" { return T_QUATATION; } */
 ":"                 { return T_COLON; }
 "$"                 { return T_DOLLAR; }

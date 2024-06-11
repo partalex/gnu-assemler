@@ -5,6 +5,7 @@
 #include <iostream>
 #include <cstring>
 #include <algorithm>
+#include <fstream>
 
 extern int yylex_destroy(void);
 
@@ -69,17 +70,12 @@ void Assembler::parseEnd() {
 #ifdef LOG_PARSER
     std::cout << "END" << "\n";
 #endif
-    log();
+    log(std::cout);
     if (hasUnresolvedSymbols()) {
         std::cerr << "Error: Unresolved symbols detected." << "\n";
         exit(EXIT_FAILURE);
     }
-#ifdef LOG_SYMBOL_TABLE
-    _symbolTable.log(std::cout);
-#endif
-#ifdef LOG_INSTRUCTIONS
-    _instructions.log(std::cout);
-#endif
+    writeObjectFile();
 }
 
 void Assembler::parseLabel(const std::string &str) {
@@ -92,7 +88,7 @@ void Assembler::parseLabel(const std::string &str) {
             std::cerr << "Error: Symbol " << str << " already defined." << "\n";
             exit(EXIT_FAILURE);
         }
-        symbol->_offset = _sections[_currSectIndex]->_locationCounter;
+        symbol->_offset = _sections[_currSectIndex]->getLocCounter();
         symbol->_sectionIndex = _currSectIndex;
         symbol->_defined = true;
         symbol->_symbolType = SYMBOL::LABEL;
@@ -102,7 +98,7 @@ void Assembler::parseLabel(const std::string &str) {
                 true,
                 _currSectIndex,
                 SCOPE::LOCAL,
-                _sections[_currSectIndex]->_locationCounter,
+                _sections[_currSectIndex]->getLocCounter(),
                 SYMBOL::LABEL
         ));
     }
@@ -130,8 +126,8 @@ void Assembler::parseWord(WordOperand *operand) {
 #endif
     WordOperand *temp = operand;
     while (temp) {
-        _sections[_currSectIndex]->write(temp->getValue(), _sections[_currSectIndex]->_locationCounter, 4);
-        _sections[_currSectIndex]->_locationCounter += 4;
+        _sections[_currSectIndex]->write(temp->getValue(), _sections[_currSectIndex]->getLocCounter(), 4);
+        _sections[_currSectIndex]->addToLocCounter(4);
         temp = temp->_next;
     }
     delete operand;
@@ -141,8 +137,8 @@ void Assembler::parseAscii(const std::string &str) {
 #ifdef LOG_PARSER
     std::cout << "ASCII: " << str << "\n";
 #endif
-    _sections[_currSectIndex]->write((void *) str.c_str(), str.length(), _sections[_currSectIndex]->_locationCounter);
-    _sections[_currSectIndex]->_locationCounter += str.length();
+    _sections[_currSectIndex]->write((void *) str.c_str(), _sections[_currSectIndex]->getLocCounter(), str.length());
+    _sections[_currSectIndex]->addToLocCounter(str.length());
 }
 
 void Assembler::parseHalt() {
@@ -158,7 +154,7 @@ void Assembler::parseNoAdr(unsigned char inst) {
     std::cout << name << "\n";
 #endif
     _instructions.emplace_back(std::make_unique<NoAdr_Instr>(static_cast<enum INSTRUCTION>(inst)));
-    _sections[_currSectIndex]->_locationCounter += 4;
+    _sections[_currSectIndex]->addToLocCounter(4);
 }
 
 void Assembler::parseJmp(unsigned char inst, Operand *operand) {
@@ -170,7 +166,7 @@ void Assembler::parseJmp(unsigned char inst, Operand *operand) {
 #endif
     _instructions.emplace_back(std::make_unique<Jmp_Instr>(static_cast<enum INSTRUCTION>(inst),
                                                            std::unique_ptr<Operand>(operand)));
-    _sections[_currSectIndex]->_locationCounter += 4;
+    _sections[_currSectIndex]->addToLocCounter(4);
 }
 
 void Assembler::parseCall(unsigned char inst, Operand *operand) {
@@ -182,7 +178,7 @@ void Assembler::parseCall(unsigned char inst, Operand *operand) {
 #endif
     _instructions.emplace_back(std::make_unique<Call_Instr>(static_cast<enum INSTRUCTION>(inst),
                                                             std::unique_ptr<Operand>(operand)));
-    _sections[_currSectIndex]->_locationCounter += 4;
+    _sections[_currSectIndex]->addToLocCounter(4);
 }
 
 void Assembler::parseCondJmp(unsigned char inst, Operand *operand) {
@@ -194,7 +190,7 @@ void Assembler::parseCondJmp(unsigned char inst, Operand *operand) {
 #endif
     _instructions.emplace_back(std::make_unique<JmpCond_Instr>(static_cast<enum INSTRUCTION>(inst),
                                                                std::unique_ptr<Operand>(operand)));
-    _sections[_currSectIndex]->_locationCounter += 4;
+    _sections[_currSectIndex]->addToLocCounter(4);
 }
 
 void Assembler::parsePush(unsigned char gpr) {
@@ -202,7 +198,7 @@ void Assembler::parsePush(unsigned char gpr) {
     std::cout << "PUSH: %r" << static_cast<int>(gpr) << "\n";
 #endif
     _instructions.emplace_back(std::make_unique<Push_Instr>(gpr));
-    _sections[_currSectIndex]->_locationCounter += 4;
+    _sections[_currSectIndex]->addToLocCounter(4);
 }
 
 void Assembler::parsePop(unsigned char gpr) {
@@ -210,7 +206,7 @@ void Assembler::parsePop(unsigned char gpr) {
     std::cout << "POP: %r" << static_cast<int>(gpr) << "\n";
 #endif
     _instructions.emplace_back(std::make_unique<Pop_Instr>(gpr));
-    _sections[_currSectIndex]->_locationCounter += 4;
+    _sections[_currSectIndex]->addToLocCounter(4);
 }
 
 void Assembler::parseNot(unsigned char gpr) {
@@ -218,7 +214,7 @@ void Assembler::parseNot(unsigned char gpr) {
     std::cout << "NOT" << "\n";
 #endif
     _instructions.emplace_back(std::make_unique<Not_Instr>(gpr));
-    _sections[_currSectIndex]->_locationCounter += 4;
+    _sections[_currSectIndex]->addToLocCounter(4);
 }
 
 void Assembler::parseInt(Operand *operand) {
@@ -227,7 +223,7 @@ void Assembler::parseInt(Operand *operand) {
 #endif
     // TODO
     _instructions.emplace_back(std::make_unique<Int_Instr>(std::unique_ptr<Operand>(operand)));
-    _sections[_currSectIndex]->_locationCounter += 4;
+    _sections[_currSectIndex]->addToLocCounter(4);
 }
 
 void Assembler::parseXchg(unsigned char regS, unsigned char regD) {
@@ -235,7 +231,7 @@ void Assembler::parseXchg(unsigned char regS, unsigned char regD) {
     std::cout << "XCHG: %r" << (short) regS << ", %r" << (short) regD << "\n";
 #endif
     _instructions.emplace_back(std::make_unique<Xchg_Instr>(regS, regD));
-    _sections[_currSectIndex]->_locationCounter += 4;
+    _sections[_currSectIndex]->addToLocCounter(4);
 }
 
 void Assembler::parseTwoReg(unsigned char inst, unsigned char regS, unsigned char regD) {
@@ -244,7 +240,7 @@ void Assembler::parseTwoReg(unsigned char inst, unsigned char regS, unsigned cha
     std::cout << "%r" << (short) regS << ", %r" << (short) regD << "\n";
 #endif
     _instructions.emplace_back(std::make_unique<TwoReg_Instr>(static_cast<enum INSTRUCTION>(inst), regS, regD));
-    _sections[_currSectIndex]->_locationCounter += 4;
+    _sections[_currSectIndex]->addToLocCounter(4);
 }
 
 void Assembler::parseCsrrd(unsigned char csr, unsigned char gpr) {
@@ -253,7 +249,7 @@ void Assembler::parseCsrrd(unsigned char csr, unsigned char gpr) {
 #endif
     auto instr = std::make_unique<Csrrd_Instr>(csr, gpr);
     _instructions.emplace_back(std::make_unique<Csrrd_Instr>(csr, gpr));
-    _sections[_currSectIndex]->_locationCounter += 4;
+    _sections[_currSectIndex]->addToLocCounter(4);
 }
 
 void Assembler::parseCsrwr(unsigned char gpr, unsigned char csr) {
@@ -261,18 +257,27 @@ void Assembler::parseCsrwr(unsigned char gpr, unsigned char csr) {
     std::cout << "CSRRD: %r" << static_cast<int>(gpr) << ", %" << Csr::CSR[csr] << "\n";
 #endif
     _instructions.emplace_back(std::make_unique<Csrwr_Instr>(gpr, csr));
-    _sections[_currSectIndex]->_locationCounter += 4;
+    _sections[_currSectIndex]->addToLocCounter(4);
 }
 
 void Assembler::parseLoad(Operand *operand, unsigned char gpr) {
 #ifdef LOG_PARSER
     std::cout << "LOAD: ";
+    std::cout << "%r, " << static_cast<int>(gpr);
     operand->log(std::cout);
-    std::cout << ", %r" << static_cast<int>(gpr) << "\n";
+    std::cout << "\n";
 #endif
     auto instr = std::make_unique<Load_Instr>(std::unique_ptr<Operand>(operand), gpr);
     _instructions.emplace_back(std::make_unique<Load_Instr>(std::unique_ptr<Operand>(operand), gpr));
-    _sections[_currSectIndex]->_locationCounter += 4;
+    _sections[_currSectIndex]->addToLocCounter(4);
+}
+
+void Assembler::parseLoad(unsigned char gpr1, unsigned char gpr2, int16_t offset) {
+#ifdef LOG_PARSER
+    std::cout << "LOAD: [%r" << static_cast<int>(gpr1) << "+" << offset << "], %r" << static_cast<int>(gpr2) << "\n";
+#endif
+    _instructions.emplace_back(std::make_unique<Load_Instr>(gpr1, gpr2, offset));
+    _sections[_currSectIndex]->addToLocCounter(4);
 }
 
 void Assembler::parseStore(unsigned char gpr, Operand *operand) {
@@ -282,7 +287,7 @@ void Assembler::parseStore(unsigned char gpr, Operand *operand) {
     std::cout << "\n";
 #endif
     _instructions.emplace_back(std::make_unique<Store_Instr>(gpr, std::unique_ptr<Operand>(operand)));
-    _sections[_currSectIndex]->_locationCounter += 4;
+    _sections[_currSectIndex]->addToLocCounter(4);
 }
 
 void Assembler::parseGlobal(SymbolList *list) {
@@ -305,10 +310,10 @@ void Assembler::parseGlobal(SymbolList *list) {
     delete list;
 }
 
-void Assembler::log() const {
-    logSymbols();
-    logSections();
-    logInstructions();
+void Assembler::log(std::ostream &out) const {
+    logSymbols(out);
+    logSections(out);
+    logInstructions(out);
 }
 
 Symbol *Assembler::findSymbol(std::string symName) {
@@ -327,28 +332,40 @@ bool Assembler::hasUnresolvedSymbols() {
     return false;
 }
 
-void Assembler::logSections() const {
-    std::cout << "----------------------------------------\n";
-    Section::tableHeader(std::cout);
+void Assembler::logSections(std::ostream &out) const {
+    out << "----------------------------------------\n";
+    Section::tableHeader(out);
     for (auto &sect: _sections)
-        std::cout << *sect;
-    std::cout << "----------------------------------------\n";
+        out << *sect;
+    out << "----------------------------------------\n";
 }
 
-void Assembler::logSymbols() const {
-    std::cout
-            << "----------------------------------------------------------------------------------------------------\n";
-    Symbol::tableHeader(std::cout);
+void Assembler::logSymbols(std::ostream &out) const {
+    out << "----------------------------------------------------------------------------------------------------\n";
+    Symbol::tableHeader(out);
     for (auto &sym: _symbols)
-        std::cout << *sym;
-    std::cout
-            << "----------------------------------------------------------------------------------------------------\n";
+        out << *sym;
+    out << "----------------------------------------------------------------------------------------------------\n";
 }
 
-void Assembler::logInstructions() const {
-    std::cout << "----------------------------------------------------\n";
+void Assembler::logInstructions(std::ostream &out) const {
+    out << "----------------------------------------------------\n";
     Instruction::tableHeader(std::cout);
     for (auto &instr: _instructions)
-        std::cout << *instr;
-    std::cout << "----------------------------------------------------\n";
+        out << *instr;
+    out << "----------------------------------------------------\n";
+}
+
+void Assembler::writeObjectFile() {
+    std::ofstream out(_output);
+    if (!out.is_open()) {
+        std::cerr << "Error: Unable to open file " << _output << "\n";
+        exit(EXIT_FAILURE);
+    }
+    log(out);
+    for (auto &sect: _sections)
+        out << sect->serialize();
+//    for (auto &instr: _instructions)
+//        out << instr->serialize();
+    out.close();
 }

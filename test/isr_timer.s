@@ -5,5 +5,4 @@
 .global isr_timer
 isr_timer:
     ret
-
 .end

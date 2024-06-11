@@ -33,7 +33,7 @@ public:
 
     static int pass(int, char **);                      // done
 
-    void log() const;                                   // TODO
+    void log(std::ostream &) const;                     // TODO
 
     void parseLabel(const std::string &);               // done
 
@@ -78,6 +78,8 @@ public:
 
     void parseLoad(Operand *, unsigned char);           // done
 
+    void parseLoad(unsigned char, unsigned char, int16_t offset);           // done
+
     void parseStore(unsigned char, Operand *);          // done
 
     void parseNoAdr(unsigned char);                     // TODO
@@ -86,10 +88,11 @@ public:
 
     bool hasUnresolvedSymbols();
 
-    void logSections() const;
+    void logSections(std::ostream &) const;
 
-    void logSymbols() const;
+    void logSymbols(std::ostream &) const;
 
-    void logInstructions() const;
+    void logInstructions(std::ostream &) const;
 
+    void writeObjectFile();
 };

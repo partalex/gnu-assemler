@@ -18,12 +18,13 @@
 %defines "./include/parser.h"
 
 %union {
-	char*               ident;
+    char*               ident;
     unsigned char       num_u8;
     unsigned int        num_32;
     class SymbolList*   symbolList;
     class Operand*      operand;
     class WordOperand*  wordOperand;
+    int 	        offset;
 }
 
 %token            T_COMMA
@@ -44,6 +45,7 @@
 %token            T_ASCII
 %token            T_END
 %token<ident>     T_STRING
+%token<offset>    T_OFFSET
 %token            I_HALT
 %token            I_INT
 %token            I_IRET
@@ -187,6 +189,10 @@ instruction
 
   | I_LD oneRegOperand T_COMMA T_PERCENT gpr
   { Assembler::singleton().parseLoad($2, $5); }
+
+  /* ld [%r1+0], %r2 */
+  | I_LD T_OBRACKET T_PERCENT gpr T_OFFSET T_CBRACKET T_COMMA T_PERCENT gpr
+  { Assembler::singleton().parseLoad($4, $9, $5); }
 
   | I_ST T_PERCENT gpr T_COMMA oneRegOperand
   { Assembler::singleton().parseStore($3, $5); };

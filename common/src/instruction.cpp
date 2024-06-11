@@ -28,12 +28,8 @@ void Instruction::setDisplacement(int16_t offset) {
     _byte_4 |= offset & 0xFF;
 }
 
-Instruction::Instruction(enum INSTRUCTION instruction, uint8_t regA, uint8_t regB, uint8_t regC, int offset)
+Instruction::Instruction(enum INSTRUCTION instruction, uint8_t regA, uint8_t regB, uint8_t regC)
         : _byte_1(instruction), _byte_2(regA << 4 | regB), _byte_3(regC << 4) {
-    if (offset < -2048 || offset > 2047)
-        throw std::runtime_error("Displacement out of range.");
-    _byte_3 |= (offset & 0xF00) >> 8;
-    _byte_4 |= offset & 0xFF;
 }
 
 void Instruction::setRegA(uint8_t regA) {
@@ -65,7 +61,13 @@ Int_Instr::Int_Instr(std::unique_ptr<Operand> operand)
         : Instruction(INSTRUCTION::INT), _operand(std::move(operand)) {}
 
 Load_Instr::Load_Instr(std::unique_ptr<Operand> operand, uint8_t gpr)
-        : Instruction(INSTRUCTION::LD, gpr), _operand(std::move(operand)) {}
+        : Instruction(INSTRUCTION::LD, gpr), _operand(std::move(operand)) {
+}
+
+Load_Instr::Load_Instr(uint8_t gprD, uint8_t gprS, int16_t offset)
+        : Instruction(INSTRUCTION::LD, gprD, gprS) {
+    setDisplacement(offset);
+}
 
 Csrwr_Instr::Csrwr_Instr(uint8_t gpr, uint8_t csr)
         : Instruction(INSTRUCTION::CSR_LD, gpr, csr) {}

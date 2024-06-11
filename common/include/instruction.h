@@ -18,7 +18,7 @@ public:
     uint8_t _byte_3{};
     uint8_t _byte_4{};
 
-    explicit Instruction(enum INSTRUCTION byte_1, uint8_t regA = 0, uint8_t regB = 0, uint8_t regC = 0, int offset = 0);
+    explicit Instruction(enum INSTRUCTION byte_1, uint8_t regA = 0, uint8_t regB = 0, uint8_t regC = 0);
 
     virtual void setRegA(uint8_t) final;
 
@@ -82,6 +82,8 @@ class Load_Instr : public Instruction {
     std::unique_ptr<Operand> _operand;
 public:
     explicit Load_Instr(std::unique_ptr<Operand>, uint8_t);
+
+    explicit Load_Instr(uint8_t, uint8_t, int16_t);
 };
 
 class Store_Instr : public Instruction {

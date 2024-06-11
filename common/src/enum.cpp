@@ -163,3 +163,13 @@ std::ostream &operator<<(std::ostream &out, RELOCATION rel) {
             return out << "UNDEFINED";
     }
 }
+
+std::istream &operator>>(std::istream &in, RELOCATION &rel) {
+    std::string token;
+    in >> token;
+    if (token == "R_386_32")
+        rel = RELOCATION::R_386_32;
+    if (token == "R_386_PC32")
+        rel = RELOCATION::R_386_PC32;
+    return in;
+}

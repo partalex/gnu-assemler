@@ -6,7 +6,7 @@
 #include <utility>
 
 const uint64_t Section::MIN_SIZE = 128;
-const uint64_t Section::MULTIPLIER = 2;
+const uint8_t Section::MULTIPLIER = 2;
 
 Section::Section(std::string _name) :
         _name(std::move(_name)) {
@@ -15,7 +15,7 @@ Section::Section(std::string _name) :
 
 void Section::write(void *src, uint32_t pos, uint64_t length) {
     if (pos + length > _size)
-        reallocateMemory(_size * MULTIPLIER);
+        reallocateMemory(_size ? _size * MULTIPLIER : MIN_SIZE);
     std::memcpy(_memory.get() + pos, src, length);
 }
 
@@ -94,12 +94,21 @@ void Section::tableHeader(std::ostream &out) {
     out << std::left <<
         std::setw(15) << "Name" <<
         std::setw(15) << "Size" <<
-        std::setw(15) << "LocCounter" "\n";
+        std::setw(15) << "LocCounter" << "\n";
 }
 
 void Section::reallocateMemory(uint64_t size) {
     auto newMem = std::make_unique<uint8_t[]>(size);
-    std::memcpy(newMem.get(), _memory.get(), _size);
+    if (_size)
+        std::memcpy(newMem.get(), _memory.get(), _size);
     _memory = std::move(newMem);
     _size = size;
+}
+
+void Section::addToLocCounter(uint32_t offset) {
+    _locationCounter += offset;
+}
+
+uint64_t Section::getLocCounter() const {
+    return _locationCounter;
 }

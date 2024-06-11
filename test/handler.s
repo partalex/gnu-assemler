@@ -1,6 +1,8 @@
 .extern isr_timer, isr_terminal
 
 .global handler
+one:
+    .ascii "sta je ovo"
 .section my_handler
 handler:
     push %r1
@@ -22,5 +24,4 @@ handle_timer:
 handle_terminal:
     call isr_terminal
     jmp finish
-    
 .end

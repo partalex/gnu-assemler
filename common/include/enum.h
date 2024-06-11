@@ -80,3 +80,5 @@ std::ostream &operator<<(std::ostream &, SCOPE);
 std::ostream &operator<<(std::ostream &, enum INSTRUCTION);
 
 std::ostream &operator<<(std::ostream &, RELOCATION);
+
+std::istream &operator>>(std::istream &, RELOCATION &);

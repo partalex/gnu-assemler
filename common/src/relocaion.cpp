@@ -4,13 +4,8 @@
 #include <iomanip>
 #include <utility>
 
-std::istream &operator>>(std::istream &in, RELOCATION &rel) {
-    std::string token;
-    in >> token;
-    if (token == "R_386_32")
-        rel = RELOCATION::R_386_32;
-    if (token == "R_386_PC32")
-        rel = RELOCATION::R_386_PC32;
+std::istream &operator>>(std::istream &in, Relocation &rel) {
+    // TODO
     return in;
 }
 
@@ -57,7 +52,7 @@ Relocation Relocation::deserialize(const std::string &instr) {
     u_int32_t offset;
     in >> offset;
 
-    RELOCATION relType;
+    RELOCATION relType = RELOCATION::R_386_32;
     in >> relType;
 
     Relocation rel(symbolName, section, offset, relType);
