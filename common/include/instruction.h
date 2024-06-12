@@ -13,12 +13,13 @@ class Operand;
 class Instruction {
 public:
 
-    uint8_t _byte_1;
-    uint8_t _byte_2{};
-    uint8_t _byte_3{};
-    uint8_t _byte_4{};
+    struct {
+        u_int32_t _byte_3: 8, _byte_2: 8, _byte_1: 8, _byte_0: 8;
+    } _bytes = {};
 
     explicit Instruction(enum INSTRUCTION byte_1, uint8_t regA = 0, uint8_t regB = 0, uint8_t regC = 0);
+
+    virtual void setInstr(uint8_t) final;
 
     virtual void setRegA(uint8_t) final;
 

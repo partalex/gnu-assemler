@@ -16,24 +16,25 @@ public:
 
     void addToLocCounter(uint32_t offset);
 
-    uint64_t getLocCounter() const;
+    [[nodiscard]] uint64_t getLocCounter() const;
 
     explicit Section(std::string);
 
-    void write(void *, uint32_t, uint64_t);
+    void write(void *, uint32_t, uint32_t);
+
+    void writeInstr(void *, uint32_t);
 
     void writeZeros(uint32_t, uint64_t);
 
     Section &operator+=(Section &);
 
-    [[nodiscard]] std::string serialize() const;
-
-    static Section deserialize(const std::string &);
+    void serialize(std::ostream &out) const;
 
     friend std::ostream &operator<<(std::ostream &, Section &);
 
     void static tableHeader(std::ostream &);
 
     void reallocateMemory(uint64_t size);
+
 };
 

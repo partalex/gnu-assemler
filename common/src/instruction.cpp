@@ -5,12 +5,11 @@
 #include <iomanip>
 
 std::ostream &operator<<(std::ostream &out, Instruction &instr) {
-    // print byte 4 byte 3 byte 2 byte 1 as hex
     out << std::left <<
-        std::setw(15) << std::hex << (short) instr._byte_1 <<
-        std::setw(15) << std::hex << (short) instr._byte_2 <<
-        std::setw(15) << std::hex << (short) instr._byte_3 <<
-        std::setw(15) << std::hex << (short) instr._byte_4 << "\n";
+        std::setw(15) << std::hex << (short) instr._bytes._byte_3 <<
+        std::setw(15) << std::hex << (short) instr._bytes._byte_2 <<
+        std::setw(15) << std::hex << (short) instr._bytes._byte_1 <<
+        std::setw(15) << std::hex << (short) instr._bytes._byte_0 << "\n";
 //    out << "Instruction: " << instr.instructionSymbol << "\n";
 //    out << "Condition: " << instr.instructionCondition << "\n";
 //    out << "setflags: " << instr.setFlags << "\n";
@@ -24,24 +23,31 @@ std::ostream &operator<<(std::ostream &out, Instruction &instr) {
 void Instruction::setDisplacement(int16_t offset) {
     if (offset < -2048 || offset > 2047)
         throw std::runtime_error("Displacement out of range.");
-    _byte_3 |= (offset & 0xF00) >> 8;
-    _byte_4 |= offset & 0xFF;
+    _bytes._byte_2 |= (offset & 0xF00) >> 8;
+    _bytes._byte_3 |= offset & 0xFF;
 }
 
-Instruction::Instruction(enum INSTRUCTION instruction, uint8_t regA, uint8_t regB, uint8_t regC)
-        : _byte_1(instruction), _byte_2(regA << 4 | regB), _byte_3(regC << 4) {
+Instruction::Instruction(enum INSTRUCTION instr, uint8_t regA, uint8_t regB, uint8_t regC) {
+    setInstr(instr);
+    setRegA(regA);
+    setRegB(regB);
+    setRegC(regC);
+}
+
+void Instruction::setInstr(uint8_t instr) {
+    _bytes._byte_0 = instr;
 }
 
 void Instruction::setRegA(uint8_t regA) {
-    _byte_2 |= regA << 4;
+    _bytes._byte_1 |= regA << 4;
 }
 
-void Instruction::setRegB(uint8_t regC) {
-    _byte_2 |= regC;
+void Instruction::setRegB(uint8_t regB) {
+    _bytes._byte_2 |= regB;
 }
 
 void Instruction::setRegC(uint8_t regC) {
-    _byte_3 |= regC << 4;
+    _bytes._byte_2 |= regC << 4;
 }
 
 void Instructions::addInstruction(std::unique_ptr<Instruction> _inst) {

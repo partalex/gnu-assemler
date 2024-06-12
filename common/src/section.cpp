@@ -5,7 +5,7 @@
 #include <iomanip>
 #include <utility>
 
-const uint64_t Section::MIN_SIZE = 128;
+const uint64_t Section::MIN_SIZE = 64;
 const uint8_t Section::MULTIPLIER = 2;
 
 Section::Section(std::string _name) :
@@ -13,10 +13,14 @@ Section::Section(std::string _name) :
     _memory = std::make_unique<uint8_t[]>(MIN_SIZE);
 }
 
-void Section::write(void *src, uint32_t pos, uint64_t length) {
+void Section::write(void *src, uint32_t pos, uint32_t length) {
     if (pos + length > _size)
         reallocateMemory(_size ? _size * MULTIPLIER : MIN_SIZE);
     std::memcpy(_memory.get() + pos, src, length);
+}
+
+void Section::writeInstr(void *src, uint32_t pos) {
+    write(src, pos, 4);
 }
 
 void Section::writeZeros(uint32_t pos, uint64_t length) {
@@ -35,42 +39,38 @@ Section &Section::operator+=(Section &other) {
     return *this;
 }
 
-std::string Section::serialize() const {
-    std::stringstream out;
-    const int tokensByLine = 8;
+void Section::serialize(std::ostream &out) const {
+    const int tokensByLine = 16;
     out << _name << " " << std::dec << _size;
-    for (int i = 0; i < _size; i++) {
+    for (auto i = 0; i < _size; ++i) {
         if (i % tokensByLine == 0)
-            out << "\n";
+            out << "\n" << std::setw(8) << std::setfill('0') << std::hex << i << "   ";
         out << std::right << std::setfill('0') << std::setw(2) << std::hex << (uint32_t) _memory[i] << " ";
+        if (i % 8 == 7)
+            out << "  ";
+        if (i % tokensByLine == tokensByLine - 1) {
+            out << "|";
+            for (auto j = i - tokensByLine + 1; j <= i; ++j)
+                if (_memory[j] >= 32 && _memory[j] <= 126)
+                    out << _memory[j];
+                else
+                    out << ".";
+            out << "|";
+        }
     }
-    out << "\n";
-    out << ".end" << "\n" << "\n";
-    return out.str();
-}
-
-Section Section::deserialize(const std::string &instr) {
-    std::stringstream in;
-    in << instr;
-    std::string _name;
-    in >> _name;
-    int _size;
-    in >> _size;
-    Section sec(_name);
-    sec.reallocateMemory(_size);
-    std::string tempS;
-    uint32_t temp;
-    uint8_t tempIn;
-    for (int i = 0; i < _size; ++i) {
-        in >> tempS;
-        std::stringstream ss;
-        ss << "0x";
-        ss << tempS;
-        ss >> std::hex >> temp;
-        tempIn = (uint8_t) temp;
-        sec.write(&tempIn, i, 1);
+    auto remaining = _size % tokensByLine;
+    if (remaining != 0) {
+        for (int i = 0; i < tokensByLine - remaining; i++)
+            out << "   ";
+        out << " |";
+        for (auto i = _size - remaining; i < _size; ++i)
+            if (_memory[i] >= 32 && _memory[i] <= 126)
+                out << _memory[i];
+            else
+                out << ".";
+        out << "|";
     }
-    return sec;
+    out << "\n" << ".end" << "\n" << "\n";
 }
 
 std::ostream &operator<<(std::ostream &out, Section &sec) {

@@ -12,7 +12,7 @@ Symbol::Symbol(std::string name, bool defined, std::uint32_t sectionIndex, SCOPE
         _sectionIndex(sectionIndex),
         _scope(scope),
         _offset(offset),
-        _size(size),
+//        _size(size),
         _symbolType(symbolType) {}
 
 std::istream &operator>>(std::istream &in, Symbol &symbol) {
@@ -21,7 +21,7 @@ std::istream &operator>>(std::istream &in, Symbol &symbol) {
     in >> symbol._sectionIndex;
     in >> symbol._offset;
     in >> symbol._scope;
-    in >> symbol._size;
+//    in >> symbol._size;
     in >> symbol._symbolType;
     return in;
 }
@@ -29,11 +29,11 @@ std::istream &operator>>(std::istream &in, Symbol &symbol) {
 std::ostream &operator<<(std::ostream &out, Symbol &symbol) {
     out << std::left <<
         std::setw(15) << symbol._name <<
-        std::setw(15) << symbol._defined <<
+        std::setw(15) << std::boolalpha << symbol._defined <<
         std::setw(15) << symbol._sectionIndex <<
         std::setw(15) << symbol._offset <<
         std::setw(15) << symbol._scope <<
-        std::setw(15) << symbol._size <<
+        //        std::setw(15) << symbol._size <<
         std::setw(15) << symbol._symbolType << "\n";
     return out;
 }
@@ -47,7 +47,7 @@ std::string Symbol::serialize() const {
        std::setw(15) << _sectionIndex <<
        std::setw(15) << _offset <<
        std::setw(15) << _scope <<
-       std::setw(15) << _size <<
+       //       std::setw(15) << _size <<
        std::setw(15) << _symbolType << "\n";
     return ss.str();
 }
@@ -74,13 +74,13 @@ Symbol Symbol::deserialize(const std::string &instr) {
     SCOPE scope;
     in >> scope;
 
-    int size;
-    in >> size;
+//    int size;
+//    in >> size;
 
     enum SYMBOL symbolType;
     in >> symbolType;
 
-    Symbol sym(name, defined, sectionIndex, scope, offset, symbolType, size);
+    Symbol sym(name, defined, sectionIndex, scope, offset, symbolType);
 
     return sym;
 }
@@ -89,9 +89,9 @@ void Symbol::tableHeader(std::ostream &out) {
     out << std::left <<
         std::setw(15) << "Name" <<
         std::setw(15) << "Defined" <<
-        std::setw(15) << "SectionIndex" <<
+        std::setw(15) << "Section" <<
         std::setw(15) << "Offset" <<
         std::setw(15) << "Scope" <<
-        std::setw(15) << "Size" <<
+        //        std::setw(15) << "Size" <<
         std::setw(15) << "SymbolType" << "\n";
 }

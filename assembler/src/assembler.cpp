@@ -6,6 +6,7 @@
 #include <cstring>
 #include <algorithm>
 #include <fstream>
+#include <iomanip>
 
 extern int yylex_destroy(void);
 
@@ -49,7 +50,7 @@ void Assembler::parseExtern(SymbolList *list) {
         auto it = findSymbol(temp->_symbol);
         if (it == nullptr)
             _symbols.emplace_back(
-                    std::make_unique<Symbol>(temp->_symbol, false, _currSectIndex, SCOPE::GLOBAL, 0, SYMBOL::SYMBOL));
+                    std::make_unique<Symbol>(temp->_symbol, false, -1, SCOPE::GLOBAL, 0, SYMBOL::SYMBOL));
         else if (it->_scope == SCOPE::GLOBAL) {
             std::cerr << "Error: Symbol " << temp->_symbol << " already defined as global." << "\n";
             exit(EXIT_FAILURE);
@@ -70,12 +71,12 @@ void Assembler::parseEnd() {
 #ifdef LOG_PARSER
     std::cout << "END" << "\n";
 #endif
-    log(std::cout);
+    writeTxt();
+    writeElf64();
     if (hasUnresolvedSymbols()) {
         std::cerr << "Error: Unresolved symbols detected." << "\n";
         exit(EXIT_FAILURE);
     }
-    writeObjectFile();
 }
 
 void Assembler::parseLabel(const std::string &str) {
@@ -146,6 +147,9 @@ void Assembler::parseHalt() {
     std::cout << "HALT" << "\n";
 #endif
     _instructions.emplace_back(std::make_unique<Halt_Instr>());
+
+    _sections[_currSectIndex]->writeInstr((void *) &_instructions.back()->_bytes, _sections[_currSectIndex]->getLocCounter());
+    _sections[_currSectIndex]->addToLocCounter(4);
 }
 
 void Assembler::parseNoAdr(unsigned char inst) {
@@ -300,7 +304,7 @@ void Assembler::parseGlobal(SymbolList *list) {
         auto it = findSymbol(temp->_symbol);
         if (it == nullptr)
             _symbols.emplace_back(
-                    std::make_unique<Symbol>(temp->_symbol, false, _currSectIndex, SCOPE::GLOBAL, 0, SYMBOL::SYMBOL));
+                    std::make_unique<Symbol>(temp->_symbol, false, -1, SCOPE::GLOBAL, 0, SYMBOL::SYMBOL));
         else {
             std::cerr << "Error: Symbol " << temp->_symbol << " already defined." << "\n";
             exit(EXIT_FAILURE);
@@ -332,40 +336,110 @@ bool Assembler::hasUnresolvedSymbols() {
     return false;
 }
 
+void Assembler::logTableName(std::ostream &out, const std::string &str) {
+    out << std::left << std::string(LOG_TABLE_START, LOG_CHARACTER) << str
+        << std::string(LOG_FOOTER - LOG_TABLE_START - str.length(), LOG_CHARACTER) << "\n";
+}
+
+void Assembler::logTableFooter(std::ostream &out) {
+//    out << std::left << std::string(LOG_FOOTER, LOG_CHARACTER) << "\n" << "\n";
+    out << "\n";
+}
+
 void Assembler::logSections(std::ostream &out) const {
-    out << "----------------------------------------\n";
+    logTableName(out, "Sections");
     Section::tableHeader(out);
     for (auto &sect: _sections)
         out << *sect;
-    out << "----------------------------------------\n";
+    logTableFooter(out);
 }
 
 void Assembler::logSymbols(std::ostream &out) const {
-    out << "----------------------------------------------------------------------------------------------------\n";
+    logTableName(out, "Symbols");
     Symbol::tableHeader(out);
     for (auto &sym: _symbols)
         out << *sym;
-    out << "----------------------------------------------------------------------------------------------------\n";
+    logTableFooter(out);
 }
 
 void Assembler::logInstructions(std::ostream &out) const {
-    out << "----------------------------------------------------\n";
-    Instruction::tableHeader(std::cout);
+    logTableName(out, "Instructions");
+    Instruction::tableHeader(out);
     for (auto &instr: _instructions)
         out << *instr;
-    out << "----------------------------------------------------\n";
+    logTableFooter(out);
 }
 
-void Assembler::writeObjectFile() {
-    std::ofstream out(_output);
+void Assembler::writeTxt() {
+    std::ofstream out(_outputTxt);
     if (!out.is_open()) {
-        std::cerr << "Error: Unable to open file " << _output << "\n";
+        std::cerr << "Error: Unable to open file " << _outputTxt << "\n";
         exit(EXIT_FAILURE);
     }
     log(out);
     for (auto &sect: _sections)
-        out << sect->serialize();
+        sect->serialize(out);
 //    for (auto &instr: _instructions)
 //        out << instr->serialize();
+    out.close();
+}
+
+void Assembler::fillElf64AMDHeader(Elf64_Ehdr &ehdr) {
+    ehdr.e_ident[EI_MAG0] = ELFMAG0;
+    ehdr.e_ident[EI_MAG1] = ELFMAG1;
+    ehdr.e_ident[EI_MAG2] = ELFMAG2;
+    ehdr.e_ident[EI_MAG3] = ELFMAG3;
+    ehdr.e_ident[EI_CLASS] = ELFCLASS64;
+    ehdr.e_ident[EI_DATA] = ELFDATA2LSB;
+    ehdr.e_ident[EI_VERSION] = EV_CURRENT;
+    ehdr.e_ident[EI_OSABI] = ELFOSABI_SYSV;
+    ehdr.e_ident[EI_ABIVERSION] = 0;
+    ehdr.e_ident[EI_PAD] = 0;
+    ehdr.e_type = ET_EXEC;
+    ehdr.e_machine = EM_RISCV;
+    ehdr.e_version = EV_CURRENT;
+    ehdr.e_entry = 0;
+    ehdr.e_phoff = 0;
+    ehdr.e_shoff = 0;
+    ehdr.e_flags = 0;
+    ehdr.e_ehsize = sizeof(Elf64_Ehdr);
+    ehdr.e_phentsize = 0;
+    ehdr.e_phnum = 0;
+    ehdr.e_shentsize = 0;
+    ehdr.e_shnum = 0;
+    ehdr.e_shstrndx = 0;
+}
+
+void Assembler::writeElf64() {
+    std::ofstream out(_output, std::ios::binary);
+    if (!out.is_open()) {
+        std::cerr << "Error: Unable to open file " << _output << "\n";
+        exit(EXIT_FAILURE);
+    }
+
+    Elf64_Ehdr ehdr;
+    fillElf64AMDHeader(ehdr);
+
+    // Za svaku sekciju u projektu
+    for (auto &section: _sections) {
+        // Kreiranje ELF sekcije
+        Elf64_Shdr shdr;
+        // Popunjavanje ELF sekcije sa odgovarajućim informacijama
+        // Svi moji simboli se nalaze unutar _symbols
+    }
+
+    // Za svaki simbol u projektu
+    for (auto &symbol: _symbols) {
+        // Kreiranje ELF simbola
+        Elf64_Sym sym;
+        // Popunjavanje ELF simbola sa odgovarajućim informacijama
+        // ...
+
+    }
+
+    // Upisivanje ELF zaglavlja, sekcija i simbola u izlazni fajl
+    // ...
+
+    out.write((char *) &ehdr, sizeof(Elf64_Ehdr));
     out.close();
 }

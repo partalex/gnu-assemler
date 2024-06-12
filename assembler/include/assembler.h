@@ -6,6 +6,7 @@
 #include "../../common/include/relocation.h"
 #include "../../common/include/instruction.h"
 
+#include <elf.h>
 #include <memory>
 #include <vector>
 #include <unordered_map>
@@ -13,8 +14,13 @@
 class WordOperand;
 
 class Assembler {
+    static const uint8_t LOG_FOOTER = 95;
+    static const uint8_t LOG_TABLE_START = 5;
+    static const char LOG_CHARACTER = '_';
+
     static std::unique_ptr<Assembler> _instance;
-    std::string _output = "output/obj.o";
+    std::string _output = "obj.o";
+    std::string _outputTxt = "log.txt";
     std::string _input;
 
     std::vector<Relocation> _relocations;
@@ -94,5 +100,13 @@ public:
 
     void logInstructions(std::ostream &) const;
 
-    void writeObjectFile();
+    void writeTxt();
+
+    static void fillElf64AMDHeader(Elf64_Ehdr &ehdr);
+
+    void writeElf64();
+
+    static void logTableName(std::ostream &, const std::string &);
+
+    static void logTableFooter(std::ostream &out);
 };

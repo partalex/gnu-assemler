@@ -12,7 +12,7 @@ public:
     uint32_t _offset;
     uint32_t _sectionIndex;
     SCOPE _scope;
-    int32_t _size;
+//    int32_t _size;
     enum SYMBOL _symbolType;
 
     friend std::ostream &operator<<(std::ostream &, Symbol &);
