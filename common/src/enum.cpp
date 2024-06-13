@@ -6,27 +6,21 @@
 std::istream &operator>>(std::istream &in, enum SYMBOL &sym) {
     std::string token;
     in >> token;
-    if (token == "LABEL")
-        sym = SYMBOL::LABEL;
-    else if (token == "SECTION")
-        sym = SYMBOL::SECTION;
-    else if (token == "INSTRUCTION")
-        sym = SYMBOL::INSTRUCTION;
-    else if (token == "SYMBOL")
+    if (token == "SYMBOL")
         sym = SYMBOL::SYMBOL;
+    else if (token == "LABEL")
+        sym = SYMBOL::LABEL;
+    else if (token == "ASCII")
+        sym = SYMBOL::ASCII;
     return in;
 }
 
 std::ostream &operator<<(std::ostream &out, enum SYMBOL sym) {
     switch (sym) {
-        case SYMBOL::LABEL:
-            return out << "LABEL";
         case SYMBOL::ASCII:
             return out << "ASCII";
-        case SYMBOL::SECTION:
-            return out << "SECTION";
-        case SYMBOL::INSTRUCTION:
-            return out << "INSTRUCTION";
+        case SYMBOL::LABEL:
+            return out << "LABEL";
         case SYMBOL::SYMBOL:
             return out << "SYMBOL";
         default:
@@ -34,26 +28,22 @@ std::ostream &operator<<(std::ostream &out, enum SYMBOL sym) {
     }
 }
 
-std::istream &operator>>(std::istream &in, SECTION_TYPE &sec) {
+std::istream &operator>>(std::istream &in, FLAG &flag) {
     std::string token;
     in >> token;
-    if (token == "TEXT")
-        sec = SECTION_TYPE::TEXT;
-    if (token == "DATA")
-        sec = SECTION_TYPE::DATA;
-    if (token == "BSS")
-        sec = SECTION_TYPE::BSS;
+    if (token == "INVALID")
+        flag = FLAG::INVALID;
+    else if (token == "UND")
+        flag = FLAG::UND;
     return in;
 }
 
-std::ostream &operator<<(std::ostream &out, SECTION_TYPE sec) {
-    switch (sec) {
-        case SECTION_TYPE::TEXT:
-            return out << "TEXT";
-        case SECTION_TYPE::DATA:
-            return out << "DATA";
-        case SECTION_TYPE::BSS:
-            return out << "BSS";
+std::ostream &operator<<(std::ostream &out, FLAG flag) {
+    switch (flag) {
+        case FLAG::INVALID:
+            return out << "INVALID";
+        case FLAG::UND:
+            return out << "UND";
         default:
             return out << "UNDEFINED";
     }

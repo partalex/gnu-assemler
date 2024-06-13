@@ -28,7 +28,7 @@ class Assembler {
     std::vector<std::unique_ptr<Section>> _sections;
     std::vector<std::unique_ptr<Instruction>> _instructions;
 
-    uint32_t _currSectIndex = 0;
+    int32_t _currSectIndex = 0;
 
 public:
     ~Assembler() = default;
@@ -39,7 +39,7 @@ public:
 
     static int pass(int, char **);                      // done
 
-    void log(std::ostream &) const;                     // TODO
+    void log(std::ostream &) const;                     // done
 
     void parseLabel(const std::string &);               // done
 
@@ -51,18 +51,18 @@ public:
 
     void parseSection(const std::string &);             // done
 
-    void parseWord(WordOperand *);                      // TODO
+    void parseWord(WordOperand *);                      // done
 
     void parseAscii(const std::string &);               // done
 
-    void parseSkip(int);                                // TODO
+    void parseSkip(int);                                // done
 
     // instructions
     void parseHalt();                                   // done
 
-    void parseInt(Operand *);                           // TODO
+    void parseInt(Operand *);                           // done
 
-    void parseJmp(unsigned char, Operand *);            // TODO
+    void parseJmp(unsigned char, Operand *);            // done
 
     void parseCall(unsigned char, Operand *);           // done
 
@@ -88,7 +88,7 @@ public:
 
     void parseStore(unsigned char, Operand *);          // done
 
-    void parseNoAdr(unsigned char);                     // TODO
+    void parseNoAdr(unsigned char);                     // done
 
     Symbol *findSymbol(std::string);
 

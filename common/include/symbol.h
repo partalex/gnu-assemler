@@ -10,7 +10,7 @@ public:
     std::string _name;
     bool _defined;
     uint32_t _offset;
-    uint32_t _sectionIndex;
+    int32_t _sectionIndex;
     SCOPE _scope;
 //    int32_t _size;
     enum SYMBOL _symbolType;
@@ -19,7 +19,7 @@ public:
 
     friend std::istream &operator>>(std::istream &, Symbol &);
 
-    Symbol(std::string, bool, uint32_t, SCOPE, uint32_t, enum SYMBOL, int32_t size = 0);
+    Symbol(std::string, bool, int32_t, SCOPE, uint32_t, enum SYMBOL, int32_t size = 0);
 
     [[nodiscard]] std::string serialize() const;
 

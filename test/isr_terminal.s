@@ -26,7 +26,7 @@ isr_terminal:
     ld [%r1+4], %r2
     st %r2, 0xFFFFFF00 # term_out
 
-    ld my_counter, %r1 
+    ld my_counter, %r1
     ld $1, %r2
     add %r2, %r1
     st %r1, my_counter

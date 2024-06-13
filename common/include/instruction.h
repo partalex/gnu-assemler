@@ -37,7 +37,6 @@ public:
 
 };
 
-
 class Halt_Instr : public Instruction {
 public:
     explicit Halt_Instr() : Instruction(INSTRUCTION::HALT) {}

@@ -106,6 +106,8 @@ void Section::reallocateMemory(uint64_t size) {
 }
 
 void Section::addToLocCounter(uint32_t offset) {
+    if (_locationCounter + offset > _size)
+        reallocateMemory(_size * MULTIPLIER);
     _locationCounter += offset;
 }
 

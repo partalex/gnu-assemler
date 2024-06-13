@@ -8,10 +8,10 @@ class Section {
     static const uint64_t MIN_SIZE;
     static const uint8_t MULTIPLIER;
     uint64_t _locationCounter = 0;
+    uint64_t _size = 0;
 public:
 
     std::string _name;
-    uint64_t _size = 0;
     std::unique_ptr<uint8_t[]> _memory = nullptr;
 
     void addToLocCounter(uint32_t offset);

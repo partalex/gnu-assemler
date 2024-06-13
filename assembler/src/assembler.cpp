@@ -17,10 +17,8 @@ extern int yyparse(void);
 std::unique_ptr<Assembler> Assembler::_instance = nullptr;
 
 Assembler &Assembler::singleton() {
-    if (!_instance) {
+    if (!_instance)
         _instance = std::make_unique<Assembler>();
-        _instance->_sections.emplace_back(std::make_unique<Section>("UND"));
-    }
     return *_instance;
 }
 
@@ -50,7 +48,7 @@ void Assembler::parseExtern(SymbolList *list) {
         auto it = findSymbol(temp->_symbol);
         if (it == nullptr)
             _symbols.emplace_back(
-                    std::make_unique<Symbol>(temp->_symbol, false, -1, SCOPE::GLOBAL, 0, SYMBOL::SYMBOL));
+                    std::make_unique<Symbol>(temp->_symbol, false, UND, SCOPE::GLOBAL, 0, SYMBOL::SYMBOL));
         else if (it->_scope == SCOPE::GLOBAL) {
             std::cerr << "Error: Symbol " << temp->_symbol << " already defined as global." << "\n";
             exit(EXIT_FAILURE);
@@ -64,7 +62,7 @@ void Assembler::parseSkip(int literal) {
 #ifdef LOG_PARSER
     std::cout << "SKIP: " << literal << "\n";
 #endif
-    _sections[_currSectIndex]->_size += literal;
+    _sections[_currSectIndex]->addToLocCounter(literal);
 }
 
 void Assembler::parseEnd() {
@@ -72,11 +70,11 @@ void Assembler::parseEnd() {
     std::cout << "END" << "\n";
 #endif
     writeTxt();
-    writeElf64();
     if (hasUnresolvedSymbols()) {
         std::cerr << "Error: Unresolved symbols detected." << "\n";
         exit(EXIT_FAILURE);
     }
+    writeElf64();
 }
 
 void Assembler::parseLabel(const std::string &str) {
@@ -147,8 +145,8 @@ void Assembler::parseHalt() {
     std::cout << "HALT" << "\n";
 #endif
     _instructions.emplace_back(std::make_unique<Halt_Instr>());
-
-    _sections[_currSectIndex]->writeInstr((void *) &_instructions.back()->_bytes, _sections[_currSectIndex]->getLocCounter());
+    _sections[_currSectIndex]->writeInstr((void *) &_instructions.back()->_bytes,
+                                          _sections[_currSectIndex]->getLocCounter());
     _sections[_currSectIndex]->addToLocCounter(4);
 }
 
@@ -158,6 +156,8 @@ void Assembler::parseNoAdr(unsigned char inst) {
     std::cout << name << "\n";
 #endif
     _instructions.emplace_back(std::make_unique<NoAdr_Instr>(static_cast<enum INSTRUCTION>(inst)));
+    _sections[_currSectIndex]->writeInstr((void *) &_instructions.back()->_bytes,
+                                          _sections[_currSectIndex]->getLocCounter());
     _sections[_currSectIndex]->addToLocCounter(4);
 }
 
@@ -170,6 +170,8 @@ void Assembler::parseJmp(unsigned char inst, Operand *operand) {
 #endif
     _instructions.emplace_back(std::make_unique<Jmp_Instr>(static_cast<enum INSTRUCTION>(inst),
                                                            std::unique_ptr<Operand>(operand)));
+    _sections[_currSectIndex]->writeInstr((void *) &_instructions.back()->_bytes,
+                                          _sections[_currSectIndex]->getLocCounter());
     _sections[_currSectIndex]->addToLocCounter(4);
 }
 
@@ -182,6 +184,8 @@ void Assembler::parseCall(unsigned char inst, Operand *operand) {
 #endif
     _instructions.emplace_back(std::make_unique<Call_Instr>(static_cast<enum INSTRUCTION>(inst),
                                                             std::unique_ptr<Operand>(operand)));
+    _sections[_currSectIndex]->writeInstr((void *) &_instructions.back()->_bytes,
+                                          _sections[_currSectIndex]->getLocCounter());
     _sections[_currSectIndex]->addToLocCounter(4);
 }
 
@@ -194,6 +198,8 @@ void Assembler::parseCondJmp(unsigned char inst, Operand *operand) {
 #endif
     _instructions.emplace_back(std::make_unique<JmpCond_Instr>(static_cast<enum INSTRUCTION>(inst),
                                                                std::unique_ptr<Operand>(operand)));
+    _sections[_currSectIndex]->writeInstr((void *) &_instructions.back()->_bytes,
+                                          _sections[_currSectIndex]->getLocCounter());
     _sections[_currSectIndex]->addToLocCounter(4);
 }
 
@@ -202,6 +208,8 @@ void Assembler::parsePush(unsigned char gpr) {
     std::cout << "PUSH: %r" << static_cast<int>(gpr) << "\n";
 #endif
     _instructions.emplace_back(std::make_unique<Push_Instr>(gpr));
+    _sections[_currSectIndex]->writeInstr((void *) &_instructions.back()->_bytes,
+                                          _sections[_currSectIndex]->getLocCounter());
     _sections[_currSectIndex]->addToLocCounter(4);
 }
 
@@ -210,6 +218,8 @@ void Assembler::parsePop(unsigned char gpr) {
     std::cout << "POP: %r" << static_cast<int>(gpr) << "\n";
 #endif
     _instructions.emplace_back(std::make_unique<Pop_Instr>(gpr));
+    _sections[_currSectIndex]->writeInstr((void *) &_instructions.back()->_bytes,
+                                          _sections[_currSectIndex]->getLocCounter());
     _sections[_currSectIndex]->addToLocCounter(4);
 }
 
@@ -218,6 +228,8 @@ void Assembler::parseNot(unsigned char gpr) {
     std::cout << "NOT" << "\n";
 #endif
     _instructions.emplace_back(std::make_unique<Not_Instr>(gpr));
+    _sections[_currSectIndex]->writeInstr((void *) &_instructions.back()->_bytes,
+                                          _sections[_currSectIndex]->getLocCounter());
     _sections[_currSectIndex]->addToLocCounter(4);
 }
 
@@ -227,6 +239,8 @@ void Assembler::parseInt(Operand *operand) {
 #endif
     // TODO
     _instructions.emplace_back(std::make_unique<Int_Instr>(std::unique_ptr<Operand>(operand)));
+    _sections[_currSectIndex]->writeInstr((void *) &_instructions.back()->_bytes,
+                                          _sections[_currSectIndex]->getLocCounter());
     _sections[_currSectIndex]->addToLocCounter(4);
 }
 
@@ -235,6 +249,8 @@ void Assembler::parseXchg(unsigned char regS, unsigned char regD) {
     std::cout << "XCHG: %r" << (short) regS << ", %r" << (short) regD << "\n";
 #endif
     _instructions.emplace_back(std::make_unique<Xchg_Instr>(regS, regD));
+    _sections[_currSectIndex]->writeInstr((void *) &_instructions.back()->_bytes,
+                                          _sections[_currSectIndex]->getLocCounter());
     _sections[_currSectIndex]->addToLocCounter(4);
 }
 
@@ -244,6 +260,8 @@ void Assembler::parseTwoReg(unsigned char inst, unsigned char regS, unsigned cha
     std::cout << "%r" << (short) regS << ", %r" << (short) regD << "\n";
 #endif
     _instructions.emplace_back(std::make_unique<TwoReg_Instr>(static_cast<enum INSTRUCTION>(inst), regS, regD));
+    _sections[_currSectIndex]->writeInstr((void *) &_instructions.back()->_bytes,
+                                          _sections[_currSectIndex]->getLocCounter());
     _sections[_currSectIndex]->addToLocCounter(4);
 }
 
@@ -251,8 +269,9 @@ void Assembler::parseCsrrd(unsigned char csr, unsigned char gpr) {
 #ifdef LOG_PARSER
     std::cout << "CSRRD: %" << Csr::CSR[csr] << ", %r" << static_cast<int>(gpr) << "\n";
 #endif
-    auto instr = std::make_unique<Csrrd_Instr>(csr, gpr);
     _instructions.emplace_back(std::make_unique<Csrrd_Instr>(csr, gpr));
+    _sections[_currSectIndex]->writeInstr((void *) &_instructions.back()->_bytes,
+                                          _sections[_currSectIndex]->getLocCounter());
     _sections[_currSectIndex]->addToLocCounter(4);
 }
 
@@ -261,6 +280,8 @@ void Assembler::parseCsrwr(unsigned char gpr, unsigned char csr) {
     std::cout << "CSRRD: %r" << static_cast<int>(gpr) << ", %" << Csr::CSR[csr] << "\n";
 #endif
     _instructions.emplace_back(std::make_unique<Csrwr_Instr>(gpr, csr));
+    _sections[_currSectIndex]->writeInstr((void *) &_instructions.back()->_bytes,
+                                          _sections[_currSectIndex]->getLocCounter());
     _sections[_currSectIndex]->addToLocCounter(4);
 }
 
@@ -271,8 +292,9 @@ void Assembler::parseLoad(Operand *operand, unsigned char gpr) {
     operand->log(std::cout);
     std::cout << "\n";
 #endif
-    auto instr = std::make_unique<Load_Instr>(std::unique_ptr<Operand>(operand), gpr);
     _instructions.emplace_back(std::make_unique<Load_Instr>(std::unique_ptr<Operand>(operand), gpr));
+    _sections[_currSectIndex]->writeInstr((void *) &_instructions.back()->_bytes,
+                                          _sections[_currSectIndex]->getLocCounter());
     _sections[_currSectIndex]->addToLocCounter(4);
 }
 
@@ -281,6 +303,8 @@ void Assembler::parseLoad(unsigned char gpr1, unsigned char gpr2, int16_t offset
     std::cout << "LOAD: [%r" << static_cast<int>(gpr1) << "+" << offset << "], %r" << static_cast<int>(gpr2) << "\n";
 #endif
     _instructions.emplace_back(std::make_unique<Load_Instr>(gpr1, gpr2, offset));
+    _sections[_currSectIndex]->writeInstr((void *) &_instructions.back()->_bytes,
+                                          _sections[_currSectIndex]->getLocCounter());
     _sections[_currSectIndex]->addToLocCounter(4);
 }
 
@@ -291,6 +315,8 @@ void Assembler::parseStore(unsigned char gpr, Operand *operand) {
     std::cout << "\n";
 #endif
     _instructions.emplace_back(std::make_unique<Store_Instr>(gpr, std::unique_ptr<Operand>(operand)));
+    _sections[_currSectIndex]->writeInstr((void *) &_instructions.back()->_bytes,
+                                          _sections[_currSectIndex]->getLocCounter());
     _sections[_currSectIndex]->addToLocCounter(4);
 }
 
@@ -304,7 +330,7 @@ void Assembler::parseGlobal(SymbolList *list) {
         auto it = findSymbol(temp->_symbol);
         if (it == nullptr)
             _symbols.emplace_back(
-                    std::make_unique<Symbol>(temp->_symbol, false, -1, SCOPE::GLOBAL, 0, SYMBOL::SYMBOL));
+                    std::make_unique<Symbol>(temp->_symbol, false, INVALID, SCOPE::GLOBAL, 0, SYMBOL::SYMBOL));
         else {
             std::cerr << "Error: Symbol " << temp->_symbol << " already defined." << "\n";
             exit(EXIT_FAILURE);
@@ -331,7 +357,7 @@ Symbol *Assembler::findSymbol(std::string symName) {
 
 bool Assembler::hasUnresolvedSymbols() {
     for (auto &sym: _symbols)
-        if (!sym->_defined)
+        if (!sym->_defined && sym->_sectionIndex == INVALID)
             return true;
     return false;
 }

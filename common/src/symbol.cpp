@@ -5,7 +5,7 @@
 #include <iomanip>
 #include <utility>
 
-Symbol::Symbol(std::string name, bool defined, std::uint32_t sectionIndex, SCOPE scope, uint32_t offset,
+Symbol::Symbol(std::string name, bool defined, int32_t sectionIndex, SCOPE scope, uint32_t offset,
                enum SYMBOL symbolType, int32_t size) :
         _name(std::move(name)),
         _defined(defined),

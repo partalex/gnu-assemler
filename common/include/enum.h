@@ -7,15 +7,13 @@ enum RELOCATION {
 };
 
 enum SYMBOL {
-    LABEL,
     ASCII,
-    SECTION,
-    INSTRUCTION,
+    LABEL,
     SYMBOL,
 };
 
-enum SECTION_TYPE {
-    UND, TEXT, DATA, BSS
+enum FLAG {
+    INVALID = -2, UND = -1
 };
 
 enum SCOPE {
@@ -69,9 +67,9 @@ std::istream &operator>>(std::istream &, enum SYMBOL &);
 
 std::ostream &operator<<(std::ostream &, enum SYMBOL);
 
-std::istream &operator>>(std::istream &, SECTION_TYPE &);
+std::istream &operator>>(std::istream &, FLAG &);
 
-std::ostream &operator<<(std::ostream &, SECTION_TYPE);
+std::ostream &operator<<(std::ostream &, FLAG);
 
 std::istream &operator>>(std::istream &, SCOPE &);
 
