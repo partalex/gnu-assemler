@@ -102,11 +102,10 @@ public:
 
     void writeTxt();
 
-    static void fillElf64AMDHeader(Elf64_Ehdr &ehdr);
-
-    void writeElf64();
+    void writeObj();
 
     static void logTableName(std::ostream &, const std::string &);
 
     static void logTableFooter(std::ostream &out);
+
 };

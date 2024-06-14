@@ -66,6 +66,10 @@ int Linker::addSection(Symbol &sym, Section &section) {
     return offset;
 }
 
+void Linker::loadFile2(const std::string &inputFile) {
+
+}
+
 void Linker::loadFile(const std::string &inputFile) {
     ObjectFile objectFile;
     objectFile.loadFromFile(inputFile);

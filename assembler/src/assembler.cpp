@@ -74,7 +74,7 @@ void Assembler::parseEnd() {
         std::cerr << "Error: Unresolved symbols detected." << "\n";
         exit(EXIT_FAILURE);
     }
-    writeElf64();
+    writeObj();
 }
 
 void Assembler::parseLabel(const std::string &str) {
@@ -410,62 +410,44 @@ void Assembler::writeTxt() {
     out.close();
 }
 
-void Assembler::fillElf64AMDHeader(Elf64_Ehdr &ehdr) {
-    ehdr.e_ident[EI_MAG0] = ELFMAG0;
-    ehdr.e_ident[EI_MAG1] = ELFMAG1;
-    ehdr.e_ident[EI_MAG2] = ELFMAG2;
-    ehdr.e_ident[EI_MAG3] = ELFMAG3;
-    ehdr.e_ident[EI_CLASS] = ELFCLASS64;
-    ehdr.e_ident[EI_DATA] = ELFDATA2LSB;
-    ehdr.e_ident[EI_VERSION] = EV_CURRENT;
-    ehdr.e_ident[EI_OSABI] = ELFOSABI_SYSV;
-    ehdr.e_ident[EI_ABIVERSION] = 0;
-    ehdr.e_ident[EI_PAD] = 0;
-    ehdr.e_type = ET_EXEC;
-    ehdr.e_machine = EM_RISCV;
-    ehdr.e_version = EV_CURRENT;
-    ehdr.e_entry = 0;
-    ehdr.e_phoff = 0;
-    ehdr.e_shoff = 0;
-    ehdr.e_flags = 0;
-    ehdr.e_ehsize = sizeof(Elf64_Ehdr);
-    ehdr.e_phentsize = 0;
-    ehdr.e_phnum = 0;
-    ehdr.e_shentsize = 0;
-    ehdr.e_shnum = 0;
-    ehdr.e_shstrndx = 0;
-}
-
-void Assembler::writeElf64() {
+void Assembler::writeObj() {
     std::ofstream out(_output, std::ios::binary);
     if (!out.is_open()) {
         std::cerr << "Error: Unable to open file " << _output << "\n";
         exit(EXIT_FAILURE);
     }
 
-    Elf64_Ehdr ehdr;
-    fillElf64AMDHeader(ehdr);
+    // write num_symbols
+    uint32_t num_symbols = _symbols.size();
+    out.write((char *) &num_symbols, sizeof(uint32_t));
 
-    // Za svaku sekciju u projektu
-    for (auto &section: _sections) {
-        // Kreiranje ELF sekcije
-        Elf64_Shdr shdr;
-        // Popunjavanje ELF sekcije sa odgovarajućim informacijama
-        // Svi moji simboli se nalaze unutar _symbols
+    // write Symbols: name_size, name, section index
+    for (auto &sym: _symbols) {
+        uint32_t name_size = sym->_name.size();
+        out.write((char *) &name_size, sizeof(uint32_t));
+        out.write(sym->_name.c_str(), sym->_name.size());
+        uint32_t section = sym->_sectionIndex;
+        out.write((char *) &section, sizeof(uint32_t));
+        uint8_t flags = 0;
+        flags |= sym->_symbolType;
+        flags |= sym->_defined << 2;
+        flags |= sym->_scope << 3;
+        out.write((char *) &flags, sizeof(uint8_t));
     }
 
-    // Za svaki simbol u projektu
-    for (auto &symbol: _symbols) {
-        // Kreiranje ELF simbola
-        Elf64_Sym sym;
-        // Popunjavanje ELF simbola sa odgovarajućim informacijama
-        // ...
+    // write num_sections
+    uint32_t num_sections = _sections.size();
+    out.write((char *) &num_sections, sizeof(uint32_t));
 
+    // write Sections: name_size, name, data_size
+    for (auto &sect: _sections) {
+        uint32_t name_size = sect->_name.size();
+        out.write((char *) &name_size, sizeof(uint32_t));
+        out.write(sect->_name.c_str(), sect->_name.size());
+        uint32_t data_size = sect->getSize();
+        out.write((char *) &data_size, sizeof(uint32_t));
+        out.write((char *) sect->_memory.get(), sect->getSize());
     }
 
-    // Upisivanje ELF zaglavlja, sekcija i simbola u izlazni fajl
-    // ...
-
-    out.write((char *) &ehdr, sizeof(Elf64_Ehdr));
     out.close();
 }

@@ -114,3 +114,7 @@ void Section::addToLocCounter(uint32_t offset) {
 uint64_t Section::getLocCounter() const {
     return _locationCounter;
 }
+
+uint64_t Section::getSize() const {
+    return _size;
+}

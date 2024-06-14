@@ -36,5 +36,8 @@ public:
 
     void reallocateMemory(uint64_t size);
 
+    uint64_t getSize() const;
+
+
 };
 
