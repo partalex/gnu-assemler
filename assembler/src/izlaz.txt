@@ -1,0 +1,34 @@
+_____Symbols___________________________________________________________________________________
+Name           SectionIndex   Offset         Scope          SymbolType
+    isr_timer      4294967295     0              GLOBAL         LABEL          
+isr_terminal   4294967295     0              GLOBAL         LABEL          
+handler        0              0              GLOBAL         LABEL          
+handle_timer   0              0              LOCAL          LABEL          
+handle_terminal0              0              LOCAL          LABEL          
+finish         0              0              LOCAL          LABEL          
+
+_____Relocations_______________________________________________________________________________
+Symbol         SymbolIndex    SectionIndex   Offset         Size           Type           
+handle_timer   3              1              19             1              R_2B_EXC_4b    
+handle_terminal4              1              27             1              R_2B_EXC_4b    
+isr_timer      0              1              43             1              R_2B_EXC_4b    
+finish         5              1              47             1              R_2B_EXC_4b    
+isr_terminal   1              1              51             1              R_2B_EXC_4b    
+finish         5              1              55             1              R_2B_EXC_4b    
+
+_____Sections__________________________________________________________________________________
+Name           Size           
+my_handler     32             
+.text          32             
+
+_____Sections dump_____________________________________________________________________________
+my_handler 32
+00000000   00 00 00 00 00 00 00 00   00 00 00 00 00 00 00 00   |................|
+00000010   00 00 00 00 00 00 00 00   00 00 00 00 00 00 00 00   |................|
+.end
+
+.text 32
+00000000   81 10 00 00 81 20 00 00   90 20 01 00 91 20 0f 00   |..... ... ... ..|
+00000010   31 00 00 00 91 20 0f 00   31 00 00 00 93 20 00 00   |1.... ..1.... ..|
+.end
+

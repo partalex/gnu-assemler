@@ -1,12 +1,12 @@
 #pragma once
 
 #include "../../common/include/symbol.h"
+#include "../../common/include/log.h"
 #include "../../common/include/section.h"
 #include "../../common/include/structures.h"
 #include "../../common/include/relocation.h"
 #include "../../common/include/instruction.h"
 
-#include <elf.h>
 #include <memory>
 #include <vector>
 #include <unordered_map>
@@ -14,19 +14,17 @@
 class WordOperand;
 
 class Assembler {
-    static const uint8_t LOG_FOOTER = 95;
-    static const uint8_t LOG_TABLE_START = 5;
-    static const char LOG_CHARACTER = '_';
+
+    uint64_t _txtSectIndex = UNDEFINED;
 
     static std::unique_ptr<Assembler> _instance;
     std::string _output = "obj.o";
     std::string _outputTxt = "log.txt";
     std::string _input;
 
-    std::vector<Relocation> _relocations;
+    std::vector<std::unique_ptr<Relocation>> _relocations;
     std::vector<std::unique_ptr<Symbol>> _symbols;
     std::vector<std::unique_ptr<Section>> _sections;
-    std::vector<std::unique_ptr<Instruction>> _instructions;
 
     int32_t _currSectIndex = 0;
 
@@ -90,7 +88,7 @@ public:
 
     void parseNoAdr(unsigned char);                     // done
 
-    Symbol *findSymbol(std::string);
+    std::pair<int32_t, Symbol *> findSymbol(const std::string &);
 
     bool hasUnresolvedSymbols();
 
@@ -98,14 +96,17 @@ public:
 
     void logSymbols(std::ostream &) const;
 
-    void logInstructions(std::ostream &) const;
+    void logRelocations(std::ostream &out) const;
+
+    static void symbolDuplicate(std::string &);
 
     void writeTxt();
 
     void writeObj();
 
-    static void logTableName(std::ostream &, const std::string &);
+    void setOutput(char *string);
 
-    static void logTableFooter(std::ostream &out);
+    void insertInstr(Instruction *instr);
 
+    void addRelToInstr(Operand *, RELOCATION = R_2B_EXC_4b, uint32_t = 2);
 };

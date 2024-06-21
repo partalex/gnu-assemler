@@ -1,7 +1,10 @@
 #pragma once
 
+#include "../include/enum.h"
+
 #include <string>
 #include <cstdint>
+#include <optional>
 
 class Csr {
 public:
@@ -19,6 +22,13 @@ public:
     explicit Operand() = default;
 
     virtual void log(std::ostream &) = 0;
+
+    virtual bool isCsr() { return false; }
+
+    virtual bool isLabel() { return false; }
+
+    virtual std::string stringValue() { return ""; }
+
 };
 
 class WordOperand : public Operand {
@@ -62,11 +72,25 @@ public:
 
     void logOne(std::ostream &out) override;
 
+    bool isLabel() override { return true; }
+
+    std::string stringValue() override;
+
 };
 
 class LiteralImm : public Operand {
 public:
     explicit LiteralImm(uint32_t value) : _value(value) {}
+
+    void log(std::ostream &) override;
+
+private:
+    uint32_t _value;
+};
+
+class LiteralImmReg : public Operand {
+public:
+    explicit LiteralImmReg(uint32_t value) : _value(value) {}
 
     void log(std::ostream &) override;
 
@@ -85,11 +109,30 @@ private:
 
 };
 
-class IdentDir : public Operand {
+class IdentImm : public Operand {
 public:
-    explicit IdentDir(std::string ident) : _ident(std::move(ident)) {}
+    explicit IdentImm(std::string ident) : _ident(std::move(ident)) {}
 
     void log(std::ostream &) override;
+
+    bool isLabel() override { return true; }
+
+    std::string stringValue() override { return _ident; }
+
+private:
+    std::string _ident;
+};
+
+class IdentAddr : public Operand {
+public:
+    explicit IdentAddr(std::string ident) :
+            _ident(std::move(ident)) {}
+
+    void log(std::ostream &) override;
+
+    bool isLabel() override { return true; }
+
+    std::string stringValue() override { return _ident; }
 
 private:
     std::string _ident;
@@ -121,6 +164,7 @@ public:
 
     void log(std::ostream &) override;
 
+
 private:
     uint8_t _gpr;
     uint32_t _offset;
@@ -131,6 +175,10 @@ public:
     explicit RegInDirOffIdent(uint8_t gpr, std::string ident) : _gpr(gpr), _ident(std::move(ident)) {}
 
     void log(std::ostream &) override;
+
+    bool isLabel() override { return true; }
+
+    std::string stringValue() override { return _ident; }
 
 private:
     uint8_t _gpr;
@@ -157,6 +205,10 @@ public:
 
     void log(std::ostream &) override;
 
+    bool isLabel() override { return true; }
+
+    std::string stringValue() override { return _ident; }
+
 private:
     uint8_t _gpr1;
     uint8_t _gpr2;
@@ -168,7 +220,6 @@ public:
     explicit GprGprLiteral(uint8_t gpr1, uint8_t gpr2, uint32_t value) : _gpr1(gpr1), _gpr2(gpr2),
                                                                          _value(value) {
     }
-
     void log(std::ostream &) override;
 
 private:
@@ -182,6 +233,12 @@ public:
     explicit CsrOp(uint8_t csr) : _csr(csr) {}
 
     void log(std::ostream &) override;
+
+    bool isLabel() override { return true; }
+
+    virtual bool isCsr() override { return true; }
+
+    std::string stringValue() override { return Csr::CSR[_csr]; }
 
 private:
     uint8_t _csr;

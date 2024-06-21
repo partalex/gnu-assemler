@@ -6,10 +6,10 @@
 
 std::ostream &operator<<(std::ostream &out, Instruction &instr) {
     out << std::left <<
-        std::setw(15) << std::hex << (short) instr._bytes._byte_3 <<
-        std::setw(15) << std::hex << (short) instr._bytes._byte_2 <<
-        std::setw(15) << std::hex << (short) instr._bytes._byte_1 <<
-        std::setw(15) << std::hex << (short) instr._bytes._byte_0 << "\n";
+        std::setw(15) << std::hex << (short) instr._bytes.byte_3 <<
+        std::setw(15) << std::hex << (short) instr._bytes.byte_2 <<
+        std::setw(15) << std::hex << (short) instr._bytes.byte_1 <<
+        std::setw(15) << std::hex << (short) instr._bytes.byte_0 << "\n";
 //    out << "Instruction: " << instr.instructionSymbol << "\n";
 //    out << "Condition: " << instr.instructionCondition << "\n";
 //    out << "setflags: " << instr.setFlags << "\n";
@@ -23,8 +23,8 @@ std::ostream &operator<<(std::ostream &out, Instruction &instr) {
 void Instruction::setDisplacement(int16_t offset) {
     if (offset < -2048 || offset > 2047)
         throw std::runtime_error("Displacement out of range.");
-    _bytes._byte_2 |= (offset & 0xF00) >> 8;
-    _bytes._byte_3 |= offset & 0xFF;
+    _bytes.byte_2 |= (offset & 0xF00) >> 8;
+    _bytes.byte_3 |= offset & 0xFF;
 }
 
 Instruction::Instruction(enum INSTRUCTION instr, uint8_t regA, uint8_t regB, uint8_t regC) {
@@ -35,19 +35,19 @@ Instruction::Instruction(enum INSTRUCTION instr, uint8_t regA, uint8_t regB, uin
 }
 
 void Instruction::setInstr(uint8_t instr) {
-    _bytes._byte_0 = instr;
+    _bytes.byte_0 = instr;
 }
 
 void Instruction::setRegA(uint8_t regA) {
-    _bytes._byte_1 |= regA << 4;
+    _bytes.byte_1 |= regA << 4;
 }
 
 void Instruction::setRegB(uint8_t regB) {
-    _bytes._byte_2 |= regB;
+    _bytes.byte_2 |= regB;
 }
 
 void Instruction::setRegC(uint8_t regC) {
-    _bytes._byte_2 |= regC << 4;
+    _bytes.byte_2 |= regC << 4;
 }
 
 void Instructions::addInstruction(std::unique_ptr<Instruction> _inst) {
@@ -68,6 +68,7 @@ Int_Instr::Int_Instr(std::unique_ptr<Operand> operand)
 
 Load_Instr::Load_Instr(std::unique_ptr<Operand> operand, uint8_t gpr)
         : Instruction(INSTRUCTION::LD, gpr), _operand(std::move(operand)) {
+    setRegB(15);
 }
 
 Load_Instr::Load_Instr(uint8_t gprD, uint8_t gprS, int16_t offset)
@@ -94,10 +95,12 @@ Call_Instr::Call_Instr(enum INSTRUCTION instruction, std::unique_ptr<Operand> op
         : Instruction(instruction), _operand(std::move(operand)) {}
 
 Jmp_Instr::Jmp_Instr(enum INSTRUCTION instruction, std::unique_ptr<Operand> operand)
-        : Instruction(instruction), _operand(std::move(operand)) {}
+        : Instruction(instruction), _operand(std::move(operand)) {
+    setRegB(15);
+}
 
 TwoReg_Instr::TwoReg_Instr(enum INSTRUCTION instruction, uint8_t regD, uint8_t regS)
-        : Instruction(instruction, regD, regS) {}
+        : Instruction(instruction, regD, regS, regS) {}
 
 Store_Instr::Store_Instr(uint8_t gpr, std::unique_ptr<Operand> operand)
         : Instruction(INSTRUCTION::ST, gpr), _operand(std::move(operand)) {}

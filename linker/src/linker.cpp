@@ -1,230 +1,226 @@
 #include "../include/linker.h"
-#include "../include/object_file.h"
 
-#include <regex>
-#include <iostream>
-#include <iomanip>
 #include <fstream>
+#include <iostream>
+#include <cstring>
+#include <algorithm>
+#include <cstdint>
+#include <cstdlib>
 
-std::ofstream Linker::_logFile("linker/log");
+std::unique_ptr<Linker> Linker::_instance = nullptr;
 
-std::regex sectionRegex("^.(text|data|bss)(.[a-zA-Z_][a-zA-Z0-9]*)?$");
+Linker &Linker::singleton() {
+    if (!_instance)
+        _instance = std::make_unique<Linker>();
+    return *_instance;
+}
 
-void Linker::link(std::ifstream &loaderScriptFile, std::vector<std::string> &inputFiles, std::ofstream &outputFile) {
-    try {
-        _logFile << "Load script file" << "\n";
-        _loaderScript.loadFromFile(loaderScriptFile);
-        for (auto &inputFile: inputFiles) {
-            _logFile << "Linking file " << "\n";
-            loadFile(inputFile);
+void Linker::log() const {
+    for (auto &inputFile: inputFiles) {
+        std::ofstream output(inputFile._name + ".txt");
+        if (!output) {
+            std::cerr << "Failed to open file: " << inputFile._name << ".txt" << "\n";
+            return;
         }
-        _logFile << "Load symbols from script" << "\n";
-        _loaderScript.fillSymbolsAndSectPos(_symbols, _sectionPositions);
-        _logFile << "Load remaining sections" << "\n";
-        fillRemainingSections();
-        _logFile << "Check output " << "\n";
-        fixRelocations();
-        _logFile << "Generating binary output" << "\n";
-        generateOutput();
-        _logFile << "Write output " << "\n";
-        writeOutputFile(outputFile);
-    }
-    catch (std::exception &e) {
-        std::cerr << e.what() << "\n";
-        _logFile << "ERROR: " << e.what() << "\n";
+        inputFile.log(output);
+        output.close();
     }
 }
 
-void Linker::addSymbol(Symbol &sym) {
-    auto symbolOld = _symbols.find(sym._name);
-    if (symbolOld == _symbols.end())
-        _symbols.insert({sym._name, sym});
-    else if (sym._defined) {
-        if (symbolOld->second._defined)
-            throw std::runtime_error("Defined symbol twice ! " + symbolOld->second._name);
-        else {
-            symbolOld->second._defined = true;
-            symbolOld->second._offset = sym._offset;
-            symbolOld->second._sectionName = sym._sectionName;
-            symbolOld->second._scope = SCOPE::GLOBAL;
-            symbolOld->second._symbolType = sym._symbolType;
-        }
+void Linker::parseArgs(int argc, char **argv) {
+
+    if (argc < 4) {
+        std::cout << "Please call this program as ./linker scriptfile outputfile [inputfiles]+" << "\n";
+        exit(EXIT_FAILURE);
     }
-}
 
-int Linker::addSection(Symbol &sym, Section &section) {
-    auto symbolOld = _symbols.find(sym._name);
-    int offset;
-    if (symbolOld == _symbols.end()) {
-        _symbols.insert({sym._name, sym});
-        offset = 0;
-    } else {
-        offset = symbolOld->second._size;
-        symbolOld->second._size += sym._size;
-        _sections.find(sym._name)->second += section;
-    }
-    return offset;
-}
-
-void Linker::loadFile2(const std::string &inputFile) {
-
-}
-
-void Linker::loadFile(const std::string &inputFile) {
-    ObjectFile objectFile;
-    objectFile.loadFromFile(inputFile);
-    std::unordered_map<std::string, int> sectionOffsets;
-    for (auto &symbol: objectFile._symbols)
-        if (symbol.second._symbolType == SYMBOL::SECTION) {
-            auto section = objectFile._sections.find(symbol.second._name);
-            _sections.insert({section->first, section->second});
-            _logFile << "Adding section symbol " << symbol.second._name << "\n";
-            sectionOffsets[symbol.second._name] = addSection(symbol.second,
-                                                             objectFile._sections.find(symbol.second._name)->second);
-        }
-    for (auto &symbol: objectFile._symbols)
-        if (symbol.second._symbolType == SYMBOL::LABEL) {
-            _logFile << "Adding label symbol " << symbol.second._name << "\n";
-            symbol.second._offset += sectionOffsets[symbol.second._sectionName];
-            addSymbol(symbol.second);
-        }
-    for (auto &relocation: objectFile._relocations) {
-        relocation._offset += sectionOffsets[relocation._section];
-        _relocations.push_back(relocation);
-    }
-}
-
-void Linker::fillRemainingSections() {
-    std::vector<std::string> remainingSections;
-    for (auto &symbol: _symbols)
-        if (symbol.second._symbolType == SYMBOL::SECTION &&
-            _sectionPositions.find(symbol.second._name) == _sectionPositions.end()) {
-            remainingSections.push_back(symbol.second._name);
-        }
-    sort(remainingSections.begin(), remainingSections.end());
-    _locationCounter = 0;
-    for (auto &section: _sectionPositions)
-        if (section.second > _locationCounter)
-            _locationCounter = section.second + _sections.find(section.first)->second._size;
-    for (auto &sectionName: remainingSections) {
-        auto section = _sections.find(sectionName)->second;
-        int size = section._size;
-        _sectionPositions.insert({sectionName, _locationCounter});
-        _locationCounter += size;
-    }
-}
-
-uint32_t Linker::getSymbolVal(const std::string &symbolName) {
-    uint32_t ret = 0;
-    auto symbol = _symbols.find(symbolName);
-    if (symbol == _symbols.end())
-        throw std::runtime_error("Symbol not found " + symbolName);
-    if (symbol->second._symbolType == SYMBOL::LABEL || symbol->second._symbolType == SYMBOL::OPERAND_DEC)
-        ret += symbol->second._offset;
-    if (symbol->second._symbolType == SYMBOL::LABEL || symbol->second._symbolType == SYMBOL::SECTION) {
-        std::string sectionName = symbol->second._sectionName;
-        auto sectionPos = _sectionPositions.find(sectionName);
-        if (sectionPos == _sectionPositions.end())
-            throw std::runtime_error("rand err? " + sectionName);
-        ret += sectionPos->second;
-    }
-    return ret;
-}
-
-void Linker::fixRelocations() {
-    std::vector<Relocation> newRelocations;
-    for (auto &rel: _relocations) {
-        auto symbol = _symbols.find(rel._symbolName);
-        if (symbol == _symbols.end())
-            throw std::runtime_error("rand err");
-        if (symbol->second._defined) {
-            uint32_t symbolVal = getSymbolVal(symbol->second._name);
-            auto section = _sections.find(rel._section);
-            if (section == _sections.end())
-                throw std::runtime_error("random errr");
-            if (section->second._size <= rel._offset) {
-                std::cout << section->second._size << " " << rel._offset << "\n";
-                throw std::runtime_error("randddddom err");
+    for (int i = 1; i < argc; ++i) {
+        if (strcmp(argv[i], "-hex") == 0)
+            options.hex = true;
+        else if (strcmp(argv[i], "-relocatable") == 0)
+            options.relocatable = true;
+        else if (strncmp(argv[i], "-place", 6) == 0) {
+            if (i + 1 < argc) {
+                uint64_t temp;
+                if (sscanf(argv[i], "-place=data@%lx", &temp) == 1)
+                    options.dataPlace = temp;
+                else if (sscanf(argv[i], "-place=text@%lx", &temp) == 1)
+                    options.textPlace = temp;
             }
-            if (rel._relocationType == RELOCATION::R_386_32)
-                section->second.write(&symbolVal, rel._offset, 4);
-            else if (rel._relocationType == RELOCATION::R_386_PC32) {
-                u_int16_t high = symbolVal >> 16;
-                u_int16_t low = symbolVal;
-                section->second.write(&high, rel._offset + 2, 2);
-                section->second.write(&low, rel._offset + 6, 2);
+        } else if (strcmp(argv[i], "-o") == 0)
+            outputFile = argv[++i];
+        else
+            inputNames.emplace_back(argv[i]);
+    }
+
+    testConditions();
+}
+
+void Linker::testConditions() {
+    if (options.hex && options.relocatable) {
+        std::cerr << "Both -hex and -relocatable flags are set" << "\n";
+        exit(EXIT_FAILURE);
+    }
+
+    if (!options.hex && !options.relocatable) {
+        std::cerr << "None of -hex and -relocatable flags are set" << "\n";
+        exit(EXIT_FAILURE);
+    }
+
+    if (outputFile.empty()) {
+        std::cerr << "Output file not specified" << "\n";
+        exit(EXIT_FAILURE);
+    }
+
+    if (options.relocatable) {
+        options.dataPlace = UNDEFINED;
+        options.dataPlace = UNDEFINED;
+    }
+
+}
+
+void Linker::loadObjects() {
+    inputFiles.reserve(inputNames.size());
+    for (auto &inputName: inputNames) {
+        auto objFile = ObjectFile(inputName);
+        objFile.loadFromFile(inputName);
+        inputFiles.push_back(std::move(objFile));
+    }
+}
+
+void Linker::resolveSymbols() {
+    // Iterate through all inputFiles
+    for (auto &file: inputFiles) {
+        // Iterate through all sections in file
+        for (auto &section: file._sections) {
+            // Map section to file
+            _sectionMapFile[&section] = &file;
+            // Add section to sections
+            sections.push_back(&section);
+        }
+        // Iterate through all symbols in section
+        for (auto &symbol: file._symbols)
+            // Look for Global symbols
+            if (symbol.flags.scope == GLOBAL) {
+                auto it = _globSymMapSymbol.find(symbol.name);
+//                std::cout << symbol.name << " " << symbol.sectionIndex << std::endl;
+                if (it == _globSymMapSymbol.end())
+                    if (symbol.sectionIndex == UNDEFINED)
+                        _globSymMapSymbol[symbol.name] = nullptr;
+                    else {
+                        // If defined, add it to the map with value &symbol
+                        _globSymMapSymbol[symbol.name] = &symbol;
+                        _globSymMapSection[symbol.name] = &file._sections[symbol.sectionIndex];
+                    }
+                else if (it->second != nullptr) {
+                    if (symbol.sectionIndex < UNDEFINED) {
+                        std::cerr << "Symbol " << symbol.name << " already defined" << "\n";
+                        exit(EXIT_FAILURE);
+                    }
+                } else if (symbol.sectionIndex == UNDEFINED)
+                    _globSymMapSymbol[symbol.name] = nullptr;
+                else {
+                    // If defined, add it to the map with value &symbol
+                    _globSymMapSymbol[symbol.name] = &symbol;
+                    _globSymMapSection[symbol.name] = &file._sections[symbol.sectionIndex];
+                }
             }
-        } else
-            newRelocations.push_back(rel);
     }
-    _relocations = newRelocations;
+
+    // Check if all symbols are defined
+    bool allDefined = true;
+    for (auto &symbol: _globSymMapSymbol)
+        if (symbol.second == nullptr){
+            std::cerr << "Symbol " << symbol.first << " not defined" << "\n";
+            allDefined = false;
+        }
+    if (!allDefined)
+        exit(EXIT_FAILURE);
 }
 
-void Linker::writeOutputFile(std::ofstream &outputFile) {
-    for (auto &symbol: _symbols)
-        _logFile << symbol.second;
-    for (auto &relocation: _relocations)
-        _logFile << relocation;
-    for (auto &section: _sections)
-        _logFile << section.second;
-    outputFile << "%SYMBOLS SECTION%" << "\n";
-    outputFile << std::left << "  " <<
-               std::setw(15) << "Symbol" <<
-               std::setw(15) << "SymbolName" <<
-               std::setw(15) << "Defined" <<
-               std::setw(15) << "SectionName" <<
-               std::setw(15) << "Offset" <<
-               std::setw(15) << "Type" <<
-               std::setw(15) << "Size" <<
-               std::setw(15) << "SymbolType" << "\n";
-    for (auto &symbol: _symbols)
-        outputFile << symbol.second.serialize();
-    outputFile << "%END%" << "\n";
-    outputFile << "\n";
-    outputFile << "%RELOCATIONS SECTION%" << "\n";
-    outputFile << std::left << "  " <<
-               std::setw(15) << "Relocation" <<
-               std::setw(15) << "SymbolName" <<
-               std::setw(15) << "SectionName" <<
-               std::setw(15) << "Offset" <<
-               std::setw(15) << "Type" << "\n";
-    for (auto &rel: _relocations)
-        outputFile << rel.serialize();
-    outputFile << "%END%" << "\n";
-    outputFile << "\n" << std::left;
-    outputFile << "%SECTIONS SECTION%" << "\n";
-    for (auto &section: _sections)
-        outputFile << section.second.serialize();
-    outputFile << "%END%" << "\n" << "\n";
-    for (auto &section: _sectionPositions)
-        outputFile << section.first << " - " << section.second << "\n";
-    outputFile << "\n";
-    if (_symbols.find("main") == _symbols.end()) {
-        outputFile << "***** ERROR: Main not defined." << "\n";
+
+void Linker::placeSection() {
+
+    uint64_t testLC = options.textPlace;
+    uint64_t dataLC = options.dataPlace;
+
+    if (sections.empty())
         return;
+    std::string next_section = sections[0]->name;
+
+    // While sections not empty
+    while (!next_section.empty()) {
+
+        // Find first section with name next_section
+        auto exist = std::find_if(sections.begin(), sections.end(), [&next_section](SectionLink *section) {
+            return section->name == next_section;
+        });
+        while (exist != sections.end()) {
+            // Set section position and address; add to textOrder or dataOrder
+            if (next_section == ".text") {
+                _sectionAddr[*exist] = testLC;
+                testLC += (*exist)->data.size();
+                textOrder.push_back(*exist);
+            } else {
+                _sectionAddr[*exist] = dataLC;
+                dataLC += (*exist)->data.size();
+                dataOrder.push_back(*exist);
+            }
+
+            // Remove section from sections
+            sections.erase(exist);
+
+            // Find next section with name next_section
+            exist = std::find_if(sections.begin(), sections.end(), [&next_section](SectionLink *section) {
+                return section->name == next_section;
+            });
+        }
+        if (sections.empty())
+            break;
+        next_section = sections[0]->name;
     }
-    if (!outputSection) {
-        outputFile << "***** ERROR: Not all realocations fixed." << "\n";
-        return;
-    }
-    outputFile << "%OUTPUT SECTION%" << "\n";
-    Symbol mainSym = _symbols.find("main")->second;
-    outputFile << "Main: " << (mainSym._offset + _sectionPositions[mainSym._sectionName]) << "\n";
-    outputFile << outputSection->serialize();
-    outputFile << "%END%" << "\n";
+
 }
 
-void Linker::generateOutput() {
-    if (!_relocations.empty()) {
-        _logFile << "not all relocations fixed" << "\n";
-        return;
-    }
-    outputSection = new Section("output", _locationCounter);
-    outputSection->WriteZeros(0, _locationCounter);
-    for (auto &sectionPosition: _sectionPositions) {
-        std::string sectionName = sectionPosition.first;
-        int sectionStart = sectionPosition.second;
-        auto section = _sections.find(sectionName);
-        outputSection->Write(section->second._memory, sectionStart, section->second._size);
+void Linker::link() {
+
+    // Iterate through inputFiles
+    for (auto &file: inputFiles)
+
+        // Iterate through relocations in section
+        for (auto &rel: file._relocations) {
+            auto &destSect = file._sections[rel.sectionIndex]; // write to this section
+            auto &symbol = file._symbols[rel.symbolIndex];
+            SectionLink *srcSect; // read from this section
+            if (file._symbols[rel.symbolIndex].sectionIndex == UNDEFINED) {
+                symbol = *_globSymMapSymbol[symbol.name];
+                srcSect = _globSymMapSection[symbol.name];
+            } else
+                srcSect = &file._sections[symbol.sectionIndex];
+            fixRelocation(rel, destSect, srcSect);
+        }
+
+}
+
+void Linker::fixRelocation(const RelocationLink &rel, SectionLink &destSect, SectionLink *srcSect) {
+    if (rel.type == R_2B_EXC_4b) {
+        // Copy 2 bytes as relative displacement
+        // Displacement = AAAABBBB CCCCDDDD; Keep AAAA in destSect.data at rel.offset but overwrite other bits (12 bits)
+        auto mask = 0xF000;
+        auto placeSrc = _sectionAddr[srcSect];
+        auto placeDest = _sectionAddr[&destSect] + rel.offset;
+        // Instruction is 4B long so subtract 2B from the address
+        uint64_t relativeAddr = placeSrc - placeDest - 2;;
+        // Max 12 bits signed, if relativeAddr is greater than 0xFFF or less than -0xFFF, error
+        if ((short) relativeAddr > 0xFFF || (short) relativeAddr < -0xFFF) {
+            std::cerr << "Relative address too big" << "\n";
+            exit(EXIT_FAILURE);
+        }
+        auto *ptrDest = (uint16_t *) placeDest;
+        *ptrDest = (*ptrDest & mask) | (relativeAddr & ~mask);
+    } else if (rel.type == R_PC32) {
+
+
     }
 }
+

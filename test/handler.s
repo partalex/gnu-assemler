@@ -22,4 +22,5 @@ handle_timer:
 handle_terminal:
     call isr_terminal
     jmp finish
+    
 .end

@@ -1,19 +1,7 @@
+#include <iomanip>
 #include "../include/instruction.h"
-#include "../include/symbol.h"
-#include "../include/relocation.h"
-#include "../include/section.h"
 
-std::istream &operator>>(std::istream &in, enum SYMBOL &sym) {
-    std::string token;
-    in >> token;
-    if (token == "SYMBOL")
-        sym = SYMBOL::SYMBOL;
-    else if (token == "LABEL")
-        sym = SYMBOL::LABEL;
-    else if (token == "ASCII")
-        sym = SYMBOL::ASCII;
-    return in;
-}
+uint64_t UNDEFINED = 0xFFFFFFFFFFFFFFFF;
 
 std::ostream &operator<<(std::ostream &out, enum SYMBOL sym) {
     switch (sym) {
@@ -21,42 +9,9 @@ std::ostream &operator<<(std::ostream &out, enum SYMBOL sym) {
             return out << "ASCII";
         case SYMBOL::LABEL:
             return out << "LABEL";
-        case SYMBOL::SYMBOL:
-            return out << "SYMBOL";
         default:
             return out << "UNDEFINED";
     }
-}
-
-std::istream &operator>>(std::istream &in, FLAG &flag) {
-    std::string token;
-    in >> token;
-    if (token == "INVALID")
-        flag = FLAG::INVALID;
-    else if (token == "UND")
-        flag = FLAG::UND;
-    return in;
-}
-
-std::ostream &operator<<(std::ostream &out, FLAG flag) {
-    switch (flag) {
-        case FLAG::INVALID:
-            return out << "INVALID";
-        case FLAG::UND:
-            return out << "UND";
-        default:
-            return out << "UNDEFINED";
-    }
-}
-
-std::istream &operator>>(std::istream &in, SCOPE &s) {
-    std::string token;
-    in >> token;
-    if (token == "GLOBAL")
-        s = SCOPE::GLOBAL;
-    if (token == "LOCAL")
-        s = SCOPE::LOCAL;
-    return in;
 }
 
 std::ostream &operator<<(std::ostream &out, SCOPE s) {
@@ -145,21 +100,11 @@ std::ostream &operator<<(std::ostream &out, enum INSTRUCTION instr) {
 
 std::ostream &operator<<(std::ostream &out, RELOCATION rel) {
     switch (rel) {
-        case RELOCATION::R_386_32:
-            return out << "R_386_32";
-        case RELOCATION::R_386_PC32:
-            return out << "R_386_PC32";
+        case RELOCATION::R_2B_EXC_4b:
+            return out << "R_2B_EXC_4b";
+        case RELOCATION::R_PC32:
+            return out << "R_PC32";
         default:
             return out << "UNDEFINED";
     }
-}
-
-std::istream &operator>>(std::istream &in, RELOCATION &rel) {
-    std::string token;
-    in >> token;
-    if (token == "R_386_32")
-        rel = RELOCATION::R_386_32;
-    if (token == "R_386_PC32")
-        rel = RELOCATION::R_386_PC32;
-    return in;
 }

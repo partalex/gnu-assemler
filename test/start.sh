@@ -11,3 +11,6 @@ ${LINKER} -hex \
   -o program.hex \
   main.o isr_terminal.o isr_timer.o handler.o
 ${EMULATOR} program.hex
+
+
+

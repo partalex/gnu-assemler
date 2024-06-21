@@ -1,18 +1,17 @@
 #pragma once
 
+#include "../../common/include/enum.h"
+#include "../../common/include/section_link.h"
+
 #include <string>
 #include <cstdint>
 #include <memory>
 
 class Section {
-    static const uint64_t MIN_SIZE;
-    static const uint8_t MULTIPLIER;
     uint64_t _locationCounter = 0;
-    uint64_t _size = 0;
 public:
 
-    std::string _name;
-    std::unique_ptr<uint8_t[]> _memory = nullptr;
+    SectionLink core;
 
     void addToLocCounter(uint32_t offset);
 
@@ -24,20 +23,17 @@ public:
 
     void writeInstr(void *, uint32_t);
 
-    void writeZeros(uint32_t, uint64_t);
-
     Section &operator+=(Section &);
 
-    void serialize(std::ostream &out) const;
+    void serialize(std::ostream &) const;
 
     friend std::ostream &operator<<(std::ostream &, Section &);
 
     void static tableHeader(std::ostream &);
 
-    void reallocateMemory(uint64_t size);
+    void reallocateMemory(uint32_t, uint64_t);
 
     uint64_t getSize() const;
-
 
 };
 

@@ -1,4 +1,7 @@
+#pragma once
+
 #include "enum.h"
+#include "relocation_link.h"
 
 #include <cstdint>
 #include <vector>
@@ -6,20 +9,14 @@
 
 class Relocation {
 public:
-    std::string _section;
-    std::string _symbolName;
-    uint32_t _offset;
-    RELOCATION _relocationType;
+    std::string _symbol;
+    RelocationLink _core;
 
-    Relocation(std::string, std::string, u_int32_t, RELOCATION);
+    Relocation(std::string, uint64_t, uint64_t, uint64_t, uint64_t, RELOCATION);
 
-    std::string serialize() const;
-
-    static Relocation deserialize(const std::string&);
+    void static tableHeader(std::ostream &);
 
     friend std::ostream &operator<<(std::ostream &, Relocation &);
-
-    friend std::istream &operator>>(std::istream &, Relocation &);
 
 };
 

@@ -14,7 +14,7 @@ class Instruction {
 public:
 
     struct {
-        u_int32_t _byte_3: 8, _byte_2: 8, _byte_1: 8, _byte_0: 8;
+        uint32_t byte_0: 8, byte_1: 8, byte_2: 8, byte_3: 8;
     } _bytes = {};
 
     explicit Instruction(enum INSTRUCTION byte_1, uint8_t regA = 0, uint8_t regB = 0, uint8_t regC = 0);

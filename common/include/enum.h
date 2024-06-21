@@ -1,19 +1,18 @@
 #pragma once
 
+#include <vector>
 #include <iostream>
+#include <memory>
+
+extern uint64_t UNDEFINED;
 
 enum RELOCATION {
-    R_386_32, R_386_PC32
+    R_2B_EXC_4b, R_PC32
 };
 
 enum SYMBOL {
     ASCII,
     LABEL,
-    SYMBOL,
-};
-
-enum FLAG {
-    INVALID = -2, UND = -1
 };
 
 enum SCOPE {
@@ -63,15 +62,7 @@ enum INSTRUCTION {
     CSR_LD_POST_INC = 0b10010111,   // csr[A]<=mem32[gpr[B]]; gpr[B]<=gpr[B]+D
 };
 
-std::istream &operator>>(std::istream &, enum SYMBOL &);
-
 std::ostream &operator<<(std::ostream &, enum SYMBOL);
-
-std::istream &operator>>(std::istream &, FLAG &);
-
-std::ostream &operator<<(std::ostream &, FLAG);
-
-std::istream &operator>>(std::istream &, SCOPE &);
 
 std::ostream &operator<<(std::ostream &, SCOPE);
 
@@ -79,5 +70,4 @@ std::ostream &operator<<(std::ostream &, enum INSTRUCTION);
 
 std::ostream &operator<<(std::ostream &, RELOCATION);
 
-std::istream &operator>>(std::istream &, RELOCATION &);
 

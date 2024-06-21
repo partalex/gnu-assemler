@@ -212,10 +212,10 @@ symbolList
 
 oneRegOperand
   : T_DOLLAR T_LITERAL
-  { $$ = new LiteralImm($2); }
+  { $$ = new LiteralImmReg($2); }
 
   | T_DOLLAR T_IDENT
-  { $$ = new IdentDir($2); }
+  { $$ = new IdentImm($2); }
 
   | T_DOLLAR csr
   { $$ = new CsrOp($2); }
@@ -224,7 +224,7 @@ oneRegOperand
   { $$ = new LiteralInDir($1); }
 
   | T_IDENT
-  { $$ = new IdentDir($1); }
+  { $$ = new IdentAddr($1); }
 
   | gpr
   { $$ = new RegDir($1); }
@@ -264,7 +264,7 @@ intOperand
   { $$ = new LiteralImm($1); }
 
   | T_IDENT
-  { $$ = new IdentDir($1); };
+  { $$ = new IdentAddr($1); };
 
 noadr
   : I_IRET
@@ -316,7 +316,7 @@ jmpOperand
   { $$ = new LiteralImm($1); }
 
   | T_IDENT
-  { $$ = new IdentDir($1); };
+  { $$ = new IdentAddr($1); };
 
 jmpCondOperand
   : T_PERCENT gpr T_COMMA T_PERCENT gpr T_COMMA T_IDENT
