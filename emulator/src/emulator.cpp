@@ -1,31 +1,36 @@
 #include "../include/emulator.h"
+#include "../../common/include/program.h"
 
 #include <iostream>
 
-Emulator::Emulator() = default;
+std::unique_ptr<Emulator> Emulator::_instance = nullptr;
+std::unique_ptr<Program> Emulator::program = nullptr;
 
-void Emulator::Emulate(std::ifstream &inputFiles) {
-    try {
-        logFile << "Loading section" << std::endl;
-        program.loadSection(inputFiles);
-        std::ifstream defaultIVT("object_files/defaultIVT.o");
-        logFile << "Load default ivt" << std::endl;
-        program.loadDefaultIVT(defaultIVT);
-        logFile << "Started executing" << std::endl;
-        Execute();
-    }
-
-    catch (std::exception &exc) {
-        std::cerr << exc.what() << std::endl;
-        logFile << "ERROR: " << exc.what() << std::endl;
-    }
+Emulator &Emulator::singleton() {
+    if (!_instance)
+        _instance = std::make_unique<Emulator>();
+    return *_instance;
 }
 
-void Emulator::Execute() {
-    program.init();
-    program.readNext();
-    while (!program.isEnd()) {
-        program.executeCurrent();
-        program.readNext();
+void Emulator::parseArgs(int argc, char **argv) {
+    if (argc < 2) {
+        std::cerr << "No input file" << '\n';
+        exit(EXIT_FAILURE);
     }
+    program = std::make_unique<Program>();
+    program->load(argv[1]);
 }
+
+void Emulator::execute() {
+
+//    program->initOld();
+    program->initNew();
+
+    while (!program->isEnd) {
+        program->executeCurrent();
+        program->readNext();
+    }
+
+}
+
+

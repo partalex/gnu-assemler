@@ -9,8 +9,8 @@
 typedef struct {
     bool hex = false;
     bool relocatable = false;
-    uint64_t dataPlace = 0;
-    uint64_t textPlace = 0x40000000;
+    uint32_t dataAddr = 0;
+    uint32_t textAddr = 0x40000000;
 } LinkerOptions;
 
 
@@ -29,7 +29,6 @@ public:
     std::unordered_map<std::string, SectionLink *> _globSymMapSection; // in resolveSymbols()
     std::unordered_map<SectionLink *, ObjectFile *> _sectionMapFile; // in resolveSymbols()
     std::unordered_map<SectionLink *, uint64_t> _sectionAddr;
-
 
     std::vector<SectionLink *> textOrder;
     std::vector<SectionLink *> dataOrder;
@@ -55,6 +54,11 @@ public:
     void link();
 
     void fixRelocation(const RelocationLink &, SectionLink &, SectionLink *);
+
+    void writeRelocatable() const;
+
+    void writeExe() const;
+
 
     // must be -hex or -relocatable
     // if -relocatable ignore all -place arguments

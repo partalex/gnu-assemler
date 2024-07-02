@@ -1,4 +1,5 @@
 #include "../include/linker.h"
+#include "../../common/include/program_info.h"
 
 #include <fstream>
 #include <iostream>
@@ -19,7 +20,7 @@ void Linker::log() const {
     for (auto &inputFile: inputFiles) {
         std::ofstream output(inputFile._name + ".txt");
         if (!output) {
-            std::cerr << "Failed to open file: " << inputFile._name << ".txt" << "\n";
+            std::cerr << "Failed to open file: " << inputFile._name + ".txt" << "\n";
             return;
         }
         inputFile.log(output);
@@ -43,9 +44,9 @@ void Linker::parseArgs(int argc, char **argv) {
             if (i + 1 < argc) {
                 uint64_t temp;
                 if (sscanf(argv[i], "-place=data@%lx", &temp) == 1)
-                    options.dataPlace = temp;
+                    options.dataAddr = temp;
                 else if (sscanf(argv[i], "-place=text@%lx", &temp) == 1)
-                    options.textPlace = temp;
+                    options.textAddr = temp;
             }
         } else if (strcmp(argv[i], "-o") == 0)
             outputFile = argv[++i];
@@ -73,8 +74,8 @@ void Linker::testConditions() {
     }
 
     if (options.relocatable) {
-        options.dataPlace = UNDEFINED;
-        options.dataPlace = UNDEFINED;
+        options.dataAddr = UNDEFINED;
+        options.dataAddr = UNDEFINED;
     }
 
 }
@@ -82,9 +83,8 @@ void Linker::testConditions() {
 void Linker::loadObjects() {
     inputFiles.reserve(inputNames.size());
     for (auto &inputName: inputNames) {
-        auto objFile = ObjectFile(inputName);
-        objFile.loadFromFile(inputName);
-        inputFiles.push_back(std::move(objFile));
+        inputFiles.emplace_back(inputName);
+        inputFiles.back().loadFromFile(inputName);
     }
 }
 
@@ -96,7 +96,7 @@ void Linker::resolveSymbols() {
             // Map section to file
             _sectionMapFile[&section] = &file;
             // Add section to sections
-            sections.push_back(&section);
+            sections.emplace_back(&section);
         }
         // Iterate through all symbols in section
         for (auto &symbol: file._symbols)
@@ -130,7 +130,7 @@ void Linker::resolveSymbols() {
     // Check if all symbols are defined
     bool allDefined = true;
     for (auto &symbol: _globSymMapSymbol)
-        if (symbol.second == nullptr){
+        if (symbol.second == nullptr) {
             std::cerr << "Symbol " << symbol.first << " not defined" << "\n";
             allDefined = false;
         }
@@ -138,24 +138,29 @@ void Linker::resolveSymbols() {
         exit(EXIT_FAILURE);
 }
 
-
 void Linker::placeSection() {
 
-    uint64_t testLC = options.textPlace;
-    uint64_t dataLC = options.dataPlace;
+    uint64_t testLC = options.textAddr;
+    uint64_t dataLC = options.dataAddr;
 
     if (sections.empty())
         return;
-    std::string next_section = sections[0]->name;
+
+    std::vector<SectionLink *> sectionsCopy(sections.size());
+    std::transform(sections.begin(), sections.end(), sectionsCopy.begin(),
+                   [](SectionLink *section) { return section; });
+
+    std::string next_section = sectionsCopy[0]->name;
 
     // While sections not empty
     while (!next_section.empty()) {
 
         // Find first section with name next_section
-        auto exist = std::find_if(sections.begin(), sections.end(), [&next_section](SectionLink *section) {
-            return section->name == next_section;
-        });
-        while (exist != sections.end()) {
+        auto exist = std::find_if(sectionsCopy.begin(), sectionsCopy.end(),
+                                  [&next_section](const SectionLink *section) {
+                                      return section->name == next_section;
+                                  });
+        while (exist != sectionsCopy.end()) {
             // Set section position and address; add to textOrder or dataOrder
             if (next_section == ".text") {
                 _sectionAddr[*exist] = testLC;
@@ -166,20 +171,104 @@ void Linker::placeSection() {
                 dataLC += (*exist)->data.size();
                 dataOrder.push_back(*exist);
             }
-
             // Remove section from sections
-            sections.erase(exist);
+            sectionsCopy.erase(exist);
 
             // Find next section with name next_section
-            exist = std::find_if(sections.begin(), sections.end(), [&next_section](SectionLink *section) {
-                return section->name == next_section;
-            });
+            exist = std::find_if(sectionsCopy.begin(), sectionsCopy.end(),
+                                 [&next_section](const SectionLink *section) {
+                                     return section->name == next_section;
+                                 });
         }
-        if (sections.empty())
+        if (sectionsCopy.empty())
             break;
-        next_section = sections[0]->name;
+        next_section = sectionsCopy[0]->name;
     }
 
+}
+
+void Linker::fixRelocation(const RelocationLink &rel, SectionLink &destSect, SectionLink *srcSect) {
+    if (rel.type == R_2B_EXC_4b) {
+        // Copy 2 bytes as relative displacement
+        // Displacement = AAAABBBB CCCCDDDD; Keep AAAA in destSect.data at rel.offset but overwrite other bits (12 bits)
+        auto mask = 0xF000;
+        auto placeSrc = _sectionAddr[srcSect];
+        auto placeDest = _sectionAddr[&destSect] + rel.offset;
+        // Instruction is 4B long so subtract 2B from the address
+        uint64_t relativeAddr = placeSrc - placeDest - 2;;
+        // Max 12 bits signed, if relativeAddr is greater than 0xFFF or less than -0xFFF, error
+        if ((short) relativeAddr > 0xFFF || (short) relativeAddr < -0xFFF) {
+            std::cerr << "Relative address too big" << "\n";
+            exit(EXIT_FAILURE);
+        }
+        auto *ptrDest = reinterpret_cast<uint16_t *>(&destSect.data[rel.offset]);
+        *ptrDest = (*ptrDest & mask) | (relativeAddr & ~mask);
+    } else if (rel.type == R_PC32) {
+        // Calculate relative address
+        uint64_t relativeAddr = _sectionAddr[srcSect] - (_sectionAddr[&destSect] + rel.offset);
+
+        // Check if relative address fits into 12 bits
+        if ((short) relativeAddr > 0xFFF || (short) relativeAddr < -0xFFF) {
+            std::cerr << "Relative address too big" << "\n";
+            exit(EXIT_FAILURE);
+        }
+
+        // Keep the 4 highest bits and fill the rest with the relative address
+        auto *ptrDest = reinterpret_cast<uint16_t *>(&destSect.data[rel.offset]);
+        *ptrDest = (*ptrDest & 0xF000) | (relativeAddr & 0x0FFF);
+    }
+}
+
+void Linker::writeRelocatable() const {
+    std::ofstream output(outputFile, std::ios::binary);
+    if (!output) {
+        std::cerr << "Failed to open file: " << outputFile << "\n";
+        exit(EXIT_FAILURE);
+    }
+
+    // Write all sections to the output file
+    for (const auto &section: sections) {
+        // Write section name
+        uint32_t name_size = section->name.size();
+        output.write(reinterpret_cast<const char *>(&name_size), sizeof(uint32_t));
+        output.write(section->name.c_str(), name_size);
+
+        // Write section data size
+        uint64_t data_size = section->data.size();
+        output.write(reinterpret_cast<const char *>(&data_size), sizeof(uint64_t));
+
+        // Write section data
+        output.write(reinterpret_cast<const char *>(section->data.data()), data_size);
+    }
+
+    // Write all symbols to the output file
+    for (const auto &file: inputFiles) {
+        for (const auto &symbol: file._symbols) {
+            // Write symbol name
+            uint32_t name_size = symbol.name.size();
+            output.write(reinterpret_cast<const char *>(&name_size), sizeof(uint32_t));
+            output.write(symbol.name.c_str(), name_size);
+
+            // Write symbol offset
+            output.write(reinterpret_cast<const char *>(&symbol.offset), sizeof(uint64_t));
+
+            // Write symbol section index
+            output.write(reinterpret_cast<const char *>(&symbol.sectionIndex), sizeof(uint64_t));
+
+            // Write symbol flags
+            output.write(reinterpret_cast<const char *>(&symbol.flags), sizeof(uint8_t));
+        }
+    }
+
+    // Write all relocations to the output file
+    for (const auto &file: inputFiles) {
+        for (const auto &relocation: file._relocations) {
+            // Write relocation data
+            output.write(reinterpret_cast<const char *>(&relocation), sizeof(RelocationLink));
+        }
+    }
+
+    output.close();
 }
 
 void Linker::link() {
@@ -202,25 +291,36 @@ void Linker::link() {
 
 }
 
-void Linker::fixRelocation(const RelocationLink &rel, SectionLink &destSect, SectionLink *srcSect) {
-    if (rel.type == R_2B_EXC_4b) {
-        // Copy 2 bytes as relative displacement
-        // Displacement = AAAABBBB CCCCDDDD; Keep AAAA in destSect.data at rel.offset but overwrite other bits (12 bits)
-        auto mask = 0xF000;
-        auto placeSrc = _sectionAddr[srcSect];
-        auto placeDest = _sectionAddr[&destSect] + rel.offset;
-        // Instruction is 4B long so subtract 2B from the address
-        uint64_t relativeAddr = placeSrc - placeDest - 2;;
-        // Max 12 bits signed, if relativeAddr is greater than 0xFFF or less than -0xFFF, error
-        if ((short) relativeAddr > 0xFFF || (short) relativeAddr < -0xFFF) {
-            std::cerr << "Relative address too big" << "\n";
-            exit(EXIT_FAILURE);
-        }
-        auto *ptrDest = (uint16_t *) placeDest;
-        *ptrDest = (*ptrDest & mask) | (relativeAddr & ~mask);
-    } else if (rel.type == R_PC32) {
-
-
+void Linker::writeExe() const {
+    std::ofstream output(outputFile, std::ios::binary);
+    if (!output) {
+        std::cerr << "Failed to open file: " << outputFile << "\n";
+        exit(EXIT_FAILURE);
     }
-}
 
+    ProgramInfo progInfo(options.textAddr, options.dataAddr);
+
+    // Calculate sizes
+    for (const auto &section: textOrder)
+        progInfo.textSize += section->data.size();
+    for (const auto &section: dataOrder)
+        progInfo.dataSize += section->data.size();
+
+    // write program
+    output.write(reinterpret_cast<const char *>(&progInfo), sizeof(progInfo));
+    // print program info to console
+    std::cout
+            << "Text address: " << std::hex << progInfo.startPoint << "\n"
+            << "Data address: " << std::hex << progInfo.dataAddr << "\n"
+            << "Text size: " << std::hex << progInfo.textSize << "\n"
+            << "Data size: " << std::hex << progInfo.dataSize << "\n";
+
+    // write sections
+    for (const auto &section: textOrder)
+        output.write(reinterpret_cast<const char *>(section->data.data()), section->data.size());
+
+    for (const auto &section: dataOrder)
+        output.write(reinterpret_cast<const char *>(section->data.data()), section->data.size());
+
+    output.close();
+}

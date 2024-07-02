@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../include/enum.h"
+#include "enum.h"
 
 #include <string>
 #include <cstdint>
@@ -10,7 +10,7 @@ class Csr {
 public:
     static std::string CSR[];
     enum CSR {
-        STATUS,
+        STATUS = 16,
         HANDLER,
         CAUSE
     };
@@ -21,7 +21,7 @@ public:
 
     explicit Operand() = default;
 
-    virtual void log(std::ostream &) = 0;
+    virtual void log(std::ostream &out) {}
 
     virtual bool isCsr() { return false; }
 
@@ -220,6 +220,7 @@ public:
     explicit GprGprLiteral(uint8_t gpr1, uint8_t gpr2, uint32_t value) : _gpr1(gpr1), _gpr2(gpr2),
                                                                          _value(value) {
     }
+
     void log(std::ostream &) override;
 
 private:

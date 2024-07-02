@@ -5,7 +5,7 @@
 
 int main(int argc, char *argv[]) {
 
-    Linker &linker = linker.singleton();
+    Linker &linker = Linker::singleton();
     linker.parseArgs(argc, argv);
 
     linker.loadObjects();
@@ -13,10 +13,15 @@ int main(int argc, char *argv[]) {
     linker.placeSection();
     linker.link();
 
-//    linker.log();
+    linker.log();
+
+    if (linker.options.relocatable)
+        linker.writeRelocatable();
+    else
+        linker.writeExe();
 
     auto programFile =
-            std::make_unique<ProgramFile>(linker.options.textPlace, linker.options.dataPlace);
+            std::make_unique<ProgramFile>(linker.options.textAddr, linker.options.dataAddr);
 
 //    linker.writeRelocatable(*programFile);
 

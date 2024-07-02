@@ -1,8 +1,8 @@
-SRC_LN = src
+SRC = src
 SRC_COMMON = ../common/src
 BIN_PATH = bin
 
-SRCS = $(wildcard $(SRC_LN)/*.cpp) $(SRC_COMMON)/*
+SRCS = $(SRC)/* $(SRC_COMMON)/*
 
 CC = g++
 

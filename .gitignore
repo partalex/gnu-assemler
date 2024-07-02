@@ -1,3 +1,7 @@
 /**/cmake-build-debug/
 /**/.idea/
 /**/bin/
+/assembler/include/parser.h
+/assembler/include/lexer.h
+/assembler/src/lexer.cpp
+/assembler/src/parser.cpp

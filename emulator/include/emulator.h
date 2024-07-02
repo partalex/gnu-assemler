@@ -1,20 +1,25 @@
 #pragma once
 
-#include "program.h"
-
 #include <fstream>
+#include <memory>
+
+class Program;
 
 class Emulator {
+    static std::unique_ptr<Emulator> _instance;
+    static std::unique_ptr<Program> program;
+    std::string inputFile;
+
 public:
-    Emulator();
+    Emulator() = default;
 
-    void Emulate(std::ifstream &inputFiles);
+    ~Emulator() = default;
 
-    static std::ofstream logFile;
+    void operator=(Emulator const &) = delete;
 
-private:
-    void Execute();
+    static Emulator &singleton();
 
-    Program program;
+    void parseArgs(int, char **);
 
+    void execute();
 };

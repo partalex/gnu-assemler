@@ -485,7 +485,7 @@ void Assembler::insertInstr(Instruction *instr) {
         _sections.emplace_back(std::make_unique<Section>(".text"));
         _txtSectIndex = _sections.size() - 1;
     }
-    _sections[_txtSectIndex]->writeInstr((void *) &instr->_bytes, _sections[_txtSectIndex]->getLocCounter());
+    _sections[_txtSectIndex]->writeInstr((void *) &instr->bytes, _sections[_txtSectIndex]->getLocCounter());
 }
 
 std::pair<int32_t, Symbol *> Assembler::findSymbol(const std::string &symbol) {
