@@ -51,6 +51,8 @@ public:
 
     void parseWord(WordOperand *);                      // done
 
+    void parseEqu(const std::string &, EquOperand *);  // done
+
     void parseAscii(const std::string &);               // done
 
     void parseSkip(int);                                // done

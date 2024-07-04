@@ -24,74 +24,78 @@
     class SymbolList*   symbolList;
     class Operand*      operand;
     class WordOperand*  wordOperand;
+    class EquOperand*   equOperand;
     int 	        offset;
 }
 
-%token            T_COMMA
-%token            T_COLON
-%token            T_DOLLAR
-%token            T_PERCENT
-%token            T_OBRACKET
-%token            T_CBRACKET
-%token            T_PLUS
-%token            T_MINUS
-%token            T_TIMES
-%token            T_SLASH
-%token            T_GLOBAL
-%token            T_EXTERN
-%token            T_SECTION
-%token            T_WORD
-%token            T_SKIP
-%token            T_ASCII
-%token            T_END
-%token<ident>     T_STRING
-%token<offset>    T_OFFSET
-%token            I_HALT
-%token            I_INT
-%token            I_IRET
-%token            I_CALL
-%token            I_RET
-%token            I_JMP
-%token            I_BEQ
-%token            I_BNE
-%token            I_BGT
-%token            I_PUSH
-%token            I_POP
-%token            I_XCHG
-%token            I_ADD
-%token            I_SUB
-%token            I_MUL
-%token            I_DIV
-%token            I_NOT
-%token            I_AND
-%token            I_OR
-%token            I_XOR
-%token            I_SHL
-%token            I_SHR
-%token            I_LD
-%token            I_ST
-%token            I_CSRRD
-%token            I_CSRWR
-%token            CSR_STATUS
-%token            CSR_HANDLER
-%token            CSR_CAUSE
+%token              T_COMMA
+%token              T_COLON
+%token              T_DOLLAR
+%token              T_PERCENT
+%token              T_OBRACKET
+%token              T_CBRACKET
+%token              T_PLUS
+%token              T_MINUS
+%token              T_TIMES
+%token              T_SLASH
+%token              T_GLOBAL
+%token              T_EXTERN
+%token              T_SECTION
+%token              T_WORD
+%token              T_EQU
+%token              T_SKIP
+%token              T_ASCII
+%token              T_END
+%token<ident>       T_STRING
+%token<offset>      T_OFFSET
+%token              I_HALT
+%token              I_INT
+%token              I_IRET
+%token              I_CALL
+%token              I_RET
+%token              I_JMP
+%token              I_BEQ
+%token              I_BNE
+%token              I_BGT
+%token              I_PUSH
+%token              I_POP
+%token              I_XCHG
+%token              I_ADD
+%token              I_SUB
+%token              I_MUL
+%token              I_DIV
+%token              I_NOT
+%token              I_AND
+%token              I_OR
+%token              I_XOR
+%token              I_SHL
+%token              I_SHR
+%token              I_LD
+%token              I_ST
+%token              I_CSRRD
+%token              I_CSRWR
+%token              CSR_STATUS
+%token              CSR_HANDLER
+%token              CSR_CAUSE
 
-%token <num_u8>   REG
-%token <num_u8>   SP
-%token <num_u8>   PC
-%token <num_32>   T_LITERAL
-%token <ident>    T_IDENT
+%token <num_u8>     REG
+%token <num_u8>     SP
+%token <num_u8>     PC
+%token <num_32>     T_LITERAL
+%token <ident>      T_IDENT
 
 %type <num_u8>      gpr
 %type <num_u8>      csr
 %type <num_u8>      noadr
 %type <num_u8>      jmpCond
+%type <num_u8>      equOP
 %type <num_u8>      tworeg
 %type <operand>     jmpOperand
 %type <operand>     jmpCondOperand
 %type <operand>     intOperand
 %type <operand>     oneRegOperand
 %type <wordOperand> wordOperand
+%type <equOperand>  equOperand
 %type <symbolList>  symbolList
 
 %%
@@ -107,10 +111,7 @@ instr
 
 label
   : T_IDENT T_COLON
-  { Assembler::singleton().parseLabel($1);}
-
-  | csr T_COLON
-  { Assembler::singleton().parseLabel(Csr::CSR[$1]);};
+  { Assembler::singleton().parseLabel($1);};
   
 directive
   : T_GLOBAL symbolList
@@ -124,6 +125,9 @@ directive
 
   | T_WORD wordOperand
   { Assembler::singleton().parseWord($2); }
+
+  | T_EQU T_IDENT equOperand
+  { Assembler::singleton().parseEqu($2, $3); }
 
   | T_SKIP T_LITERAL
   { Assembler::singleton().parseSkip($2); }
@@ -146,6 +150,31 @@ wordOperand
 
   | T_IDENT T_COMMA wordOperand
   { $$ = new WordIdent($1, $3); };
+
+equOP
+  : T_PLUS
+  { $$ = EQU_OP::E_ADD; }
+
+  | T_MINUS
+  { $$ = EQU_OP::E_SUB; }
+
+  | T_TIMES
+  { $$ = EQU_OP::E_MUL; }
+
+  | T_SLASH
+  { $$ = EQU_OP::E_DIV; };
+
+equOperand
+    : T_LITERAL
+    { $$ = new EquLiteral($1); }
+
+    | T_IDENT
+    { $$ = new EquIdent($1); }
+    | T_LITERAL equOP equOperand
+    { $$ = new EquLiteral($1, $2, $3); }
+
+    | T_IDENT equOP equOperand
+    { $$ = new EquIdent($1, $2, $3); };
 
 instruction
   : I_HALT
@@ -181,11 +210,11 @@ instruction
   | tworeg T_PERCENT REG T_COMMA T_PERCENT REG
   { Assembler::singleton().parseTwoReg($1, $3, $6); }
 
-  | I_CSRRD T_PERCENT csr T_COMMA T_PERCENT REG
-  { Assembler::singleton().parseCsrrd($3, $6); }
+  | I_CSRRD csr T_COMMA T_PERCENT REG
+  { Assembler::singleton().parseCsrrd($2, $5); }
 
-  | I_CSRWR T_PERCENT REG T_COMMA T_PERCENT csr
-  { Assembler::singleton().parseCsrwr($3, $6); }
+  | I_CSRWR T_PERCENT REG T_COMMA csr
+  { Assembler::singleton().parseCsrwr($3, $5); }
 
   | I_LD oneRegOperand T_COMMA T_PERCENT gpr
   { Assembler::singleton().parseLoad($2, $5); }
@@ -202,13 +231,7 @@ symbolList
   { $$ = new SymbolList($1); }
 
   | T_IDENT T_COMMA symbolList
-  { $$ = new SymbolList(std::string($1), $3); }
-
-  | csr
-  { $$ = new SymbolList(Csr::CSR[$1]); }
-
-  | csr T_COMMA symbolList
-  { $$ = new SymbolList(Csr::CSR[$1], $3); };
+  { $$ = new SymbolList(std::string($1), $3); };
 
 oneRegOperand
   : T_DOLLAR T_LITERAL
@@ -217,8 +240,8 @@ oneRegOperand
   | T_DOLLAR T_IDENT
   { $$ = new IdentImm($2); }
 
-  | T_DOLLAR csr
-  { $$ = new CsrOp($2); }
+  | csr
+  { $$ = new CsrOp($1); }
 
   | T_LITERAL
   { $$ = new LiteralInDir($1); }
@@ -238,18 +261,18 @@ oneRegOperand
   | T_OBRACKET gpr T_PLUS T_IDENT T_CBRACKET
   { $$ = new RegInDirOffIdent($2, $4); }
 
-  | T_OBRACKET gpr T_PLUS T_DOLLAR csr T_CBRACKET
-  { $$ = new GprCsr($2, $5); };
+  | T_OBRACKET gpr T_PLUS csr T_CBRACKET
+  { $$ = new GprCsr($2, $4); };
 
 csr
   : CSR_STATUS
-  { $$ = Csr::CSR::STATUS; }
+  { $$ = CSR::STATUS; }
 
   | CSR_HANDLER
-  { $$ = Csr::CSR::HANDLER; }
+  { $$ = CSR::HANDLER; }
 
   | CSR_CAUSE
-  { $$ = Csr::CSR::CAUSE; };
+  { $$ = CSR::CAUSE; };
 
 gpr
   : REG

@@ -5,16 +5,7 @@
 #include <string>
 #include <cstdint>
 #include <optional>
-
-class Csr {
-public:
-    static std::string CSR[];
-    enum CSR {
-        STATUS = 16,
-        HANDLER,
-        CAUSE
-    };
-};
+#include <sstream>
 
 class Operand {
 public:
@@ -22,8 +13,6 @@ public:
     explicit Operand() = default;
 
     virtual void log(std::ostream &out) {}
-
-    virtual bool isCsr() { return false; }
 
     virtual bool isLabel() { return false; }
 
@@ -37,11 +26,10 @@ public:
 
     virtual ~WordOperand() { delete _next; }
 
-    explicit WordOperand(WordOperand *next = nullptr) {
-        _next = next;
+    explicit WordOperand(WordOperand *next = nullptr) : _next(next) {
     }
 
-    virtual void logOne(std::ostream &out) = 0;
+    virtual void logOne(std::ostream &) = 0;
 
     void log(std::ostream &) override;
 
@@ -57,7 +45,7 @@ public:
 
     void *getValue() override;
 
-    void logOne(std::ostream &out) override;
+    void logOne(std::ostream &) override;
 
 };
 
@@ -70,7 +58,51 @@ public:
 
     void *getValue() override;
 
-    void logOne(std::ostream &out) override;
+    void logOne(std::ostream &) override;
+
+    bool isLabel() override { return true; }
+
+    std::string stringValue() override;
+
+};
+
+class EquOperand : public Operand {
+    EQU_OP _op;
+public:
+    EquOperand *_next = nullptr;
+
+    virtual ~EquOperand() { delete _next; }
+
+    explicit EquOperand(unsigned char op = E_ADD, EquOperand *next = nullptr)
+            : _op(static_cast<EQU_OP>(op)), _next(next) {}
+    virtual void logOne(std::ostream &) = 0;
+
+    void log(std::ostream &) override;
+
+    virtual void *getValue() = 0;
+};
+
+class EquLiteral : public EquOperand {
+    uint32_t _value;
+public:
+    explicit EquLiteral(uint32_t value, unsigned char op = E_ADD, EquOperand *next = nullptr)
+            : _value(value), EquOperand(op, next) {}
+
+    void *getValue() override;
+
+    void logOne(std::ostream &) override;
+
+};
+
+class EquIdent : public EquOperand {
+    std::string _ident;
+public:
+    explicit EquIdent(std::string ident, unsigned char op = E_ADD, EquOperand *next = nullptr) :
+            _ident(std::move(ident)), EquOperand(op, next) {}
+
+    void *getValue() override;
+
+    void logOne(std::ostream &) override;
 
     bool isLabel() override { return true; }
 
@@ -237,9 +269,11 @@ public:
 
     bool isLabel() override { return true; }
 
-    virtual bool isCsr() override { return true; }
-
-    std::string stringValue() override { return Csr::CSR[_csr]; }
+    std::string stringValue() override {
+        std::ostringstream oss;
+        oss << static_cast<CSR>(_csr);
+        return oss.str();
+    }
 
 private:
     uint8_t _csr;

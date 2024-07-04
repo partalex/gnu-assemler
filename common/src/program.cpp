@@ -172,6 +172,26 @@ void Program::handleInterrupts() {
     }
 }
 
+int32_t &Program::STATUS() {
+    return registers[CSR::STATUS];
+}
+
+int32_t &Program::HANDLER() {
+    return registers[CSR::HANDLER];
+}
+
+int32_t &Program::CAUSE() {
+    return registers[CSR::CAUSE];
+}
+
+int32_t &Program::PC() {
+    return registers[15];
+}
+
+int32_t &Program::SP() {
+    return registers[14];
+}
+
 void Program::keyInterr() {
     if (psw.I == 1) {
         *LOG << "Masked interrupts (keyboard)" << '\n';
@@ -252,7 +272,7 @@ int32_t Program::mul(int32_t val1, int32_t val2) {
     psw.Z = (temp == 0);
     psw.N = (temp < 0);
     psw.C = (temp != static_cast<int32_t>(temp));
-    psw.O = psw.C; // Overflow and carry are the same for multiplication
+    psw.O = psw.C;
     return static_cast<int32_t>(temp);
 }
 

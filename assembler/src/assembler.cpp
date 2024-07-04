@@ -1,6 +1,6 @@
 #include "../include/assembler.h"
 #include "../include/lexer.h"
-#include "../../common/include/operand.h"
+#include "../../common/include/enum.h"
 
 #include <iostream>
 #include <cstring>
@@ -165,10 +165,21 @@ void Assembler::parseWord(WordOperand *operand) {
         } else
             // It's literal
             _sections[_currSectIndex]->write(temp->getValue(), _sections[_currSectIndex]->getLocCounter(), 4);
-
         temp = temp->_next;
     }
     delete operand;
+}
+
+void Assembler::parseEqu(const std::string &str, EquOperand *operand) {
+#ifdef LOG_PARSER
+    std::cout << "EQU: ";
+    operand->log(std::cout);
+    std::cout << "\n";
+#endif
+    EquOperand *temp = operand;
+    while (temp) {
+        temp = temp->_next;
+    }
 }
 
 void Assembler::parseAscii(const std::string &str) {
@@ -176,7 +187,6 @@ void Assembler::parseAscii(const std::string &str) {
     std::cout << "ASCII: " << str << "\n";
 #endif
     _sections[_currSectIndex]->write((void *) str.c_str(), _sections[_currSectIndex]->getLocCounter(), str.length());
-    _sections[_currSectIndex]->addToLocCounter(str.length());
 }
 
 void Assembler::parseHalt() {
@@ -287,7 +297,7 @@ void Assembler::parseInt(Operand *operand) {
 #endif
     auto instr = std::make_unique<Int_Instr>(std::unique_ptr<Operand>(operand));
     insertInstr(instr.get());
-    if (operand->isLabel())
+    if (_relocations.empty())
         addRelToInstr(operand);
 }
 
@@ -310,7 +320,7 @@ void Assembler::parseTwoReg(unsigned char inst, unsigned char regS, unsigned cha
 
 void Assembler::parseCsrrd(unsigned char csr, unsigned char gpr) {
 #ifdef LOG_PARSER
-    std::cout << "CSRRD: %" << Csr::CSR[csr] << ", %r" << static_cast<int>(gpr) << "\n";
+    std::cout << "CSRRD: %" << static_cast<CSR>(csr) << ", %r" << static_cast<int>(gpr) << "\n";
 #endif
     auto instr = std::make_unique<Csrrd_Instr>(csr, gpr);
     insertInstr(instr.get());
@@ -318,15 +328,13 @@ void Assembler::parseCsrrd(unsigned char csr, unsigned char gpr) {
 
 void Assembler::parseCsrwr(unsigned char gpr, unsigned char csr) {
 #ifdef LOG_PARSER
-    std::cout << "CSRRD: %r" << static_cast<int>(gpr) << ", %" << Csr::CSR[csr] << "\n";
+    std::cout << "CSRRD: %r" << static_cast<int>(gpr) << ", %" << static_cast<CSR>(csr) << "\n";
 #endif
     auto instr = std::make_unique<Csrwr_Instr>(gpr, csr);
     insertInstr(instr.get());
 }
 
 void Assembler::parseLoad(Operand *operand, unsigned char gpr) {
-    if (operand->isCsr())
-        operand = new IdentImm(operand->stringValue());
 #ifdef LOG_PARSER
     std::cout << "LOAD: ";
     operand->log(std::cout);
@@ -348,8 +356,6 @@ void Assembler::parseLoad(unsigned char gpr1, unsigned char gpr2, int16_t offset
 }
 
 void Assembler::parseStore(unsigned char gpr, Operand *operand) {
-    if (operand->isCsr())
-        operand = new IdentImm(operand->stringValue());
 #ifdef LOG_PARSER
     std::cout << "STORE: %r" << static_cast<int>(gpr) << ", ";
     operand->log(std::cout);
@@ -499,4 +505,6 @@ void Assembler::symbolDuplicate(std::string &symbol) {
     std::cerr << "Error: Symbol " << symbol << " already defined." << "\n";
     exit(EXIT_FAILURE);
 }
+
+
 

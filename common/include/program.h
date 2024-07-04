@@ -54,25 +54,15 @@ public:
 
     Program();
 
-    int32_t &STATUS() {
-        return registers[Csr::STATUS];
-    }
+    int32_t &STATUS();
 
-    int32_t &HANDLER() {
-        return registers[Csr::HANDLER];
-    }
+    int32_t &HANDLER();
 
-    int32_t &CAUSE() {
-        return registers[Csr::CAUSE];
-    }
+    int32_t &CAUSE();
 
-    int32_t &PC() {
-        return registers[15];
-    }
+    int32_t &PC();
 
-    int32_t &SP() {
-        return registers[14];
-    }
+    int32_t &SP();
 
     void load(const std::string &);
 

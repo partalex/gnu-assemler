@@ -6,12 +6,13 @@
 
 std::ostream &operator<<(std::ostream &out, Relocation &rel) {
     return out << std::left <<
-               std::setw(15) << rel._symbol << rel._core;
+               std::setw(20) << rel._symbol <<
+               rel._core;
 }
 
 void Relocation::tableHeader(std::ostream &out) {
     out << std::left <<
-        std::setw(15) << "Symbol";
+        std::setw(20) << "Symbol";
     RelocationLink::tableHeader(out);
 }
 

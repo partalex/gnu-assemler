@@ -49,6 +49,7 @@ OFFSET      [\+\-]({HEX}|{DEC})
 ".extern"           { return T_EXTERN; }
 ".section"          { return T_SECTION; }
 ".word"             { return T_WORD; }
+".equ"              { return T_EQU; }
 ".skip"             { return T_SKIP; }
 ".ascii"            { return T_ASCII; }
 ".end"              { return T_END; }
@@ -99,9 +100,9 @@ OFFSET      [\+\-]({HEX}|{DEC})
 "sp"                { yylval.num_u8 = 14; return SP; }
 "pc"                { yylval.num_u8 = 15; return PC; } /* T - li treba da se vrati PC */
 
-"handler"           { return CSR_HANDLER; }
-"cause"             { return CSR_CAUSE; }
-"status"            { return CSR_STATUS; }
+"%handler"           { return CSR_HANDLER; }
+"%cause"             { return CSR_CAUSE; }
+"%status"            { return CSR_STATUS; }
 
 {STRING}            {
                       char* temp = strdup(yytext+1);

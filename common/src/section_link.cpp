@@ -3,7 +3,17 @@
 #include <iomanip>
 
 void SectionLink::tableHeader(std::ostream &out) {
-    out << std::left << std::setw(15) << "Name" << std::setw(15) << "Size" << "\n";
+    out << std::left <<
+        std::setw(20) << "Name" <<
+        std::setw(15) << "Size" <<
+        "\n";
+}
+
+std::ostream &operator<<(std::ostream &out, const SectionLink &sec) {
+    return out << std::left <<
+               std::setw(20) << sec.name <<
+               std::setw(15) << sec.data.size() <<
+               "\n";
 }
 
 void SectionLink::serialize(std::ostream &out, uint64_t startAddress) const {
@@ -44,8 +54,4 @@ void SectionLink::serialize(std::ostream &out, uint64_t startAddress) const {
         out << "|";
     }
     out << "\n" << ".end" << "\n" << "\n";
-}
-
-std::ostream &operator<<(std::ostream &out, const SectionLink &sec) {
-    return out << std::left << std::setw(15) << sec.name << std::setw(15) << sec.data.size() << "\n";
 }

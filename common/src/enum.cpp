@@ -3,6 +3,19 @@
 
 uint64_t UNDEFINED = 0xFFFFFFFFFFFFFFFF;
 
+std::ostream &operator<<(std::ostream &out, enum CSR csr) {
+    switch (csr) {
+        case CSR::STATUS:
+            return out << "status";
+        case CSR::HANDLER:
+            return out << "handler";
+        case CSR::CAUSE:
+            return out << "cause";
+        default:
+            return out << "UNDEFINED";
+    }
+}
+
 std::ostream &operator<<(std::ostream &out, enum SYMBOL sym) {
     switch (sym) {
         case SYMBOL::ASCII:

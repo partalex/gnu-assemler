@@ -112,7 +112,7 @@ void Instruction::execute(Mnemonic bytes, Program &prog) {
         case INSTRUCTION::INT:
             prog.push(prog.STATUS());
             prog.push(prog.PC());
-            prog.CAUSE() = 4;
+            prog.CAUSE() = STATUS::SOFTWARE;
             prog.STATUS() &= ~0x1;
             prog.PC() = prog.HANDLER();
             prog.PC() = prog.getMemoryOffset(
@@ -200,7 +200,6 @@ void Instruction::execute(Mnemonic bytes, Program &prog) {
             prog.registers[bytes.REG_A] = prog.registers[bytes.REG_A] + bytes.DISPLACEMENT;
             prog.registers[prog.registers[bytes.REG_A]] = prog.registers[bytes.REG_C];
             break;
-            //    LD_CSR = 0b10010000,            // gpr[A]<=csr[B] ## CSRRD
         case INSTRUCTION::LD_CSR:
             prog.registers[bytes.REG_A] = prog.registers[bytes.REG_B];
             break;
