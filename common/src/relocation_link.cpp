@@ -15,7 +15,7 @@ std::ostream &operator<<(std::ostream &out, const RelocationLink &rel) {
 
 void RelocationLink::tableHeader(std::ostream &out) {
     out << std::left
-        << std::setw(11) << "Symbol"
+        << std::setw(11) << "Index"
         << std::setw(11) << "Section"
         << std::setw(11) << "Offset"
         << std::setw(11) << "Size"

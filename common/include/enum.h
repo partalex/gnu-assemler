@@ -4,16 +4,22 @@
 #include <memory>
 #include <iostream>
 
-extern uint64_t UNDEFINED;
+enum MARKER {
+    UNDEFINED = 0xFFFFFFFF,
+    ABS = 0xFFFFFFFE
+};
 
 enum EQU_OP {
     E_ADD, E_SUB
 };
 
 enum SOURCE {
-    S_UNDEFINED,
     THIS,
     OTHER
+};
+
+enum DEFINED {
+    NOT_DEFINED, DEFINED
 };
 
 enum CSR {
@@ -23,7 +29,7 @@ enum CSR {
 };
 
 enum RELOCATION {
-    R_2B_EXC_4b, R_PC32
+    R_2B_EXC_4b, R_PC32, R_WORD
 };
 
 enum STATUS {
@@ -31,7 +37,7 @@ enum STATUS {
 };
 
 enum SYMBOL {
-    NO_TYPE,
+    NO_TYPE, // from: .extern, .global or equExpr
     ASCII,
     LABEL,
     EQU
@@ -100,6 +106,10 @@ enum INSTRUCTION {
     CSR_LD_IND = 0b10010110,        // csr[A]<=memory[gpr[B]+gpr[C]+D]
     CSR_LD_POST_INC = 0b10010111,   // csr[A]<=memory[gpr[B]]; gpr[B]<=gpr[B]+D
 };
+
+std::ostream &operator<<(std::ostream &, MARKER);
+
+std::ostream &operator<<(std::ostream &, enum DEFINED);
 
 std::ostream &operator<<(std::ostream &, SOURCE);
 

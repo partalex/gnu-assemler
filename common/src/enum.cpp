@@ -2,7 +2,27 @@
 
 #include <iomanip>
 
-uint64_t UNDEFINED = 0xFFFFFFFFFFFFFFFF;
+std::ostream &operator<<(std::ostream &out, MARKER marker) {
+    switch (marker) {
+        case MARKER::ABS:
+            return out << "ABS";
+        case MARKER::UNDEFINED:
+            return out << "UND";
+        default:
+            return out << (uint32_t) marker;
+    }
+}
+
+std::ostream &operator<<(std::ostream &out, enum DEFINED defined) {
+    switch (defined) {
+        case DEFINED::NOT_DEFINED:
+            return out << "NO";
+        case DEFINED::DEFINED:
+            return out << "YES";
+        default:
+            return out << "UND";
+    }
+}
 
 std::ostream &operator<<(std::ostream &out, SOURCE source) {
     switch (source) {
@@ -11,7 +31,7 @@ std::ostream &operator<<(std::ostream &out, SOURCE source) {
         case SOURCE::THIS:
             return out << "THIS";
         default:
-            return out << "UNDEFINED";
+            return out << "UND";
     }
 }
 
@@ -22,7 +42,7 @@ std::ostream &operator<<(std::ostream &out, EQU_OP op) {
         case E_SUB:
             return out << "-";
         default:
-            return out << "UNDEFINED";
+            return out << "UND";
     }
 }
 
@@ -35,7 +55,7 @@ std::ostream &operator<<(std::ostream &out, enum CSR csr) {
         case CSR::CAUSE:
             return out << "cause";
         default:
-            return out << "UNDEFINED";
+            return out << "UND";
     }
 }
 
@@ -50,7 +70,7 @@ std::ostream &operator<<(std::ostream &out, enum SYMBOL sym) {
         case SYMBOL::EQU:
             return out << "EQU";
         default:
-            return out << "UNDEFINED";
+            return out << "UND";
     }
 }
 
@@ -61,7 +81,7 @@ std::ostream &operator<<(std::ostream &out, SCOPE s) {
         case SCOPE::LOCAL:
             return out << "LOCAL";
         default:
-            return out << "UNDEFINED";
+            return out << "UND";
     }
 }
 
@@ -134,7 +154,7 @@ std::ostream &operator<<(std::ostream &out, enum INSTRUCTION instr) {
         case INSTRUCTION::CSR_LD_POST_INC:
             return out << "CSR_LD_POST_INC";
         default:
-            return out << "UNDEFINED";
+            return out << "UND";
     }
 }
 
@@ -144,7 +164,9 @@ std::ostream &operator<<(std::ostream &out, RELOCATION rel) {
             return out << "R_2B_EXC_4b";
         case RELOCATION::R_PC32:
             return out << "R_PC32";
+        case RELOCATION::R_WORD:
+            return out << "R_WORD";
         default:
-            return out << "UNDEFINED";
+            return out << "UND";
     }
 }

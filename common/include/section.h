@@ -8,14 +8,13 @@
 #include <memory>
 
 class Section {
-    uint64_t _locationCounter = 0;
 public:
+
+    uint32_t locCnt = 0;
 
     SectionLink core;
 
     void addToLocCounter(uint32_t offset);
-
-    [[nodiscard]] uint64_t getLocCounter() const;
 
     explicit Section(std::string);
 
@@ -33,7 +32,7 @@ public:
 
     void reallocateMemory(uint32_t, uint64_t);
 
-    uint64_t getSize() const;
+    [[nodiscard]] uint32_t getSize() const;
 
 };
 

@@ -1,8 +1,7 @@
 # file: main.s
 
-.global handler, my_start, my_counter
-
-.extern rest
+.global my_start, my_counter
+.extern handler
 
 .equ initial_sp, 0xFFFFFEFE
 .equ timer_config, 0xFFFFFF10
@@ -24,5 +23,4 @@ wait:
 .section my_data
 my_counter:
 .word 0
-
 .end

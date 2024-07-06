@@ -1,34 +1,31 @@
 _____Symbols___________________________________________________________________________________
-Name                SectionIndex   Offset         Scope          SymbolType     
-isr_timer           UNDEFINED      0              GLOBAL         LABEL          
-isr_terminal        UNDEFINED      0              GLOBAL         LABEL          
-handler             0              0              GLOBAL         LABEL          
-handle_timer        0              0              LOCAL          LABEL          
-handle_terminal     0              0              LOCAL          LABEL          
-finish              0              0              LOCAL          LABEL          
+Name                Section    Offset     Scope      Type       Source     Defined    
+isr_timer           UNDEFINED  UNDEFINED  GLOBAL     NO_TYPE    OTHER      NO         
+isr_terminal        UNDEFINED  UNDEFINED  GLOBAL     NO_TYPE    OTHER      NO         
+test                184467440737095516142          LOCAL      EQU        THIS       YES        
+handler             0          4          GLOBAL     LABEL      THIS       YES        
+handle_timer        0          44         LOCAL      LABEL      THIS       YES        
+handle_terminal     0          52         LOCAL      LABEL      THIS       YES        
+finish              0          32         LOCAL      LABEL      THIS       YES        
 
 _____Relocations_______________________________________________________________________________
-Symbol              SymbolIndex    SectionIndex   Offset         Size           Type           
-handle_timer        3              1              18             2              R_PC32         
-handle_terminal     4              1              26             2              R_PC32         
-isr_timer           0              1              42             2              R_PC32         
-finish              5              1              46             2              R_PC32         
-isr_terminal        1              1              50             2              R_PC32         
-finish              5              1              54             2              R_PC32         
+Symbol              Index      Section    Offset     Size       Type           
+handle_timer        4          0          22         2          R_PC32         
+handle_terminal     5          0          30         2          R_PC32         
+isr_timer           0          0          46         2          R_PC32         
+finish              6          0          50         2          R_PC32         
+isr_terminal        1          0          54         2          R_PC32         
+finish              6          0          58         2          R_PC32         
 
 _____Sections__________________________________________________________________________________
 Name                Size           
-my_handler          0              
-.text               56             
+my_handler          60             
 
 _____Sections dump_____________________________________________________________________________
-my_handler 0
-.end
-
-.text 56
-00000008   81 00 00 00 81 00 00 00   90 10 00 00 91 f0 00 00   |................|
-00000018   31 00 00 00 91 f0 00 00   31 00 00 00 93 00 00 00   |1.......1.......|
-00000028   93 00 00 00 91 00 00 00   20 f0 00 00 30 00 00 00   |........ ...0...|
-00000038   20 f0 00 00 30 00 00 00   00 00 00 00 00 00 00 00   | ...0...........|
+my_handler 60
+00000008   02 00 00 00 81 00 00 00   81 00 00 00 90 10 00 00   |................|
+00000018   91 f0 00 00 31 00 00 00   91 f0 00 00 31 00 00 00   |....1.......1...|
+00000028   93 00 00 00 93 00 00 00   91 00 00 00 20 f0 00 00   |............ ...|
+00000038   30 00 00 00 20 f0 00 00   30 00 00 00 00 00 00 00   |0... ...0.......|
 .end
 

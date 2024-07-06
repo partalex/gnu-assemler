@@ -9,9 +9,8 @@ public:
 
     friend std::ostream &operator<<(std::ostream &, const SectionLink &);
 
-    explicit SectionLink(std::string name) :
-            name(std::move(name)) {
-    }
+    explicit SectionLink(std::string name)
+            : name(std::move(name)) {}
 
     SectionLink() = default;
 

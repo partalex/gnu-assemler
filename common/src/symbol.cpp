@@ -3,9 +3,9 @@
 #include <iostream>
 #include <utility>
 
-Symbol::Symbol(std::string name, uint64_t sectionIndex, SCOPE scope, uint64_t offset,
-               enum SYMBOL symbolType, SOURCE source)
-        : core(std::move(name), sectionIndex, scope, offset, symbolType, source) {
+Symbol::Symbol(std::string name, uint32_t sectionIndex, SCOPE scope, uint32_t offset,
+               enum SYMBOL symbolType, SOURCE source, enum DEFINED defined)
+        : core(std::move(name), sectionIndex, scope, offset, symbolType, source, defined) {
 }
 
 std::ostream &operator<<(std::ostream &out, Symbol &symbol) {

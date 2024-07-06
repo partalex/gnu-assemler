@@ -16,8 +16,6 @@ class WordOperand;
 
 class Assembler {
 
-    uint64_t _txtSectIndex = UNDEFINED;
-
     static std::unique_ptr<Assembler> _instance;
     std::string _output = "obj.o";
     std::string _outputTxt = "log.txt";
@@ -29,8 +27,10 @@ class Assembler {
 
     std::unordered_map<Symbol *, std::unique_ptr<EquOperand>> _equExpr;
     std::unordered_map<Symbol *, std::list<Instruction *>> _equBackPatch;
+    // backPatch for .word
+    std::unordered_map<Symbol *, std::list<void*>> _wordBackPatch;
 
-    int32_t _currSectIndex = 0;
+    int32_t _currSection = 0;
 
 public:
 
@@ -98,6 +98,8 @@ public:
     std::pair<int32_t, Symbol *> findSymbol(const std::string &);
 
     void resolveEqu();
+
+    void resolveWord();
 
     bool hasUnresolvedSymbols();
 
