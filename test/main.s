@@ -2,9 +2,12 @@
 
 .global handler, my_start, my_counter
 
-.section code
+.extern rest
+
 .equ initial_sp, 0xFFFFFEFE
 .equ timer_config, 0xFFFFFF10
+
+.section code
 my_start:
     ld $initial_sp, %sp
     ld $handler, %r1

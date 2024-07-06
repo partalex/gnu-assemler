@@ -1,5 +1,8 @@
 #pragma once
 
+#include <cstdint>
+#include <ostream>
+
 class Log {
 public:
     static const uint8_t LOG_FOOTER = 95;

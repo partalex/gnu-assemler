@@ -2,8 +2,6 @@
 
 #include <iostream>
 
-//std::string Csr::CSR[] = {"status", "handler", "cause"};
-
 void WordOperand::log(std::ostream &out) {
     WordOperand *current = this;
     while (current != nullptr) {
@@ -18,9 +16,9 @@ void EquOperand::log(std::ostream &out) {
     EquOperand *current = this;
     while (current != nullptr) {
         current->logOne(out);
+        if (current->_next)
+            out << " " << current->_op << " ";
         current = current->_next;
-        if (current)
-            out << ", ";
     }
 }
 
@@ -73,8 +71,8 @@ void CsrOp::log(std::ostream &out) {
     out << "%" << static_cast<CSR>(_csr);
 }
 
-void *EquLiteral::getValue() {
-    return &_value;
+int64_t EquLiteral::getValue() {
+    return _value;
 }
 
 void EquLiteral::logOne(std::ostream &out) {
@@ -110,8 +108,8 @@ void LiteralImmReg::log(std::ostream &out) {
     out << "$" << _value;
 }
 
-void *EquIdent::getValue() {
-    return nullptr;
+int64_t EquIdent::getValue() {
+    return 0;
 }
 
 void EquIdent::logOne(std::ostream &out) {

@@ -4,8 +4,8 @@
 #include <utility>
 
 Symbol::Symbol(std::string name, uint64_t sectionIndex, SCOPE scope, uint64_t offset,
-               enum SYMBOL symbolType)
-        : core(std::move(name), sectionIndex, scope, offset, symbolType) {
+               enum SYMBOL symbolType, SOURCE source)
+        : core(std::move(name), sectionIndex, scope, offset, symbolType, source) {
 }
 
 std::ostream &operator<<(std::ostream &out, Symbol &symbol) {

@@ -126,8 +126,8 @@ directive
   | T_WORD wordOperand
   { Assembler::singleton().parseWord($2); }
 
-  | T_EQU T_IDENT equOperand
-  { Assembler::singleton().parseEqu($2, $3); }
+  | T_EQU T_IDENT T_COMMA equOperand
+  { Assembler::singleton().parseEqu($2, $4); }
 
   | T_SKIP T_LITERAL
   { Assembler::singleton().parseSkip($2); }
@@ -156,13 +156,7 @@ equOP
   { $$ = EQU_OP::E_ADD; }
 
   | T_MINUS
-  { $$ = EQU_OP::E_SUB; }
-
-  | T_TIMES
-  { $$ = EQU_OP::E_MUL; }
-
-  | T_SLASH
-  { $$ = EQU_OP::E_DIV; };
+  { $$ = EQU_OP::E_SUB; };
 
 equOperand
     : T_LITERAL
@@ -170,6 +164,7 @@ equOperand
 
     | T_IDENT
     { $$ = new EquIdent($1); }
+
     | T_LITERAL equOP equOperand
     { $$ = new EquLiteral($1, $2, $3); }
 
@@ -218,6 +213,10 @@ instruction
 
   | I_LD oneRegOperand T_COMMA T_PERCENT gpr
   { Assembler::singleton().parseLoad($2, $5); }
+
+  /* ld [%r1], %r2 */
+  | I_LD T_OBRACKET T_PERCENT gpr T_CBRACKET T_COMMA T_PERCENT gpr
+  { Assembler::singleton().parseLoad($4, $8, 0); }
 
   /* ld [%r1+0], %r2 */
   | I_LD T_OBRACKET T_PERCENT gpr T_OFFSET T_CBRACKET T_COMMA T_PERCENT gpr

@@ -67,28 +67,29 @@ public:
 };
 
 class EquOperand : public Operand {
-    EQU_OP _op;
 public:
+    EQU_OP _op;
     EquOperand *_next = nullptr;
 
     virtual ~EquOperand() { delete _next; }
 
     explicit EquOperand(unsigned char op = E_ADD, EquOperand *next = nullptr)
             : _op(static_cast<EQU_OP>(op)), _next(next) {}
+
     virtual void logOne(std::ostream &) = 0;
 
     void log(std::ostream &) override;
 
-    virtual void *getValue() = 0;
+    virtual int64_t getValue() { return 0; }
 };
 
 class EquLiteral : public EquOperand {
-    uint32_t _value;
+    int64_t _value;
 public:
-    explicit EquLiteral(uint32_t value, unsigned char op = E_ADD, EquOperand *next = nullptr)
+    explicit EquLiteral(int64_t value, unsigned char op = E_ADD, EquOperand *next = nullptr)
             : _value(value), EquOperand(op, next) {}
 
-    void *getValue() override;
+    int64_t getValue() override;
 
     void logOne(std::ostream &) override;
 
@@ -97,17 +98,16 @@ public:
 class EquIdent : public EquOperand {
     std::string _ident;
 public:
-    explicit EquIdent(std::string ident, unsigned char op = E_ADD, EquOperand *next = nullptr) :
-            _ident(std::move(ident)), EquOperand(op, next) {}
+    explicit EquIdent(std::string ident, unsigned char op = E_ADD, EquOperand *next = nullptr)
+            : _ident(std::move(ident)), EquOperand(op, next) {}
 
-    void *getValue() override;
+    int64_t getValue() override;
 
     void logOne(std::ostream &) override;
 
     bool isLabel() override { return true; }
 
     std::string stringValue() override;
-
 };
 
 class LiteralImm : public Operand {

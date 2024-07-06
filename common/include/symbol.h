@@ -14,7 +14,7 @@ public:
 
     friend std::ostream &operator<<(std::ostream &, Symbol &);
 
-    Symbol(std::string, uint64_t, SCOPE, uint64_t, enum SYMBOL);
+    Symbol(std::string, uint64_t, SCOPE, uint64_t, enum SYMBOL, SOURCE);
 
     static void tableHeader(std::ostream &);
 

@@ -1,7 +1,30 @@
-#include <iomanip>
 #include "../include/instruction.h"
 
+#include <iomanip>
+
 uint64_t UNDEFINED = 0xFFFFFFFFFFFFFFFF;
+
+std::ostream &operator<<(std::ostream &out, SOURCE source) {
+    switch (source) {
+        case SOURCE::OTHER:
+            return out << "OTHER";
+        case SOURCE::THIS:
+            return out << "THIS";
+        default:
+            return out << "UNDEFINED";
+    }
+}
+
+std::ostream &operator<<(std::ostream &out, EQU_OP op) {
+    switch (op) {
+        case E_ADD:
+            return out << "+";
+        case E_SUB:
+            return out << "-";
+        default:
+            return out << "UNDEFINED";
+    }
+}
 
 std::ostream &operator<<(std::ostream &out, enum CSR csr) {
     switch (csr) {
@@ -18,10 +41,14 @@ std::ostream &operator<<(std::ostream &out, enum CSR csr) {
 
 std::ostream &operator<<(std::ostream &out, enum SYMBOL sym) {
     switch (sym) {
+        case SYMBOL::NO_TYPE:
+            return out << "NO_TYPE";
         case SYMBOL::ASCII:
             return out << "ASCII";
         case SYMBOL::LABEL:
             return out << "LABEL";
+        case SYMBOL::EQU:
+            return out << "EQU";
         default:
             return out << "UNDEFINED";
     }

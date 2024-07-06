@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <fstream>
 #include <iomanip>
+#include <unordered_set>
 
 extern int yylex_destroy(void);
 
@@ -48,11 +49,15 @@ void Assembler::parseExtern(SymbolList *list) {
         auto symbol = findSymbol(temp->_symbol);
         if (symbol.first == -1)
             _symbols.emplace_back(
-                    std::make_unique<Symbol>(temp->_symbol, UNDEFINED, SCOPE::GLOBAL, 0, SYMBOL::LABEL));
-        else if (symbol.second->core.flags.scope == SCOPE::GLOBAL) {
-            std::cerr << "Error: Symbol " << temp->_symbol << " already defined as global." << "\n";
-            exit(EXIT_FAILURE);
-        }
+                    std::make_unique<Symbol>(
+                            temp->_symbol,
+                            UNDEFINED,
+                            SCOPE::GLOBAL,
+                            UNDEFINED,
+                            SYMBOL::NO_TYPE,
+                            OTHER));
+        else if (symbol.second->core.flags.scope == SCOPE::GLOBAL)
+            throw std::runtime_error("Error: Symbol " + temp->_symbol + " already defined as global.");
         temp = temp->_next;
     }
     delete list;
@@ -65,15 +70,61 @@ void Assembler::parseSkip(int literal) {
     _sections[_currSectIndex]->addToLocCounter(literal);
 }
 
+void Assembler::resolveEqu() {
+    std::unordered_set<Symbol *> unresolvedEqu;
+    for (auto &sym: _symbols)
+        if (sym->core.flags.symbolType == NO_TYPE) {
+            if (!(sym->core.sectionIndex == UNDEFINED && sym->core.offset == UNDEFINED))
+                throw std::runtime_error("Error: Symbol " + sym->core.name + " is not defined.");
+        } else if (sym->core.flags.symbolType == EQU) {
+            unresolvedEqu.insert(sym.get());
+            auto expr = _equExpr[sym.get()].get();
+            if (expr->isLabel()) {
+                auto symbol = findSymbol(expr->stringValue());
+                if (symbol.second->core.offset == UNDEFINED)
+                    unresolvedEqu.insert(symbol.second);
+            }
+        }
+
+    auto newResolved = true;
+    while (newResolved) {
+        newResolved = false;
+        for (auto &symbol: unresolvedEqu) {
+            auto expr = _equExpr[symbol].get();
+            int64_t value = 0;
+            EquOperand *prev = nullptr;
+            while (expr) {
+                bool isAdd = prev == nullptr || prev->_op == E_ADD;
+                if (!expr->isLabel()) {
+                    value += isAdd ? expr->getValue() : -expr->getValue();
+                } else {
+                    auto sym1 = findSymbol(expr->stringValue());
+                    if (sym1.second->core.offset != UNDEFINED)
+                        value += isAdd ? sym1.second->core.offset : -sym1.second->core.offset;
+                    else
+                        break;
+                }
+                prev = expr;
+                expr = expr->_next;
+            }
+            if (!expr) {
+                symbol->core.offset = value;
+                unresolvedEqu.erase(symbol);
+                newResolved = true;
+                break;
+            }
+        }
+    }
+}
+
 void Assembler::parseEnd() {
 #ifdef LOG_PARSER
     std::cout << "END" << "\n";
 #endif
+    resolveEqu();
     writeTxt();
-    if (hasUnresolvedSymbols()) {
-        std::cerr << "Error: Unresolved symbols detected." << "\n";
-        exit(EXIT_FAILURE);
-    }
+    if (hasUnresolvedSymbols())
+        throw std::runtime_error("Error: Unresolved symbols detected.");
     writeObj();
 }
 
@@ -85,10 +136,8 @@ void Assembler::parseLabel(const std::string &str) {
     if (symbol.first != -1) {
         // Symbol is in symbols
 
-        if (symbol.second->core.sectionIndex < UNDEFINED)
+        if (symbol.second->core.flags.symbolType != NO_TYPE)
             symbolDuplicate(symbol.second->core.name);
-//        else if (symbol.second->core.flags.scope == LOCAL)
-//            symbolDuplicate(symbol.second->core.name);
 
         // Set symbol
         symbol.second->core.offset = _sections[_currSectIndex]->getLocCounter();
@@ -101,7 +150,8 @@ void Assembler::parseLabel(const std::string &str) {
                 _currSectIndex,
                 SCOPE::LOCAL,
                 _sections[_currSectIndex]->getLocCounter(),
-                SYMBOL::LABEL
+                SYMBOL::LABEL,
+                THIS
         ));
     }
 }
@@ -157,11 +207,8 @@ void Assembler::parseWord(WordOperand *operand) {
                     _sections[_currSectIndex]->addToLocCounter(4);
                 }
 
-            else {
-                // Symbol does not exist, exit
-                std::cerr << "Error: Symbol inside .word " << label << " not defined." << "\n";
-                exit(EXIT_FAILURE);
-            }
+            else
+                throw std::runtime_error("Error: Symbol inside .word " + label + " not defined.");
         } else
             // It's literal
             _sections[_currSectIndex]->write(temp->getValue(), _sections[_currSectIndex]->getLocCounter(), 4);
@@ -176,8 +223,52 @@ void Assembler::parseEqu(const std::string &str, EquOperand *operand) {
     operand->log(std::cout);
     std::cout << "\n";
 #endif
+    // Str is EQU symbol
+    auto symbol = findSymbol(str);
+    if (symbol.first != -1) {
+        // Symbol is in symbols
+        if (symbol.second->core.flags.symbolType == NO_TYPE)
+            symbol.second->core.flags.symbolType = EQU;
+        else if (symbol.second->core.flags.symbolType != EQU)
+            // Symbol is not EQU then it's duplicate, exit
+            symbolDuplicate(symbol.second->core.name);
+    } else
+        // add symbol to symbols
+        _symbols.emplace_back(std::make_unique<Symbol>(
+                str,
+                UNDEFINED,
+                LOCAL,
+                UNDEFINED,
+                EQU,
+                THIS
+        ));
+
+    symbol = findSymbol(str);
+
+    _equExpr[symbol.second] = std::unique_ptr<EquOperand>(operand);
     EquOperand *temp = operand;
     while (temp) {
+        if (temp->isLabel()) {
+            auto label = temp->stringValue();
+            auto symbol = findSymbol(label);
+            if (symbol.first != -1) {
+                // Symbol is in symbols
+                if (symbol.second->core.flags.symbolType == GLOBAL)
+                    // Symbol is defined, exit
+                    symbolDuplicate(symbol.second->core.name);
+                // if Local do nothing
+            } else {
+                // Symbol does not exist, add it
+                _symbols.emplace_back(std::make_unique<Symbol>(
+                        label,
+                        UNDEFINED,
+                        LOCAL,
+                        UNDEFINED,
+                        NO_TYPE,
+                        THIS
+                ));
+            }
+        }
         temp = temp->_next;
     }
 }
@@ -186,7 +277,8 @@ void Assembler::parseAscii(const std::string &str) {
 #ifdef LOG_PARSER
     std::cout << "ASCII: " << str << "\n";
 #endif
-    _sections[_currSectIndex]->write((void *) str.c_str(), _sections[_currSectIndex]->getLocCounter(), str.length());
+    _sections[_currSectIndex]->write((void *) str.c_str(), _sections[_currSectIndex]->getLocCounter(),
+                                     str.length());
 }
 
 void Assembler::parseHalt() {
@@ -213,7 +305,8 @@ void Assembler::parseJmp(unsigned char inst, Operand *operand) {
     operand->log(std::cout);
     std::cout << "\n";
 #endif
-    auto instr = std::make_unique<Jmp_Instr>(static_cast<enum INSTRUCTION>(inst), std::unique_ptr<Operand>(operand));
+    auto instr = std::make_unique<Jmp_Instr>(static_cast<enum INSTRUCTION>(inst),
+                                             std::unique_ptr<Operand>(operand));
     insertInstr(instr.get());
     if (operand->isLabel())
         addRelToInstr(operand, RELOCATION::R_PC32);
@@ -227,7 +320,8 @@ void Assembler::addRelToInstr(Operand *operand, RELOCATION relType, uint32_t num
                 UNDEFINED,
                 LOCAL,
                 UNDEFINED,
-                LABEL
+                NO_TYPE,
+                THIS
         ));
     }
     _relocations.emplace_back(std::make_unique<Relocation>(
@@ -247,7 +341,8 @@ void Assembler::parseCall(unsigned char inst, Operand *operand) {
     operand->log(std::cout);
     std::cout << "\n";
 #endif
-    auto instr = std::make_unique<Call_Instr>(static_cast<enum INSTRUCTION>(inst), std::unique_ptr<Operand>(operand));
+    auto instr = std::make_unique<Call_Instr>(static_cast<enum INSTRUCTION>(inst),
+                                              std::unique_ptr<Operand>(operand));
     insertInstr(instr.get());
     if (operand->isLabel())
         addRelToInstr(operand, RELOCATION::R_PC32);
@@ -349,7 +444,8 @@ void Assembler::parseLoad(Operand *operand, unsigned char gpr) {
 
 void Assembler::parseLoad(unsigned char gpr1, unsigned char gpr2, int16_t offset) {
 #ifdef LOG_PARSER
-    std::cout << "LOAD: [%r" << static_cast<int>(gpr1) << "+" << offset << "], %r" << static_cast<int>(gpr2) << "\n";
+    std::cout << "LOAD: [%r" << static_cast<int>(gpr1) << "+" << offset << "], %r" << static_cast<int>(gpr2)
+              << "\n";
 #endif
     auto instr = std::make_unique<Load_Instr>(gpr1, gpr2, offset);
     insertInstr(instr.get());
@@ -377,7 +473,14 @@ void Assembler::parseGlobal(SymbolList *list) {
         auto symbol = findSymbol(temp->_symbol);
         if (symbol.first == -1)
             _symbols.emplace_back(
-                    std::make_unique<Symbol>(temp->_symbol, UNDEFINED, SCOPE::GLOBAL, 0, SYMBOL::LABEL));
+                    std::make_unique<Symbol>(
+                            temp->_symbol,
+                            UNDEFINED,
+                            SCOPE::GLOBAL,
+                            UNDEFINED,
+                            SYMBOL::NO_TYPE,
+                            THIS
+                    ));
         else
             symbolDuplicate(temp->_symbol);
         temp = temp->_next;
@@ -393,8 +496,9 @@ void Assembler::log(std::ostream &out) const {
 
 bool Assembler::hasUnresolvedSymbols() {
     for (auto &sym: _symbols)
-        if (sym->core.flags.scope != GLOBAL && sym->core.sectionIndex == UNDEFINED)
+        if (sym->core.flags.symbolType != NO_TYPE && sym->core.offset == UNDEFINED)
             return true;
+
     return false;
 }
 
@@ -424,10 +528,8 @@ void Assembler::logSymbols(std::ostream &out) const {
 
 void Assembler::writeTxt() {
     std::ofstream out(_outputTxt);
-    if (!out.is_open()) {
-        std::cerr << "Error: Unable to open file " << _outputTxt << "\n";
-        exit(EXIT_FAILURE);
-    }
+    if (!out.is_open())
+        throw std::runtime_error("Error: Unable to open file " + _outputTxt);
     log(out);
     Log::tableName(out, "Sections dump");
     for (auto &sect: _sections)
@@ -437,10 +539,8 @@ void Assembler::writeTxt() {
 
 void Assembler::writeObj() {
     std::ofstream out(_output, std::ios::binary);
-    if (!out.is_open()) {
-        std::cerr << "Error: Unable to open file " << _output << "\n";
-        exit(EXIT_FAILURE);
-    }
+    if (!out.is_open())
+        throw std::runtime_error("Error: Unable to open file " + _output);
 
     // write num_symbols
     uint32_t num_symbols = _symbols.size();
@@ -481,7 +581,7 @@ void Assembler::writeObj() {
 }
 
 void Assembler::setOutput(char *str) {
-    _outputTxt = _output = str; // ***.o
+    _outputTxt = _output = str;
     _outputTxt.pop_back();
     _outputTxt.append("txt");
 }
@@ -501,10 +601,7 @@ std::pair<int32_t, Symbol *> Assembler::findSymbol(const std::string &symbol) {
     return {-1, nullptr};
 }
 
-void Assembler::symbolDuplicate(std::string &symbol) {
-    std::cerr << "Error: Symbol " << symbol << " already defined." << "\n";
-    exit(EXIT_FAILURE);
+void Assembler::symbolDuplicate(const std::string &symbol) {
+    throw std::runtime_error("Error: Symbol " + symbol + " already defined.");
 }
-
-
 

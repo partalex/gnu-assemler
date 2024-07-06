@@ -1,13 +1,19 @@
 #pragma once
 
 #include <vector>
-#include <iostream>
 #include <memory>
+#include <iostream>
 
 extern uint64_t UNDEFINED;
 
 enum EQU_OP {
-    E_ADD, E_SUB, E_MUL, E_DIV
+    E_ADD, E_SUB
+};
+
+enum SOURCE {
+    S_UNDEFINED,
+    THIS,
+    OTHER
 };
 
 enum CSR {
@@ -25,8 +31,10 @@ enum STATUS {
 };
 
 enum SYMBOL {
+    NO_TYPE,
     ASCII,
     LABEL,
+    EQU
 };
 
 enum SCOPE {
@@ -93,6 +101,10 @@ enum INSTRUCTION {
     CSR_LD_POST_INC = 0b10010111,   // csr[A]<=memory[gpr[B]]; gpr[B]<=gpr[B]+D
 };
 
+std::ostream &operator<<(std::ostream &, SOURCE);
+
+std::ostream &operator<<(std::ostream &, EQU_OP);
+
 std::ostream &operator<<(std::ostream &, enum CSR);
 
 std::ostream &operator<<(std::ostream &, enum SYMBOL);
@@ -102,5 +114,4 @@ std::ostream &operator<<(std::ostream &, SCOPE);
 std::ostream &operator<<(std::ostream &, enum INSTRUCTION);
 
 std::ostream &operator<<(std::ostream &, RELOCATION);
-
 

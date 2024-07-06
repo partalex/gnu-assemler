@@ -2,7 +2,6 @@
 
 #include "enum.h"
 #include "operand.h"
-#include "instruction.h"
 
 #include <map>
 #include <memory>
