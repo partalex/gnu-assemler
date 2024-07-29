@@ -18,7 +18,11 @@ public:
 
     explicit Section(std::string);
 
-    void write(void *, uint32_t, uint32_t);
+    void writeAndIncr(void *src, uint32_t pos, uint32_t length);
+
+    void write(void *src, uint32_t pos, uint32_t length);
+
+    int32_t readWord(uint32_t offset);
 
     void writeInstr(void *, uint32_t);
 

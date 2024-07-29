@@ -9,13 +9,13 @@
 
 class ProgramFile {
 public:
-    ProgramFile(uint64_t textPlace, uint64_t dataPlace);
+    ProgramFile();
 
-    uint64_t _dataPlace;
-    uint64_t _textPlace;
-
-    SectionLink _dataSections;
-    SectionLink _textSections;
+//    ProgramFile(uint64_t textPlace, uint64_t dataPlace);
+//    uint64_t _dataPlace;
+//    uint64_t _textPlace;
+//    SectionLink _dataSections;
+//    SectionLink _textSections;
 
 };
 

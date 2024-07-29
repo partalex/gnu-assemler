@@ -6,12 +6,52 @@
 
 enum MARKER {
     UNDEFINED = 0xFFFFFFFF,
-    ABS = 0xFFFFFFFE
+    LITERALS = 0xFFFFFFFE
 };
 
 enum EQU_OP {
     E_ADD, E_SUB
 };
+
+enum ADDRESSING {
+    ADDR_UND,
+    IMMEDIATE_LITERAL_RO,
+    IMMEDIATE_LITERAL_PC,
+    IMMEDIATE_SYMBOL,
+    INDIRECT_LITERAL,
+    INDIRECT_SYMBOL,
+    DIRECT_REGISTER,
+    INDIRECT_REGISTER,
+    INDIRECT_REG_LITERAL,
+    INDIRECT_REG_SYMBOL,
+    GRP_CSR
+};
+// gpr[B] = PC, cause PC is gpr[15]
+//1. $<literal> - vrednost <literal>
+// literal fitIn12Bits ?
+// D=literal; gpr[A]<=gpr[0]+D; IMMEDIATE_LITERAL_RO:
+// : Need relocation R_PC32; D=literal; gpr[A]<=gpr[15]+D; IMMEDIATE_LITERAL_PC
+
+//2. $<simbol> - vrednost <simbol>
+// IMMEDIATE_SYMBOL:            gpr[A]<=gpr[15]+D; Need relocation
+
+//3. <literal> - vrednost iz memorije na adresi <literal>
+// INDIRECT_LITERAL:            gpr[A]<=mem32[gpr[B]+gpr[0]+D]; literal > 12bits ? Need relocation : D=literal
+
+//4. <simbol> - vrednost iz memorije na adresi <simbol>
+// INDIRECT_SYMBOL:             gpr[A]<=mem32[gpr[B]+gpr[0]+D]; D= mem32[symbol] <= 12bits ? mem32[symbol]: relocation
+
+//5. %<reg> - vrednost u registru <reg>
+// DIRECT_REGISTER:             gpr[A]<=gpr[B]+D, D<=0
+
+//6. [%<reg>] - vrednost iz memorije na adresi <reg>
+// INDIRECT_REGISTER:           gpr[A]<=mem32[gpr[B]+gpr[0]+D]; D<=0
+
+//7. [%<reg> + <literal>] - vrednost iz memorije na adresi <reg> + <literal>1
+// INDIRECT_REG_LITERAL:        gpr[A]<=mem32[gpr[B]+gpr[0]+D]; D= literal <= 12bits ? literal: error
+
+//8. [%<reg> + <simbol>] - vrednost iz memorije na adresi <reg> + <simbol>2
+// INDIRECT_REG_SYMBOL:         gpr[A]<=mem32[gpr[B]+gpr[0]+D]; D= mem32[symbol] <= 12bits ? mem32[symbol]: error
 
 enum SOURCE {
     THIS,
@@ -29,7 +69,8 @@ enum CSR {
 };
 
 enum RELOCATION {
-    R_2B_EXC_4b, R_PC32, R_WORD
+    R_PC_12Bits,
+    R_WORD
 };
 
 enum STATUS {

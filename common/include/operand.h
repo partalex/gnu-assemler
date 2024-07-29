@@ -7,6 +7,8 @@
 #include <optional>
 #include <sstream>
 
+class Assembler;
+
 class Operand {
 public:
 
@@ -14,10 +16,11 @@ public:
 
     virtual void log(std::ostream &out) {}
 
-    virtual bool isLabel() { return false; }
+    virtual std::string stringValue() {
+        throw std::runtime_error("Operand::stringValue() not implemented");
+    }
 
-    virtual std::string stringValue() { return ""; }
-
+    virtual std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &);
 };
 
 class WordOperand : public Operand {
@@ -34,12 +37,13 @@ public:
     void log(std::ostream &) override;
 
     virtual void *getValue() = 0;
+
 };
 
 class WordLiteral : public WordOperand {
-    uint32_t _value;
+    int32_t _value;
 public:
-    explicit WordLiteral(uint32_t value, WordOperand *next = nullptr) : _value(value) {
+    explicit WordLiteral(int32_t value, WordOperand *next = nullptr) : _value(value) {
         _next = next;
     }
 
@@ -47,6 +51,7 @@ public:
 
     void logOne(std::ostream &) override;
 
+    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
 };
 
 class WordIdent : public WordOperand {
@@ -60,9 +65,9 @@ public:
 
     void logOne(std::ostream &) override;
 
-    bool isLabel() override { return true; }
-
     std::string stringValue() override;
+
+    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
 
 };
 
@@ -80,6 +85,10 @@ public:
 
     void log(std::ostream &) override;
 
+    virtual void backPatch(Assembler &) = 0;
+
+    virtual bool isLabel() = 0;
+
     virtual int64_t getValue() { return 0; }
 };
 
@@ -93,6 +102,12 @@ public:
 
     void logOne(std::ostream &) override;
 
+    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
+
+    void backPatch(Assembler &) override;
+
+    bool isLabel() override { return false; }
+
 };
 
 class EquIdent : public EquOperand {
@@ -105,40 +120,50 @@ public:
 
     void logOne(std::ostream &) override;
 
+    std::string stringValue() override;
+
+    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
+
     bool isLabel() override { return true; }
 
-    std::string stringValue() override;
+    void backPatch(Assembler &) override;
 };
 
 class LiteralImm : public Operand {
 public:
-    explicit LiteralImm(uint32_t value) : _value(value) {}
+    explicit LiteralImm(int32_t value) : _value(value) {}
 
     void log(std::ostream &) override;
 
+    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
+
 private:
-    uint32_t _value;
+    int32_t _value;
 };
 
 class LiteralImmReg : public Operand {
 public:
-    explicit LiteralImmReg(uint32_t value) : _value(value) {}
+    explicit LiteralImmReg(int32_t value) : _value(value) {}
 
     void log(std::ostream &) override;
 
+    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
+
 private:
-    uint32_t _value;
+    int32_t _value;
+
 };
 
 class LiteralInDir : public Operand {
 public:
-    explicit LiteralInDir(uint32_t value) : _value(value) {}
+    explicit LiteralInDir(int32_t value) : _value(value) {}
 
     void log(std::ostream &) override;
 
-private:
-    uint32_t _value;
+    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
 
+private:
+    int32_t _value;
 };
 
 class IdentImm : public Operand {
@@ -147,9 +172,9 @@ public:
 
     void log(std::ostream &) override;
 
-    bool isLabel() override { return true; }
-
     std::string stringValue() override { return _ident; }
+
+    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
 
 private:
     std::string _ident;
@@ -162,9 +187,9 @@ public:
 
     void log(std::ostream &) override;
 
-    bool isLabel() override { return true; }
-
     std::string stringValue() override { return _ident; }
+
+    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
 
 private:
     std::string _ident;
@@ -176,6 +201,8 @@ public:
 
     void log(std::ostream &) override;
 
+    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
+
 private:
     uint8_t _gpr;
 };
@@ -186,20 +213,23 @@ public:
 
     void log(std::ostream &) override;
 
+    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
+
 private:
     uint8_t _gpr;
 };
 
 class RegInDirOffLiteral : public Operand {
 public:
-    explicit RegInDirOffLiteral(uint8_t gpr, uint32_t offset) : _gpr(gpr), _offset(offset) {}
+    explicit RegInDirOffLiteral(uint8_t gpr, int32_t offset) : _gpr(gpr), _offset(offset) {}
 
     void log(std::ostream &) override;
 
+    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
 
 private:
     uint8_t _gpr;
-    uint32_t _offset;
+    int32_t _offset;
 };
 
 class RegInDirOffIdent : public Operand {
@@ -208,7 +238,8 @@ public:
 
     void log(std::ostream &) override;
 
-    bool isLabel() override { return true; }
+    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
+
 
     std::string stringValue() override { return _ident; }
 
@@ -221,6 +252,8 @@ class GprCsr : public Operand {
 public:
     explicit GprCsr(uint8_t gpr, uint8_t csr) : _gpr(gpr), _csr(csr) {
     }
+
+    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
 
     void log(std::ostream &) override;
 
@@ -237,7 +270,7 @@ public:
 
     void log(std::ostream &) override;
 
-    bool isLabel() override { return true; }
+    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
 
     std::string stringValue() override { return _ident; }
 
@@ -249,16 +282,18 @@ private:
 
 class GprGprLiteral : public Operand {
 public:
-    explicit GprGprLiteral(uint8_t gpr1, uint8_t gpr2, uint32_t value) : _gpr1(gpr1), _gpr2(gpr2),
-                                                                         _value(value) {
+    explicit GprGprLiteral(uint8_t gpr1, uint8_t gpr2, int32_t value) : _gpr1(gpr1), _gpr2(gpr2),
+                                                                        _value(value) {
     }
+
+    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
 
     void log(std::ostream &) override;
 
 private:
     uint8_t _gpr1;
     uint8_t _gpr2;
-    uint32_t _value;
+    int32_t _value;
 };
 
 class CsrOp : public Operand {
@@ -267,13 +302,9 @@ public:
 
     void log(std::ostream &) override;
 
-    bool isLabel() override { return true; }
+    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
 
-    std::string stringValue() override {
-        std::ostringstream oss;
-        oss << static_cast<CSR>(_csr);
-        return oss.str();
-    }
+    std::string stringValue() override;
 
 private:
     uint8_t _csr;

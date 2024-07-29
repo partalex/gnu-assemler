@@ -4,8 +4,8 @@
 
 std::ostream &operator<<(std::ostream &out, MARKER marker) {
     switch (marker) {
-        case MARKER::ABS:
-            return out << "ABS";
+        case MARKER::LITERALS:
+            return out << "LITERALS";
         case MARKER::UNDEFINED:
             return out << "UND";
         default:
@@ -160,10 +160,8 @@ std::ostream &operator<<(std::ostream &out, enum INSTRUCTION instr) {
 
 std::ostream &operator<<(std::ostream &out, RELOCATION rel) {
     switch (rel) {
-        case RELOCATION::R_2B_EXC_4b:
-            return out << "R_2B_EXC_4b";
-        case RELOCATION::R_PC32:
-            return out << "R_PC32";
+        case RELOCATION::R_PC_12Bits:
+            return out << "R_PC_12Bits";
         case RELOCATION::R_WORD:
             return out << "R_WORD";
         default:

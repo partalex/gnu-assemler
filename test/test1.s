@@ -1,13 +1,12 @@
-.global message, continue
-.extern init
+.global message
+.extern continue, four
 
-.sectionIndex data
-.word init,1,2,3
-pera:
+.section data
+.word 1,2,3,four
 message:
     .ascii "Hello, World!"
-.sectionIndex two
+.section test1
     ld $0x1, %r0
     push %r0
-    ld init, %r1
+    jmp continue
 .end

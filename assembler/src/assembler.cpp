@@ -1,6 +1,5 @@
 #include "../include/assembler.h"
 #include "../include/lexer.h"
-#include "../../common/include/enum.h"
 
 #include <iostream>
 #include <cstring>
@@ -89,6 +88,7 @@ void Assembler::resolveEqu() {
         }
 
     auto newResolved = true;
+    auto literalsSection = literalSectionIndex();
     while (newResolved) {
         newResolved = false;
         for (auto &symbol: unresolvedEqu) {
@@ -97,22 +97,23 @@ void Assembler::resolveEqu() {
             EquOperand *prev = nullptr;
             while (expr) {
                 bool isAdd = prev == nullptr || prev->_op == E_ADD;
-                if (!expr->isLabel()) {
+                if (!expr->isLabel())
                     value += isAdd ? expr->getValue() : -expr->getValue();
-                } else {
+                else {
                     auto sym1 = findSymbol(expr->stringValue());
-                    if (sym1.second->core.offset != UNDEFINED)
-                        value += isAdd ? sym1.second->core.offset : -sym1.second->core.offset;
-                    else
+                    if (sym1.second->core.flags.defined) {
+                        auto increment = _sections[literalsSection]->readWord(sym1.second->core.offset);
+                        value += isAdd ? increment : -increment;
+                    } else
                         break;
                 }
                 prev = expr;
                 expr = expr->_next;
             }
             if (!expr) {
-                symbol->core.offset = value;
+                _sections[literalsSection]->write((void *) &value, symbol->core.offset, 4);
                 symbol->core.flags.defined = true;
-                symbol->core.sectionIndex = ABS;
+                symbol->core.sectionIndex = literalsSection;
                 unresolvedEqu.erase(symbol);
                 newResolved = true;
                 break;
@@ -149,8 +150,7 @@ void Assembler::parseEnd() {
     resolveEqu();
     resolveWord();
     writeTxt();
-    if (hasUnresolvedSymbols())
-        throw std::runtime_error("Error: Unresolved symbols detected.");
+    checkUnresolvedSymbols();
     writeObj();
 }
 
@@ -204,48 +204,9 @@ void Assembler::parseWord(WordOperand *operand) {
     operand->log(std::cout);
     std::cout << "\n";
 #endif
-    WordOperand *temp = operand;
+    auto *temp = operand;
     while (temp) {
-        if (temp->isLabel()) {
-            // If operand is label
-            auto label = temp->stringValue();
-            auto symbol = findSymbol(label);
-
-            if (symbol.first != -1) {
-                // Symbol declared
-
-                // symbols defined in other files goes to relocations
-                if (symbol.second->core.flags.source == OTHER) {
-                    _relocations.emplace_back(std::make_unique<Relocation>(
-                            symbol.second->core.name,
-                            symbol.first,
-                            _currSection,
-                            _sections[_currSection]->locCnt,
-                            4,
-                            RELOCATION::R_WORD
-                    ));
-                    _sections[_currSection]->addToLocCounter(4);
-                } else {
-                    // symbols from this file goes to wordBackPatch
-
-                    // if symbol is not defined, add it to wordBackPatch
-                    if (!symbol.second->core.flags.defined) {
-                        auto addrToFill =
-                                _sections[_currSection]->core.data.data() + _sections[_currSection]->locCnt;
-                        _wordBackPatch[symbol.second].push_back(addrToFill);
-                        _sections[_currSection]->addToLocCounter(4);
-                    } else {
-                        // symbol is defined, write it
-                        auto section = _sections[symbol.second->core.sectionIndex].get();
-                        auto ptr = section->core.data.data() + symbol.second->core.offset;
-                        _sections[_currSection]->write(ptr, _sections[_currSection]->locCnt, 4);
-                    }
-                }
-            } else
-                throw std::runtime_error("Error: Symbol " + label + " have to be declared.");
-        } else
-            // It's literal
-            _sections[_currSection]->write(temp->getValue(), _sections[_currSection]->locCnt, 4);
+        operand->addRelocation(*this);
         temp = temp->_next;
     }
     delete operand;
@@ -261,50 +222,35 @@ void Assembler::parseEqu(const std::string &str, EquOperand *operand) {
     auto symbol = findSymbol(str);
     if (symbol.first != -1) {
         // Symbol is in symbols
-        if (symbol.second->core.flags.symbolType == NO_TYPE)
+        if (symbol.second->core.flags.symbolType == NO_TYPE) {
+            auto literalsSection = literalSectionIndex();
+            symbol.second->core.sectionIndex = literalsSection;
+            symbol.second->core.offset = _sections[literalsSection]->locCnt;
+            _sections[literalsSection]->addToLocCounter(4);
             symbol.second->core.flags.symbolType = EQU;
-        else if (symbol.second->core.flags.symbolType != EQU)
+        } else if (symbol.second->core.flags.symbolType != EQU)
             // Symbol is not EQU then it's duplicate, exit
             symbolDuplicate(symbol.second->core.name);
-    } else
+    } else {
+        auto literalsSection = literalSectionIndex();
         // add symbol to symbols
         _symbols.emplace_back(std::make_unique<Symbol>(
                 str,
-                UNDEFINED,
+                literalsSection,
                 LOCAL,
-                UNDEFINED,
+                _sections[literalsSection]->locCnt,
                 EQU,
                 THIS,
                 NOT_DEFINED
         ));
+        _sections[literalsSection]->addToLocCounter(4);
+    }
 
     symbol = findSymbol(str);
-
     _equExpr[symbol.second] = std::unique_ptr<EquOperand>(operand);
-    EquOperand *temp = operand;
+    auto *temp = operand;
     while (temp) {
-        if (temp->isLabel()) {
-            auto label = temp->stringValue();
-            auto symbol = findSymbol(label);
-            if (symbol.first != -1) {
-                // Symbol is in symbols
-                if (symbol.second->core.flags.symbolType == GLOBAL)
-                    // Symbol is defined, exit
-                    symbolDuplicate(symbol.second->core.name);
-                // if Local do nothing
-            } else {
-                // Symbol does not exist, add it
-                _symbols.emplace_back(std::make_unique<Symbol>(
-                        label,
-                        UNDEFINED,
-                        LOCAL,
-                        UNDEFINED,
-                        NO_TYPE,
-                        THIS,
-                        NOT_DEFINED
-                ));
-            }
-        }
+        temp->backPatch(*this);
         temp = temp->_next;
     }
 }
@@ -313,8 +259,8 @@ void Assembler::parseAscii(const std::string &str) {
 #ifdef LOG_PARSER
     std::cout << "ASCII: " << str << "\n";
 #endif
-    _sections[_currSection]->write((void *) str.c_str(), _sections[_currSection]->locCnt,
-                                   str.length());
+    _sections[_currSection]->writeAndIncr((void *) str.c_str(), _sections[_currSection]->locCnt,
+                                          str.length());
 }
 
 void Assembler::parseHalt() {
@@ -344,33 +290,10 @@ void Assembler::parseJmp(unsigned char inst, Operand *operand) {
     auto instr = std::make_unique<Jmp_Instr>(static_cast<enum INSTRUCTION>(inst),
                                              std::unique_ptr<Operand>(operand));
     insertInstr(instr.get());
-    if (operand->isLabel())
-        addRelToInstr(operand, RELOCATION::R_PC32);
-}
-
-void Assembler::addRelToInstr(Operand *operand, RELOCATION relType, uint32_t numBytesToFill) {
-    auto symbol = findSymbol(operand->stringValue());
-
-    if (symbol.first == -1) {
-        _symbols.emplace_back(std::make_unique<Symbol>(
-                operand->stringValue(),
-                UNDEFINED,
-                LOCAL,
-                UNDEFINED,
-                NO_TYPE,
-                THIS,
-                NOT_DEFINED
-        ));
-    }
-    // TODO: ova relokacija mi se ne svidja
-    _relocations.emplace_back(std::make_unique<Relocation>(
-            operand->stringValue(),
-            symbol.first == UNDEFINED ? findSymbol(operand->stringValue()).first : symbol.first,
-            _currSection,
-            _sections[_currSection]->locCnt - numBytesToFill,
-            numBytesToFill,
-            relType
-    ));
+    auto addressing = operand->addRelocation(*this);
+    // TODO
+//    if (operand->isLabel())
+//        addRelToInstr(operand, RELOCATION::R_PC32);
 }
 
 void Assembler::parseCall(unsigned char inst, Operand *operand) {
@@ -383,8 +306,10 @@ void Assembler::parseCall(unsigned char inst, Operand *operand) {
     auto instr = std::make_unique<Call_Instr>(static_cast<enum INSTRUCTION>(inst),
                                               std::unique_ptr<Operand>(operand));
     insertInstr(instr.get());
-    if (operand->isLabel())
-        addRelToInstr(operand, RELOCATION::R_PC32);
+    auto addressing = operand->addRelocation(*this);
+    // TODO
+//    if (operand->isLabel())
+//        addRelToInstr(operand, RELOCATION::R_PC32);
 }
 
 void Assembler::parseCondJmp(unsigned char inst, Operand *operand) {
@@ -397,8 +322,10 @@ void Assembler::parseCondJmp(unsigned char inst, Operand *operand) {
     auto instr = std::make_unique<JmpCond_Instr>(static_cast<enum INSTRUCTION>(inst),
                                                  std::unique_ptr<Operand>(operand));
     insertInstr(instr.get());
-    if (operand->isLabel())
-        addRelToInstr(operand, RELOCATION::R_PC32);
+    auto addressing = operand->addRelocation(*this);
+    // TODO
+//    if (operand->isLabel())
+//        addRelToInstr(operand, RELOCATION::R_PC32);
 }
 
 void Assembler::parsePush(unsigned char gpr) {
@@ -431,8 +358,10 @@ void Assembler::parseInt(Operand *operand) {
 #endif
     auto instr = std::make_unique<Int_Instr>(std::unique_ptr<Operand>(operand));
     insertInstr(instr.get());
-    if (_relocations.empty())
-        addRelToInstr(operand);
+    auto addressing = operand->addRelocation(*this);
+    // TODO
+//    if (_relocations.empty())
+//        addRelToInstr(operand);
 }
 
 void Assembler::parseXchg(unsigned char regS, unsigned char regD) {
@@ -477,8 +406,8 @@ void Assembler::parseLoad(Operand *operand, unsigned char gpr) {
 #endif
     auto instr = std::make_unique<Load_Instr>(std::unique_ptr<Operand>(operand), gpr);
     insertInstr(instr.get());
-    if (operand->isLabel())
-        addRelToInstr(operand);
+    auto addressing = operand->addRelocation(*this);
+    // TODO
 }
 
 void Assembler::parseLoad(unsigned char gpr1, unsigned char gpr2, int16_t offset) {
@@ -498,8 +427,8 @@ void Assembler::parseStore(unsigned char gpr, Operand *operand) {
 #endif
     auto instr = std::make_unique<Store_Instr>(gpr, std::unique_ptr<Operand>(operand));
     insertInstr(instr.get());
-    if (operand->isLabel())
-        addRelToInstr(operand);
+    auto addressing = operand->addRelocation(*this);
+    // TODO
 }
 
 void Assembler::parseGlobal(SymbolList *list) {
@@ -534,11 +463,10 @@ void Assembler::log(std::ostream &out) const {
     logSections(out);
 }
 
-bool Assembler::hasUnresolvedSymbols() {
+void Assembler::checkUnresolvedSymbols() {
     for (auto &sym: _symbols)
         if (!sym->core.flags.defined && sym->core.flags.source != OTHER)
-            return true;
-    return false;
+            throw std::runtime_error("Error: Symbol " + sym->core.name + " is not defined.");
 }
 
 void Assembler::logSections(std::ostream &out) const {
@@ -581,37 +509,37 @@ void Assembler::writeObj() {
     if (!out.is_open())
         throw std::runtime_error("Error: Unable to open file " + _output);
 
-    // write num_symbols
+    // writeAndIncr num_symbols
     uint32_t num_symbols = _symbols.size();
     out.write((char *) &num_symbols, sizeof(uint32_t));
 
-    // write Symbols: name_size, name, offset, sectionIndex, flags
+    // writeAndIncr Symbols: name_size, name, offset, sectionIndex, flags
     for (auto &sym: _symbols) {
         uint32_t name_size = sym->core.name.size();
         out.write((char *) &name_size, sizeof(uint32_t));
         out.write(sym->core.name.c_str(), name_size);
-        uint32_t offset = sym->core.offset;
+        auto offset = sym->core.offset;
         out.write((char *) &offset, sizeof(offset));
-        uint32_t section = sym->core.sectionIndex;
+        auto section = sym->core.sectionIndex;
         out.write((char *) &section, sizeof(section));
         out.write((char *) &sym->core.flags, sizeof(sym->core.flags));
     }
 
-    // write num_sections
+    // writeAndIncr num_sections
     uint32_t num_sections = _sections.size();
     out.write((char *) &num_sections, sizeof(uint32_t));
 
-    // write Sections: name_size, name, data_size
+    // writeAndIncr Sections: name_size, name, data_size
     for (auto &sect: _sections) {
         uint32_t name_size = sect->core.name.size();
-        out.write((char *) &name_size, sizeof(uint32_t));
+        out.write((char *) &name_size, sizeof(name_size));
         out.write(sect->core.name.c_str(), name_size);
         auto data_size = sect->getSize();
         out.write((char *) &data_size, sizeof(data_size));
         out.write(reinterpret_cast<const char *>(sect->core.data.data()), data_size);
     }
 
-    // write Relocations: symbol_index, section_index, offset, type
+    // writeAndIncr Relocations: symbol_index, section_index, offset, type
     uint32_t num_relocations = _relocations.size();
     out.write((char *) &num_relocations, sizeof(uint32_t));
     for (auto &rel: _relocations)
@@ -638,6 +566,66 @@ std::pair<int32_t, Symbol *> Assembler::findSymbol(const std::string &symbol) {
 
 void Assembler::symbolDuplicate(const std::string &symbol) {
     throw std::runtime_error("Error: Symbol " + symbol + " already defined.");
+}
+
+int32_t &Assembler::literalSectionIndex() {
+    if (singleton()._literalSection == -1) {
+        singleton()._sections.emplace_back(std::make_unique<Section>(".literals"));
+        singleton()._literalSection = _sections.size() - 1;
+    }
+    return singleton()._literalSection;
+}
+
+uint32_t Assembler::addLiteralToPool(int32_t value) {
+    auto index = literalSectionIndex();
+    auto *ptr = (int32_t *) _sections[index]->core.data.data();
+    for (int i = 0; i < _sections[index]->locCnt; i += 4)
+        if (ptr[i] == value)
+            return i;
+    _sections[index]->writeAndIncr((void *) &value, _sections[index]->locCnt, 4);
+    return _sections[index]->locCnt;
+}
+
+bool Assembler::fitIn12Bits(int32_t value) {
+    return value >= -2048 && value <= 2047;
+}
+
+void Assembler::declareSymbol(const std::string &ident) {
+    _symbols.emplace_back(std::make_unique<Symbol>(
+            ident,
+            UNDEFINED,
+            LOCAL,
+            UNDEFINED,
+            NO_TYPE,
+            THIS,
+            NOT_DEFINED
+    ));
+}
+
+void Assembler::addRelIdent(const std::string &ident) {
+    _relocations.emplace_back(std::make_unique<Relocation>(
+            ident,
+//            symbol.first == UNDEFINED ? findSymbol(ident).first : symbol.first,
+            findSymbol(ident).first,
+            _currSection,
+            _sections[_currSection]->locCnt - 2,
+            2,
+            R_PC_12Bits
+    ));
+
+}
+
+void Assembler::addRelLiteral(int32_t value) {
+    auto literalIndex = addLiteralToPool(value);
+    auto literalSection = literalSectionIndex();
+    _relocations.emplace_back(std::make_unique<Relocation>(
+            "PC+" + std::to_string(value),
+            literalIndex,
+            literalSection,
+            _sections[literalSection]->locCnt - 2,
+            2,
+            RELOCATION::R_PC_12Bits
+    ));
 }
 
 

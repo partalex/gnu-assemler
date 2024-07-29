@@ -14,6 +14,7 @@ int main(int argc, char *argv[]) {
     linker.link();
 
     linker.log();
+    linker.writeHex();
 
     if (linker.options.relocatable)
         linker.writeRelocatable();
@@ -21,7 +22,7 @@ int main(int argc, char *argv[]) {
         linker.writeExe();
 
     auto programFile =
-            std::make_unique<ProgramFile>(linker.options.textAddr, linker.options.dataAddr);
+            std::make_unique<ProgramFile>();
 
 //    linker.writeRelocatable(*programFile);
 

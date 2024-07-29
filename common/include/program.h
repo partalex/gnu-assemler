@@ -2,11 +2,13 @@
 
 #include "program_info.h"
 #include "instruction.h"
+#include "memory.h"
 
 #include <unordered_map>
 #include <functional>
 #include <chrono>
 #include <fstream>
+#include <set>
 
 // 1 MB of memory
 // code:  [0, 1KB)
@@ -18,18 +20,11 @@
 
 #define INSTR_SIZE 4
 #define STACK_INCREMENT 4
-#define MEMORY_SIZE (1 * MB)
-
-#define TEXT_OFFSET 0
-#define TEXT_MAX_SIZE (1 * KB)
-#define DATA_MAX_SIZE (4 * KB)
-#define STACK_SIZE (6 * KB)
-
 #define START_POINT 0x40000000
-#define STACK_START MEMORY_SIZE
-#define STACK_END ( STACK_START - STACK_SIZE )
 
-#define DATA_OFFSET TEXT_MAX_SIZE
+#define STACK_SIZE (6 * KB)
+#define STACK_START STACK_SIZE
+#define STACK_END ( STACK_START - STACK_SIZE ) // 0x00000000
 
 #define KEYBOARD_POS 0x1000
 #define KEYBOARD_STATUS_POS 0x1010
@@ -40,8 +35,7 @@ class Program {
 public:
     static std::unique_ptr<std::ofstream> LOG;
     std::vector<int32_t> registers = std::vector<int32_t>(19, 0);
-    ProgramInfo info{0, 0};
-    std::vector<uint8_t> memory;
+    ProgramInfo info;
     uint32_t LR = 0;
     Mnemonic currInstr{0};
     pthread_t keyboardThread;
@@ -49,6 +43,21 @@ public:
     std::chrono::time_point<std::chrono::system_clock> lastTimerExecution;
     std::unordered_map<int, std::function<void()> > instructionExecutors;
     std::unordered_map<int, std::function<bool()> > conditionTesters;
+
+    Memory memory;
+
+    struct test {
+        uint32_t first;
+        uint32_t last;
+
+        // override operator < for std::set
+        bool operator<(const test &other) const {
+            return first < other.first;
+        }
+    };
+
+    std::set<test> testSet;
+
     PSW psw;
     bool isEnd = false;
 
@@ -71,8 +80,6 @@ public:
     void push(uint32_t);
 
     void getInstr();
-
-    uint32_t getMemoryOffset(uint32_t) const;
 
     void initOld();
 

@@ -22,27 +22,27 @@ void ObjectFile::loadFromFile(const std::string &inputFile) {
     // read Symbols
     for (uint32_t i = 0; i < num_symbols; ++i) {
         uint32_t name_size;
-        file.read((char *) &name_size, sizeof(uint32_t));
+        file.read((char *) &name_size, sizeof(name_size));
         _symbols[i].name.resize(name_size);
         file.read(&_symbols[i].name[0], name_size);
-        file.read((char *) &_symbols[i].offset, sizeof(uint64_t));
-        file.read((char *) &_symbols[i].sectionIndex, sizeof(uint64_t));
-        file.read((char *) &_symbols[i].flags, sizeof(uint8_t));
+        file.read((char *) &_symbols[i].offset, sizeof(_symbols[i].offset));
+        file.read((char *) &_symbols[i].sectionIndex, sizeof(_symbols[i].sectionIndex));
+        file.read((char *) &_symbols[i].flags, sizeof(_symbols[i].flags));
     }
 
     // read num_sections
     uint32_t num_sections;
-    file.read((char *) &num_sections, sizeof(uint32_t));
+    file.read((char *) &num_sections, sizeof(num_sections));
     _sections.resize(num_sections);
 
     // read Sections
     for (uint32_t i = 0; i < num_sections; ++i) {
         uint32_t name_size;
-        file.read((char *) &name_size, sizeof(uint32_t));
+        file.read((char *) &name_size, sizeof(name_size));
         _sections[i].name.resize(name_size);
         file.read(&_sections[i].name[0], name_size);
-        uint64_t data_size;
-        file.read((char *) &data_size, sizeof(uint64_t));
+        uint32_t data_size;
+        file.read((char *) &data_size, sizeof(data_size));
         _sections[i].data.resize(data_size);
         file.read(reinterpret_cast<char *>(_sections[i].data.data()), data_size);
     }
@@ -84,8 +84,8 @@ void ObjectFile::logSections(std::ostream &out) const {
 
 void ObjectFile::log(std::ostream &out) const {
     logSymbols(out);
-    logSections(out);
     logRelocations(out);
+    logSections(out);
     Log::tableName(out, "Sections dump");
     for (auto &sec: _sections)
         sec.serialize(out);

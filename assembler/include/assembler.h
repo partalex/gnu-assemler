@@ -15,8 +15,9 @@
 class WordOperand;
 
 class Assembler {
-
     static std::unique_ptr<Assembler> _instance;
+    int32_t _literalSection = -1;
+public:
     std::string _output = "obj.o";
     std::string _outputTxt = "log.txt";
     std::string _input;
@@ -28,17 +29,19 @@ class Assembler {
     std::unordered_map<Symbol *, std::unique_ptr<EquOperand>> _equExpr;
     std::unordered_map<Symbol *, std::list<Instruction *>> _equBackPatch;
     // backPatch for .word
-    std::unordered_map<Symbol *, std::list<void*>> _wordBackPatch;
+    std::unordered_map<Symbol *, std::list<void *>> _wordBackPatch;
 
     int32_t _currSection = 0;
-
-public:
 
     ~Assembler() = default;
 
     void operator=(Assembler const &) = delete;
 
-    static Assembler &singleton();
+    static Assembler &singleton();                      // done
+
+    int32_t &literalSectionIndex();                     // done
+
+    uint32_t addLiteralToPool(int32_t);                     // done
 
     static int pass(int, char **);                      // done
 
@@ -101,7 +104,7 @@ public:
 
     void resolveWord();
 
-    bool hasUnresolvedSymbols();
+    void checkUnresolvedSymbols();
 
     void logSections(std::ostream &) const;
 
@@ -109,7 +112,7 @@ public:
 
     void logRelocations(std::ostream &out) const;
 
-    static void symbolDuplicate(const std::string &);
+    void symbolDuplicate(const std::string &);
 
     void writeTxt();
 
@@ -117,8 +120,13 @@ public:
 
     void setOutput(char *string);
 
+    static bool fitIn12Bits(int32_t);
+
+    void declareSymbol(const std::string &);
+
+    void addRelIdent(const std::string &);
+
+    void addRelLiteral(int32_t);
+
     void insertInstr(Instruction *instr);
-
-    void addRelToInstr(Operand *, RELOCATION = R_2B_EXC_4b, uint32_t = 2);
-
 };

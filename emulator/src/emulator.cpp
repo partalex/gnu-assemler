@@ -19,6 +19,9 @@ void Emulator::parseArgs(int argc, char **argv) {
     }
     program = std::make_unique<Program>();
     program->load(argv[1]);
+    auto stackSegment = Segment{STACK_START, STACK_SIZE};
+    program->memory.insertSegment(stackSegment);
+    program->memory.mergeAdjacent();
 }
 
 void Emulator::execute() {

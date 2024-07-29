@@ -1,12 +1,12 @@
 #include "../include/linker.h"
-#include "../../common/include/program_info.h"
 
 #include <fstream>
 #include <iostream>
 #include <cstring>
-#include <algorithm>
 #include <cstdint>
 #include <cstdlib>
+#include <sstream>
+#include <unordered_set>
 
 std::unique_ptr<Linker> Linker::_instance = nullptr;
 
@@ -19,10 +19,8 @@ Linker &Linker::singleton() {
 void Linker::log() const {
     for (auto &inputFile: inputFiles) {
         std::ofstream output(inputFile._name + ".txt");
-        if (!output) {
-            std::cerr << "Failed to open file: " << inputFile._name + ".txt" << "\n";
-            return;
-        }
+        if (!output)
+            throw std::runtime_error("Failed to open file: " + inputFile._name + ".txt");
         inputFile.log(output);
         output.close();
     }
@@ -30,10 +28,8 @@ void Linker::log() const {
 
 void Linker::parseArgs(int argc, char **argv) {
 
-    if (argc < 4) {
-        std::cout << "Please call this program as ./linker scriptfile outputfile [inputfiles]+" << "\n";
-        exit(EXIT_FAILURE);
-    }
+    if (argc < 4)
+        throw std::runtime_error("Please call this program as ./linker scriptfile outputfile [inputfiles]+");
 
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "-hex") == 0)
@@ -41,13 +37,17 @@ void Linker::parseArgs(int argc, char **argv) {
         else if (strcmp(argv[i], "-relocatable") == 0)
             options.relocatable = true;
         else if (strncmp(argv[i], "-place", 6) == 0) {
-            if (i + 1 < argc) {
-                uint64_t temp;
-                if (sscanf(argv[i], "-place=data@%lx", &temp) == 1)
-                    options.dataAddr = temp;
-                else if (sscanf(argv[i], "-place=text@%lx", &temp) == 1)
-                    options.textAddr = temp;
+            std::string arg = argv[i];
+            auto pos = arg.find('@');
+            if (pos != std::string::npos) {
+                std::string sectionName = arg.substr(7, pos - 7);
+                std::string addrStr = arg.substr(pos + 1);
+                std::istringstream iss(addrStr);
+                uint32_t addr;
+                iss >> std::hex >> addr;
+                _willingSectionMapAddr.insert({sectionName, addr});
             }
+
         } else if (strcmp(argv[i], "-o") == 0)
             outputFile = argv[++i];
         else
@@ -58,25 +58,17 @@ void Linker::parseArgs(int argc, char **argv) {
 }
 
 void Linker::testConditions() {
-    if (options.hex && options.relocatable) {
-        std::cerr << "Both -hex and -relocatable flags are set" << "\n";
-        exit(EXIT_FAILURE);
-    }
+    if (options.hex && options.relocatable)
+        throw std::runtime_error("Both -hex and -relocatable flags are set");
 
-    if (!options.hex && !options.relocatable) {
-        std::cerr << "None of -hex and -relocatable flags are set" << "\n";
-        exit(EXIT_FAILURE);
-    }
+    if (!options.hex && !options.relocatable)
+        throw std::runtime_error("None of -hex and -relocatable flags are set");
 
-    if (outputFile.empty()) {
-        std::cerr << "Output file not specified" << "\n";
-        exit(EXIT_FAILURE);
-    }
+    if (outputFile.empty())
+        throw std::runtime_error("Output file not specified");
 
-    if (options.relocatable) {
-        options.dataAddr = UNDEFINED;
-        options.dataAddr = UNDEFINED;
-    }
+    if (options.relocatable)
+        _willingSectionMapAddr.clear();
 
 }
 
@@ -97,134 +89,122 @@ void Linker::resolveSymbols() {
             _sectionMapFile[&section] = &file;
             // Add section to sections
             sections.emplace_back(&section);
+            // Map section with same name
+            _mapSameSections[section.name].push_back(&section);
         }
         // Iterate through all symbols in section
         for (auto &symbol: file._symbols)
             // Look for Global symbols
             if (symbol.flags.scope == GLOBAL) {
                 auto it = _globSymMapSymbol.find(symbol.name);
-//                std::cout << symbol.name << " " << symbol.sectionIndex << std::endl;
                 if (it == _globSymMapSymbol.end())
-                    if (symbol.sectionIndex == UNDEFINED)
+                    // Not found
+                    if (!symbol.flags.defined)
+                        // If undefined, add it to the map with value nullptr
                         _globSymMapSymbol[symbol.name] = nullptr;
                     else {
                         // If defined, add it to the map with value &symbol
                         _globSymMapSymbol[symbol.name] = &symbol;
-                        _globSymMapSection[symbol.name] = &file._sections[symbol.sectionIndex];
+                        // if symbol is equ then add nullptr to section
+                        if (symbol.flags.symbolType != EQU)
+                            _globSymMapSection[symbol.name] = &file._sections[symbol.sectionIndex];
                     }
                 else if (it->second != nullptr) {
-                    if (symbol.sectionIndex < UNDEFINED) {
-                        std::cerr << "Symbol " << symbol.name << " already defined" << "\n";
-                        exit(EXIT_FAILURE);
-                    }
-                } else if (symbol.sectionIndex == UNDEFINED)
+                    if (symbol.flags.defined)
+                        throw std::runtime_error("Symbol " + symbol.name + " already defined");
+                } else if (!symbol.flags.defined)
                     _globSymMapSymbol[symbol.name] = nullptr;
                 else {
                     // If defined, add it to the map with value &symbol
                     _globSymMapSymbol[symbol.name] = &symbol;
-                    _globSymMapSection[symbol.name] = &file._sections[symbol.sectionIndex];
+                    if (symbol.flags.symbolType != EQU)
+                        _globSymMapSection[symbol.name] = &file._sections[symbol.sectionIndex];
                 }
             }
     }
 
     // Check if all symbols are defined
-    bool allDefined = true;
     for (auto &symbol: _globSymMapSymbol)
-        if (symbol.second == nullptr) {
-            std::cerr << "Symbol " << symbol.first << " not defined" << "\n";
-            allDefined = false;
-        }
-    if (!allDefined)
-        exit(EXIT_FAILURE);
+        if (symbol.second == nullptr)
+            throw std::runtime_error("Symbol " + symbol.first + " not defined");
+}
+
+void Linker::testSectionSpace() {
+    // start from second elem
+    for (auto it = _willingSectionMapAddr.begin(); it != _willingSectionMapAddr.end(); ++it) {
+        auto next = std::next(it);
+        if (next == _willingSectionMapAddr.end())
+            break;
+        auto list = _mapSameSections[it->name];
+        uint32_t size = 0;
+        for (auto &section: list)
+            size += section->data.size();
+        if (it->addr + size > next->addr)
+            throw std::runtime_error("Section " + it->name + " overlaps with " + next->name);
+    }
 }
 
 void Linker::placeSection() {
 
-    uint64_t testLC = options.textAddr;
-    uint64_t dataLC = options.dataAddr;
-
     if (sections.empty())
         return;
 
-    std::vector<SectionLink *> sectionsCopy(sections.size());
-    std::transform(sections.begin(), sections.end(), sectionsCopy.begin(),
-                   [](SectionLink *section) { return section; });
+    testSectionSpace();
 
-    std::string next_section = sectionsCopy[0]->name;
+    std::unordered_set<std::string> sectionNames;
+    for (auto &section: sections)
+        sectionNames.insert(section->name);
 
-    // While sections not empty
-    while (!next_section.empty()) {
+    // TODO
+    uint32_t addr = 0x40000000;
+    uint32_t lastFreeAddr = addr;
 
-        // Find first section with name next_section
-        auto exist = std::find_if(sectionsCopy.begin(), sectionsCopy.end(),
-                                  [&next_section](const SectionLink *section) {
-                                      return section->name == next_section;
-                                  });
-        while (exist != sectionsCopy.end()) {
-            // Set section position and address; add to textOrder or dataOrder
-            if (next_section == ".text") {
-                _sectionAddr[*exist] = testLC;
-                testLC += (*exist)->data.size();
-                textOrder.push_back(*exist);
-            } else {
-                _sectionAddr[*exist] = dataLC;
-                dataLC += (*exist)->data.size();
-                dataOrder.push_back(*exist);
-            }
-            // Remove section from sections
-            sectionsCopy.erase(exist);
-
-            // Find next section with name next_section
-            exist = std::find_if(sectionsCopy.begin(), sectionsCopy.end(),
-                                 [&next_section](const SectionLink *section) {
-                                     return section->name == next_section;
-                                 });
+    // get one by one from _sectionMapAddr, its primary purpose is to set the address of the section
+    // when section is placed in memory remove it from sectionNames
+    // when _sectionMapAddr is empty, continue with the rest of the sections from sectionsNames
+    for (auto &section: _willingSectionMapAddr) {
+        addr = section.addr;
+        // map sections in _mapSameSections
+        auto list = _mapSameSections[section.name];
+        // write to all sections with the same name
+        for (auto &sect: list) {
+            _sectionAddr[sect] = reinterpret_cast<char *>(addr);
+            addr += sect->data.size();
         }
-        if (sectionsCopy.empty())
-            break;
-        next_section = sectionsCopy[0]->name;
+        lastFreeAddr = lastFreeAddr > addr ? lastFreeAddr : addr;
+        // remove from sectionNames
+        sectionNames.erase(section.name);
+        _resultSectionMapAddr.insert({section.name, section.addr});
     }
 
+    addr = lastFreeAddr;
+
+    // iterate though the rest of the sections -> sectionNames
+    for (auto &sectionName: sectionNames) {
+        auto list = _mapSameSections[sectionName];
+        // add section name and address in  _resultMapAddr
+        _resultSectionMapAddr.insert({sectionName, addr});
+        for (auto &sect: list) {
+            _sectionAddr[sect] = reinterpret_cast<char *>(addr);
+            addr += sect->data.size();
+        }
+    }
 }
 
-void Linker::fixRelocation(const RelocationLink &rel, SectionLink &destSect, SectionLink *srcSect) {
-    if (rel.type == R_2B_EXC_4b) {
-        // Copy 2 bytes as relative displacement
-        // Displacement = AAAABBBB CCCCDDDD; Keep AAAA in destSect.data at rel.offset but overwrite other bits (12 bits)
-        auto mask = 0xF000;
-        auto placeSrc = _sectionAddr[srcSect];
-        auto placeDest = _sectionAddr[&destSect] + rel.offset;
-        // Instruction is 4B long so subtract 2B from the address
-        uint64_t relativeAddr = placeSrc - placeDest - 2;;
-        // Max 12 bits signed, if relativeAddr is greater than 0xFFF or less than -0xFFF, error
-        if ((short) relativeAddr > 0xFFF || (short) relativeAddr < -0xFFF) {
-            std::cerr << "Relative address too big" << "\n";
-            exit(EXIT_FAILURE);
-        }
-        auto *ptrDest = reinterpret_cast<uint16_t *>(&destSect.data[rel.offset]);
-        *ptrDest = (*ptrDest & mask) | (relativeAddr & ~mask);
-    } else if (rel.type == R_PC32) {
-        // Calculate relative address
-        uint64_t relativeAddr = _sectionAddr[srcSect] - (_sectionAddr[&destSect] + rel.offset);
+void Linker::checkDisplacement(int32_t value) const {
+    if (value > 0x7FF || value < -0x800)
+        throw std::runtime_error("Displacement out of bounds: " + std::to_string(value));
+}
 
-        // Check if relative address fits into 12 bits
-        if ((short) relativeAddr > 0xFFF || (short) relativeAddr < -0xFFF) {
-            std::cerr << "Relative address too big" << "\n";
-            exit(EXIT_FAILURE);
-        }
-
-        // Keep the 4 highest bits and fill the rest with the relative address
-        auto *ptrDest = reinterpret_cast<uint16_t *>(&destSect.data[rel.offset]);
-        *ptrDest = (*ptrDest & 0xF000) | (relativeAddr & 0x0FFF);
-    }
+void Linker::writeDisplacement(void *ptrDest, int32_t value) const {
+    auto *ptr = reinterpret_cast<uint16_t *>(ptrDest);
+    *ptr = value & 0x0FFF;
 }
 
 void Linker::writeRelocatable() const {
     std::ofstream output(outputFile, std::ios::binary);
-    if (!output) {
-        std::cerr << "Failed to open file: " << outputFile << "\n";
-        exit(EXIT_FAILURE);
-    }
+    if (!output)
+        throw std::runtime_error("Failed to open file: " + outputFile);
 
     // Write all sections to the output file
     for (const auto &section: sections) {
@@ -278,49 +258,84 @@ void Linker::link() {
 
         // Iterate through relocations in section
         for (auto &rel: file._relocations) {
-            auto &destSect = file._sections[rel.sectionIndex]; // write to this section
-            auto &symbol = file._symbols[rel.symbolIndex];
-            SectionLink *srcSect; // read from this section
-            if (file._symbols[rel.symbolIndex].sectionIndex == UNDEFINED) {
-                symbol = *_globSymMapSymbol[symbol.name];
-                srcSect = _globSymMapSection[symbol.name];
-            } else
-                srcSect = &file._sections[symbol.sectionIndex];
-            fixRelocation(rel, destSect, srcSect);
+
+            // write to this section
+            auto &destSect = file._sections[rel.sectionIndex];
+
+            // find symbol
+            auto &symbol = *_globSymMapSymbol[file._symbols[rel.symbolIndex].name];
+
+            if (rel.type == R_WORD) {
+                // find address of the symbol
+                auto destAddr = reinterpret_cast<char *>(destSect.data.data()) + rel.offset;
+                // value of equ is in offset
+                auto srcAddr = reinterpret_cast<char *>(&symbol.offset);
+                // copy 4 bytes from srcSect to destSect
+                std::memcpy(destAddr, srcAddr, 4);
+            } else {
+                auto srcSect = _globSymMapSection[symbol.name];
+                auto srcAddr = _sectionAddr[srcSect] + symbol.offset;
+                auto destAddr = _sectionAddr[&destSect] + rel.offset;
+                auto diff = (int32_t) (srcAddr - destAddr);
+                // check if greater than 12 bits
+                checkDisplacement(diff);
+                auto final = destSect.data.data() + rel.offset;
+                writeDisplacement(final, diff);
+            }
         }
 
 }
 
-void Linker::writeExe() const {
-    std::ofstream output(outputFile, std::ios::binary);
-    if (!output) {
-        std::cerr << "Failed to open file: " << outputFile << "\n";
-        exit(EXIT_FAILURE);
+void Linker::writeHex() const {
+    std::ofstream out(outputFile, std::ios::binary);
+    if (!out)
+        throw std::runtime_error("Failed to open file: " + outputFile);
+
+    out << "# Sections: \n";
+    for (const auto &sect: _resultSectionMapAddr)
+        out << "# \t 0x" << std::hex << sect.addr << ": " << sect.name << "\n";
+
+    for (const auto &sect: _resultSectionMapAddr) {
+        auto name = sect.name;
+        auto &list = _mapSameSections.at(sect.name);
+        auto address = sect.addr;
+        for (auto &section: list) {
+            section->serializeClean(out, address);
+            address += section->data.size();
+        }
     }
+    out.close();
+}
 
-    ProgramInfo progInfo(options.textAddr, options.dataAddr);
+void Linker::writeExe() const {
+    auto exeName = outputFile;
+    exeName.erase(exeName.end() - 4, exeName.end());
+    std::ofstream exeOutput(exeName);
+    if (!exeOutput)
+        throw std::runtime_error("Failed to open file: " + exeName);
 
-    // Calculate sizes
-    for (const auto &section: textOrder)
-        progInfo.textSize += section->data.size();
-    for (const auto &section: dataOrder)
-        progInfo.dataSize += section->data.size();
+    uint32_t numSections = _resultSectionMapAddr.size();
+    // write numFields
+    exeOutput.write(reinterpret_cast<const char *>(&numSections), sizeof(numSections));
 
-    // write program
-    output.write(reinterpret_cast<const char *>(&progInfo), sizeof(progInfo));
-    // print program info to console
-    std::cout
-            << "Text address: " << std::hex << progInfo.startPoint << "\n"
-            << "Data address: " << std::hex << progInfo.dataAddr << "\n"
-            << "Text size: " << std::hex << progInfo.textSize << "\n"
-            << "Data size: " << std::hex << progInfo.dataSize << "\n";
+    // write sections using _sectionAddr
+    for (const auto &sect: _resultSectionMapAddr) {
 
-    // write sections
-    for (const auto &section: textOrder)
-        output.write(reinterpret_cast<const char *>(section->data.data()), section->data.size());
+        uint32_t address = sect.addr;
+        exeOutput.write(reinterpret_cast<const char *>(&address), sizeof(address));
 
-    for (const auto &section: dataOrder)
-        output.write(reinterpret_cast<const char *>(section->data.data()), section->data.size());
+        auto &list = _mapSameSections.at(sect.name);
+        uint32_t sectionSize = 0;
+        // calculate sectionSize
+        for (auto &section: list)
+            sectionSize += section->data.size();
+        // write sectionSize
+        exeOutput.write(reinterpret_cast<const char *>(&sectionSize), sizeof(sectionSize));
 
-    output.close();
+        // write sections
+        for (auto &section: list)
+            // write data
+            exeOutput.write(reinterpret_cast<const char *>(section->data.data()), section->data.size());
+    }
+    exeOutput.close();
 }

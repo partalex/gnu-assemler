@@ -17,11 +17,16 @@ std::ostream &operator<<(std::ostream &out, const SectionLink &sec) {
 }
 
 void SectionLink::serialize(std::ostream &out, uint64_t startAddress) const {
-    const int tokensByLine = 16;
     out << name << " " << std::dec << data.size() << std::right;
+    serializeClean(out, startAddress);
+    out << "\n" << ".end" << "\n" << "\n";
+}
+
+void SectionLink::serializeClean(std::ostream &out, uint64_t startAddress) const {
+    const int tokensByLine = 16;
     for (auto i = 0; i < data.size(); ++i) {
         if (i % tokensByLine == 0)
-            out << "\n" << std::setw(8) << std::setfill('0') << std::hex << (startAddress + i) << "   ";
+            out << "\n" << std::setw(8) << std::setfill('0') << std::hex << (startAddress + i) << ":  ";
         out << std::setfill('0') << std::setw(2) << std::hex << (uint32_t) data[i] << " ";
         if (i % 8 == 7)
             out << "  ";
@@ -53,5 +58,4 @@ void SectionLink::serialize(std::ostream &out, uint64_t startAddress) const {
             out << ".";
         out << "|";
     }
-    out << "\n" << ".end" << "\n" << "\n";
 }

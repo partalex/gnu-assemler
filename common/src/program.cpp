@@ -1,4 +1,4 @@
-#include "../../common/include/program.h"
+#include "../include/program.h"
 
 #include <iostream>
 #include <cstring>
@@ -22,27 +22,17 @@ void Program::load(const std::string &inputFile) {
     if (!file.is_open())
         throw std::runtime_error("Could not open file " + inputFile);
 
-    // read program link
-    file.read(reinterpret_cast<char *>(&info), sizeof(info));
-    // read START_POINT
-    if (info.startPoint != START_POINT)
-        throw std::runtime_error("Invalid start point!");
-
-    // check if text section is too big
-    if (info.textSize > TEXT_MAX_SIZE)
-        throw std::runtime_error("Text section too big!");
-
-    // check if data section is too big
-    if (info.dataSize > DATA_MAX_SIZE)
-        throw std::runtime_error("Data section too big!");
-
-    memory.resize(MEMORY_SIZE);
-
-    // read text section
-    file.read(reinterpret_cast<char *>(memory.data() + TEXT_OFFSET), info.textSize);
-
-    // read rest of the file to data section
-    file.read(reinterpret_cast<char *>(memory.data() + DATA_OFFSET), info.dataSize);
+    uint32_t numSections;
+    file.read(reinterpret_cast<char *>(&numSections), sizeof(numSections));
+    for (uint32_t i = 0; i < numSections; ++i) {
+        uint32_t sectionAddr;
+        file.read(reinterpret_cast<char *>(&sectionAddr), sizeof(sectionAddr));
+        uint32_t sectionSize;
+        file.read(reinterpret_cast<char *>(&sectionSize), sizeof(sectionSize));
+        auto segment = Segment{sectionAddr, sectionSize};
+        file.read(reinterpret_cast<char *>(segment.data.data()), sectionSize);
+        memory.insertSegment(segment);
+    }
     file.close();
 }
 
@@ -59,14 +49,13 @@ void Program::push(uint32_t val) {
         throw std::runtime_error("Stack overflow!");
     *LOG << "Stack push " << std::hex << val << '\n';
     SP() -= STACK_INCREMENT;
-    memcpy(memory.data() + SP(), &val, STACK_INCREMENT);
+    memory.writeWord(SP(), val);
 }
 
 uint32_t Program::pop() {
     if (SP() >= STACK_START)
         throw std::runtime_error("Stack underflow!");
-    uint32_t ret;
-    std::memcpy(&ret, memory.data() + SP(), STACK_INCREMENT);
+    auto ret = memory.readWord(SP());
     SP() += STACK_INCREMENT;
     *LOG << "Stack pop " << std::hex << ret << '\n';
     return ret;
@@ -87,12 +76,13 @@ void Program::initOld() {
     LR = PC();
     push(psw.val);
     psw.I = 1;
-    memcpy(&PC(), memory.data(), INSTR_SIZE);
+//    memcpy(&PC(), memory.data(), INSTR_SIZE);
+    PC() = memory.readWord(0);
 //    PC() += START_POINT;
 }
 
 void Program::getInstr() {
-    memcpy(&currInstr, memory.data() + PC() - START_POINT + TEXT_OFFSET, INSTR_SIZE);
+    currInstr.value = memory.readWord(PC());
 }
 
 void Program::initNew() {
@@ -101,21 +91,16 @@ void Program::initNew() {
 
 void Program::readNext() {
     PC() += INSTR_SIZE;
-    if (PC() >= START_POINT + info.textSize)
-        throw std::runtime_error("Out of scope! Use halt at the end of program.");
     getInstr();
 }
 
 void Program::setMemory(uint32_t val, uint32_t addr) {
-    auto offset = getMemoryOffset(addr);
     *LOG << "Set memory " << std::hex << addr << " - " << val << "\n";
-    memcpy(memory.data() + offset, &val, sizeof(val));
+    memory.writeWord(addr, val);
 }
 
 uint32_t Program::getMemory(uint32_t addr) {
-    auto offset = getMemoryOffset(addr);
-    uint32_t res;
-    memcpy(&res, memory.data() + offset, sizeof(res));
+    uint32_t res = memory.readWord(addr);
     *LOG << "Fetched memory from " << std::hex << addr << " - " << res << '\n';
     return res;
 }
@@ -163,12 +148,13 @@ void Program::handleInterrupts() {
     }
     if (keyBarrier)
         keyInterr();
-    if (memory[OUTPUT_POS] != 0) {
-        auto temp = memory[OUTPUT_POS];
-        memory[OUTPUT_POS] = 0;
-        std::cout << temp;
+    // TODO
+    auto state = memory.readWord(OUTPUT_POS);
+    if (state != 0) {
+        memory.writeWord(OUTPUT_POS, 0);
+        std::cout << state;
         std::cout.flush();
-        *LOG << "Print char: " << temp << '\n';
+        *LOG << "Print char: " << state << '\n';
     }
 }
 
@@ -193,30 +179,31 @@ int32_t &Program::SP() {
 }
 
 void Program::keyInterr() {
-    if (psw.I == 1) {
+    if (psw.I) {
         *LOG << "Masked interrupts (keyboard)" << '\n';
         return;
     }
     *LOG << "Keyboard interrupt!" << '\n';
     auto temp = keyboardBuf;
     keyBarrier = false;
-    memcpy(memory.data() + KEYBOARD_POS, &temp, 4);
+    memory.writeWord(KEYBOARD_POS, temp);
     auto mask = KEYBOARD_STATUS_MASK;
-    memcpy(memory.data() + KEYBOARD_STATUS_POS, &mask, 4);
+    memory.writeWord(KEYBOARD_STATUS_POS, mask);
     push(LR);
     LR = PC();
     push(psw.val);
     psw.I = 1;
-    memcpy(&PC(), memory.data() + 12, 4);
-    PC() += START_POINT;
+    // TODO
+//    memcpy(&PC(), memory.data() + 12, 4);
+//    PC() += START_POINT;
 }
 
 void Program::timerInterrupt() {
-    if (psw.I == 1) {
+    if (psw.I) {
         *LOG << "Masked interrupts (timer)" << '\n';
         return;
     }
-    if (psw.Tr == 0) {
+    if (!psw.Tr) {
         *LOG << "Masked timer interrupt" << '\n';
         return;
     }
@@ -225,8 +212,9 @@ void Program::timerInterrupt() {
     LR = PC();
     push(psw.val);
     psw.I = 1;
-    memcpy(&PC(), memory.data() + 4, 4);
-    PC() += START_POINT;
+    // TODO
+//    memcpy(&PC(), memory.data() + 4, 4);
+//    PC() += START_POINT;
 }
 
 void *Program::KeyboardThread(void *) {
@@ -239,13 +227,6 @@ void *Program::KeyboardThread(void *) {
         keyboardBuf = temp;
         keyBarrier = true;
     }
-}
-
-uint32_t Program::getMemoryOffset(uint32_t addr) const {
-//    if (addr >= info.dataAddr + info.dataSize)
-    if (addr >= info.dataAddr + DATA_MAX_SIZE)
-        throw std::runtime_error("Index for memory out of bounds!");
-    return addr - info.dataAddr;
 }
 
 int32_t Program::sum(const int32_t val1, const int32_t val2) {

@@ -7,14 +7,20 @@
 Section::Section(std::string _name)
         : core(std::move(_name)) {}
 
+
 void Section::write(void *src, uint32_t pos, uint32_t length) {
     reallocateMemory(pos, length);
     std::memcpy(core.data.data() + pos, src, length);
+}
+
+
+void Section::writeAndIncr(void *src, uint32_t pos, uint32_t length) {
+    write(src, pos, length);
     addToLocCounter(length);
 }
 
 void Section::writeInstr(void *src, uint32_t pos) {
-    write(src, pos, 4);
+    writeAndIncr(src, pos, 4);
 }
 
 Section &Section::operator+=(Section &other) {
@@ -49,4 +55,10 @@ void Section::addToLocCounter(uint32_t offset) {
 
 uint32_t Section::getSize() const {
     return core.data.size();
+}
+
+int32_t Section::readWord(uint32_t offset) {
+    int32_t value = 0;
+    std::memcpy(&value, core.data.data() + offset, 4);
+    return value;
 }

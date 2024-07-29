@@ -115,8 +115,10 @@ void Instruction::execute(Mnemonic bytes, Program &prog) {
             prog.CAUSE() = STATUS::SOFTWARE;
             prog.STATUS() &= ~0x1;
             prog.PC() = prog.HANDLER();
-            prog.PC() = prog.getMemoryOffset(
-                    prog.registers[bytes.REG_A] + prog.registers[bytes.REG_B] + bytes.DISPLACEMENT);
+            // TODO: implement
+//            prog.PC() = prog.getMemoryOffset(
+//                    prog.registers[bytes.REG_A] + prog.registers[bytes.REG_B] + bytes.DISPLACEMENT);
+//            prog.PC() = prog.memory.readWord
             break;
         case INSTRUCTION::CALL:
             prog.push(prog.PC());
