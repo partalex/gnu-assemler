@@ -1,6 +1,6 @@
 %{
 	#include "../include/parser.h"
-	#include "../../common/include/structures.h"
+	#include "../../common/include/symbol_list.h"
     int yyerror(const char* msg);
     void yyerror_num(const int msg);
 %}

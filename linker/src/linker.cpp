@@ -1,11 +1,10 @@
 #include "../include/linker.h"
 
 #include <fstream>
-#include <iostream>
 #include <cstring>
 #include <cstdint>
-#include <cstdlib>
 #include <sstream>
+#include <iostream>
 #include <unordered_set>
 
 std::unique_ptr<Linker> Linker::_instance = nullptr;
@@ -265,23 +264,23 @@ void Linker::link() {
             // find symbol
             auto &symbol = *_globSymMapSymbol[file._symbols[rel.symbolIndex].name];
 
-            if (rel.type == R_WORD) {
-                // find address of the symbol
-                auto destAddr = reinterpret_cast<char *>(destSect.data.data()) + rel.offset;
-                // value of equ is in offset
-                auto srcAddr = reinterpret_cast<char *>(&symbol.offset);
-                // copy 4 bytes from srcSect to destSect
-                std::memcpy(destAddr, srcAddr, 4);
-            } else {
-                auto srcSect = _globSymMapSection[symbol.name];
-                auto srcAddr = _sectionAddr[srcSect] + symbol.offset;
-                auto destAddr = _sectionAddr[&destSect] + rel.offset;
-                auto diff = (int32_t) (srcAddr - destAddr);
-                // check if greater than 12 bits
-                checkDisplacement(diff);
-                auto final = destSect.data.data() + rel.offset;
-                writeDisplacement(final, diff);
-            }
+//            if (rel.type == R_WORD) {
+//                // find address of the symbol
+//                auto destAddr = reinterpret_cast<char *>(destSect.data.data()) + rel.offset;
+//                // value of equ is in offset
+//                auto srcAddr = reinterpret_cast<char *>(&symbol.offset);
+//                // copy 4 bytes from srcSect to destSect
+//                std::memcpy(destAddr, srcAddr, 4);
+//            } else {
+            auto srcSect = _globSymMapSection[symbol.name];
+            auto srcAddr = _sectionAddr[srcSect] + symbol.offset;
+            auto destAddr = _sectionAddr[&destSect] + rel.offset;
+            auto diff = (int32_t) (srcAddr - destAddr);
+            // check if greater than 12 bits
+            checkDisplacement(diff);
+            auto final = destSect.data.data() + rel.offset;
+            writeDisplacement(final, diff);
+//            }
         }
 
 }

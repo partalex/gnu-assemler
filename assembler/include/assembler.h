@@ -1,17 +1,18 @@
 #pragma once
 
-#include "../../common/include/log.h"
-#include "../../common/include/symbol.h"
-#include "../../common/include/section.h"
-#include "../../common/include/structures.h"
-#include "../../common/include/relocation.h"
-#include "../../common/include/instruction.h"
-
+#include <list>
 #include <memory>
 #include <vector>
-#include <list>
+#include <string>
 #include <unordered_map>
 
+class Symbol;
+class Operand;
+class Section;
+class EquOperand;
+class Relocation;
+class SymbolList;
+class Instruction;
 class WordOperand;
 
 class Assembler {
@@ -112,15 +113,13 @@ public:
 
     void logRelocations(std::ostream &out) const;
 
-    void symbolDuplicate(const std::string &);
+    static void symbolDuplicate(const std::string &);
 
     void writeTxt();
 
     void writeObj();
 
     void setOutput(char *string);
-
-    static bool fitIn12Bits(int32_t);
 
     void declareSymbol(const std::string &);
 

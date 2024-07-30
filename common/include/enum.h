@@ -19,12 +19,14 @@ enum ADDRESSING {
     IMMEDIATE_LITERAL_PC,
     IMMEDIATE_SYMBOL,
     INDIRECT_LITERAL,
+    INDIRECT_LITERAL_12bits,
     INDIRECT_SYMBOL,
     DIRECT_REGISTER,
     INDIRECT_REGISTER,
     INDIRECT_REG_LITERAL,
     INDIRECT_REG_SYMBOL,
-    GRP_CSR
+    GRP_CSR,
+    CSR_OP
 };
 // gpr[B] = PC, cause PC is gpr[15]
 //1. $<literal> - vrednost <literal>
@@ -36,10 +38,14 @@ enum ADDRESSING {
 // IMMEDIATE_SYMBOL:            gpr[A]<=gpr[15]+D; Need relocation
 
 //3. <literal> - vrednost iz memorije na adresi <literal>
-// INDIRECT_LITERAL:            gpr[A]<=mem32[gpr[B]+gpr[0]+D]; literal > 12bits ? Need relocation : D=literal
+// literal fitIn12Bits ?
+// INDIRECT_LITERAL_12bits:            gpr[A]<=mem32[gpr[15]+gpr[0]+D]; D<=literal no relocation
+// INDIRECT_LITERAL:                   gpr[A]<=mem32[gpr[15]+gpr[0]+D]; Need relocation R_PC32 for D
 
 //4. <simbol> - vrednost iz memorije na adresi <simbol>
-// INDIRECT_SYMBOL:             gpr[A]<=mem32[gpr[B]+gpr[0]+D]; D= mem32[symbol] <= 12bits ? mem32[symbol]: relocation
+// literal fitIn12Bits ?
+// INDIRECT_SYMBOL:             gpr[A]<=mem32[gpr[15]+gpr[0]+D]; D=literal; Need relocation R_PC32
+// : :                          gpr[A]<=mem32[gpr[B]+gpr[0]+D]; D=mem32[symbol] <= 12bits ? mem32[symbol]: relocation
 
 //5. %<reg> - vrednost u registru <reg>
 // DIRECT_REGISTER:             gpr[A]<=gpr[B]+D, D<=0
@@ -62,10 +68,12 @@ enum DEFINED {
     NOT_DEFINED, DEFINED
 };
 
-enum CSR {
-    STATUS = 16,
-    HANDLER,
-    CAUSE
+enum REGISTERS {
+    REG_SP = 14,
+    REG_PC,
+    REG_STATUS,
+    REG_HANDLER,
+    REG_CAUSE
 };
 
 enum RELOCATION {
@@ -100,7 +108,7 @@ typedef union {
         uint32_t byte_0: 8, byte_1: 8, byte_2: 8, byte_3: 8;
     };
     struct {
-        uint32_t OC: 4, MOD: 4, REG_A: 4, REG_B: 4, REG_C: 4, DISPLACEMENT: 12;
+        uint32_t OC: 4, MODE: 4, REG_A: 4, REG_B: 4, REG_C: 4, DISPLACEMENT: 12;
     };
     uint32_t value;
 } Mnemonic;
@@ -156,7 +164,7 @@ std::ostream &operator<<(std::ostream &, SOURCE);
 
 std::ostream &operator<<(std::ostream &, EQU_OP);
 
-std::ostream &operator<<(std::ostream &, enum CSR);
+std::ostream &operator<<(std::ostream &, enum REGISTERS);
 
 std::ostream &operator<<(std::ostream &, enum SYMBOL);
 

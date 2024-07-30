@@ -4,7 +4,7 @@
     #include "../include/assembler.h"
     #include "../../common/include/instruction.h"
     #include "../../common/include/operand.h"
-    #include "../../common/include/structures.h"
+    #include "../../common/include/symbol_list.h"
     int yylex(void);
     void yyerror(const char*);
 
@@ -265,13 +265,13 @@ oneRegOperand
 
 csr
   : CSR_STATUS
-  { $$ = CSR::STATUS; }
+  { $$ = REGISTERS::REG_STATUS; }
 
   | CSR_HANDLER
-  { $$ = CSR::HANDLER; }
+  { $$ = REGISTERS::REG_HANDLER; }
 
   | CSR_CAUSE
-  { $$ = CSR::CAUSE; };
+  { $$ = REGISTERS::REG_CAUSE; };
 
 gpr
   : REG

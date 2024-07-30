@@ -159,15 +159,15 @@ void Program::handleInterrupts() {
 }
 
 int32_t &Program::STATUS() {
-    return registers[CSR::STATUS];
+    return registers[REGISTERS::REG_STATUS];
 }
 
 int32_t &Program::HANDLER() {
-    return registers[CSR::HANDLER];
+    return registers[REGISTERS::REG_HANDLER];
 }
 
 int32_t &Program::CAUSE() {
-    return registers[CSR::CAUSE];
+    return registers[REGISTERS::REG_CAUSE];
 }
 
 int32_t &Program::PC() {

@@ -1,12 +1,10 @@
 #pragma once
 
-#include "program_file.h"
 #include "../include/object_file.h"
 
 #include <set>
 #include <list>
 #include <unordered_map>
-
 
 typedef struct {
     bool hex = false;
@@ -25,7 +23,6 @@ struct SortedMapSection {
         return name == other.name;
     }
 };
-
 
 class Linker {
     static std::unique_ptr<Linker> _instance;
@@ -85,4 +82,3 @@ public:
     // -hex -place=data@0x4000F000 -place=text@0x40000000 -o program.hex main.o handler.o isr_terminal.o isr_timer.o
     // -relocatable -o mem_content.hex test1.o test2.o
 };
-

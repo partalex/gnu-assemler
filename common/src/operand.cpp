@@ -1,4 +1,8 @@
+#include "../include/symbol.h"
 #include "../include/operand.h"
+#include "../include/section.h"
+#include "../include/relocation.h"
+#include "../include/instruction.h"
 #include "../../assembler/include/assembler.h"
 
 #include <iostream>
@@ -108,26 +112,26 @@ void EquIdent::backPatch(Assembler &as) {
         as.declareSymbol(_ident);
 }
 
+void TwoReg::log(std::ostream &out) {
+    out << "%r" << static_cast<int>(_gpr1);
+    out << ", %r" << static_cast<int>(_gpr2);
+}
+
 void GprGprLiteral::log(std::ostream &out) {
-    out << "%r" << _gpr1;
-    out << ", %r" << _gpr2;
+    TwoReg::log(out);
     out << ", " << _value;
 }
 
 std::pair<ADDRESSING, uint32_t> GprGprLiteral::addRelocation(Assembler &as) {
-    auto fitIn12Bits = Assembler::fitIn12Bits(_value);
+    auto fitIn12Bits = Instruction::fitIn12Bits(_value);
     if (fitIn12Bits)
         return {IMMEDIATE_LITERAL_RO, _value};
-    else
-        as.addRelLiteral(_value);
-    return {IMMEDIATE_LITERAL_PC, 0};
+    throw std::runtime_error("Error: Value " + std::to_string(_value) + " is too big.");
 }
 
 void GprGprIdent::log(std::ostream &out) {
-    out << "%r" + std::to_string(_gpr1);
-    out << ", %r" + std::to_string(_gpr2);
-    out << ", ";
-    out << _ident;
+    TwoReg::log(out);
+    out << ", " << _ident;
 }
 
 std::pair<ADDRESSING, uint32_t> GprGprIdent::addRelocation(Assembler &as) {
@@ -143,7 +147,7 @@ void LiteralImm::log(std::ostream &out) {
 }
 
 std::pair<ADDRESSING, uint32_t> LiteralImm::addRelocation(Assembler &as) {
-    auto fitIn12Bits = Assembler::fitIn12Bits(_value);
+    auto fitIn12Bits = Instruction::fitIn12Bits(_value);
     if (fitIn12Bits)
         return {IMMEDIATE_LITERAL_RO, _value};
     else
@@ -156,20 +160,20 @@ void LiteralInDir::log(std::ostream &out) {
 }
 
 std::pair<ADDRESSING, uint32_t> LiteralInDir::addRelocation(Assembler &as) {
-    auto fitIn12Bits = Assembler::fitIn12Bits(_value);
+    auto fitIn12Bits = Instruction::fitIn12Bits(_value);
     if (fitIn12Bits)
-        return {IMMEDIATE_LITERAL_RO, _value};
+        return {INDIRECT_LITERAL_12bits, _value};
     else
         as.addRelLiteral(_value);
     return {INDIRECT_LITERAL, 0};
 }
 
 void GprCsr::log(std::ostream &out) {
-    out << "[%r" << _gpr << "+$" << static_cast<CSR>(_csr) << "]";
+    out << "[%r" << _gpr << "+$" << static_cast<REGISTERS>(_csr) << "]";
 }
 
 std::pair<ADDRESSING, uint32_t> GprCsr::addRelocation(Assembler &as) {
-    return {GRP_CSR, 0};
+    return {GRP_CSR, _csr};
 }
 
 void IdentImm::log(std::ostream &out) {
@@ -205,7 +209,7 @@ void RegInDirOffLiteral::log(std::ostream &out) {
 }
 
 std::pair<ADDRESSING, uint32_t> RegInDirOffLiteral::addRelocation(Assembler &as) {
-    auto fitIn12Bits = Assembler::fitIn12Bits(_offset);
+    auto fitIn12Bits = Instruction::fitIn12Bits(_offset);
     if (!fitIn12Bits)
         throw std::runtime_error("Error: Offset " + std::to_string(_offset) + " is too big.");
     return {INDIRECT_REG_LITERAL, _offset};
@@ -224,7 +228,7 @@ std::pair<ADDRESSING, uint32_t> RegInDirOffIdent::addRelocation(Assembler &as) {
 }
 
 void CsrOp::log(std::ostream &out) {
-    out << "%" << static_cast<CSR>(_csr);
+    out << "%" << static_cast<REGISTERS>(_csr);
 }
 
 std::string CsrOp::stringValue() {
@@ -232,7 +236,7 @@ std::string CsrOp::stringValue() {
 }
 
 std::pair<ADDRESSING, uint32_t> CsrOp::addRelocation(Assembler &as) {
-    throw std::runtime_error("CsrOp::addRelocation() should not be used!");
+    return {CSR_OP, _csr};
 }
 
 void *WordLiteral::getValue() {
@@ -257,7 +261,6 @@ std::string WordIdent::stringValue() {
 
 void IdentAddr::log(std::ostream &out) {
     out << _ident;
-
 }
 
 std::pair<ADDRESSING, uint32_t> IdentAddr::addRelocation(Assembler &as) {
@@ -273,7 +276,7 @@ void LiteralImmReg::log(std::ostream &out) {
 }
 
 std::pair<ADDRESSING, uint32_t> LiteralImmReg::addRelocation(Assembler &as) {
-    auto fitIn12Bits = Assembler::fitIn12Bits(_value);
+    auto fitIn12Bits = Instruction::fitIn12Bits(_value);
     if (fitIn12Bits)
         return {IMMEDIATE_LITERAL_RO, _value};
     else
@@ -284,3 +287,4 @@ std::pair<ADDRESSING, uint32_t> LiteralImmReg::addRelocation(Assembler &as) {
 std::pair<ADDRESSING, uint32_t> Operand::addRelocation(Assembler &as) {
     throw std::runtime_error("Operand::addRelocation() not implemented");
 }
+

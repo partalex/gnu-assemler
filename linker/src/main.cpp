@@ -1,7 +1,4 @@
-#include "../include/object_file.h"
 #include "../include/linker.h"
-
-#include <iostream>
 
 int main(int argc, char *argv[]) {
 
@@ -21,9 +18,8 @@ int main(int argc, char *argv[]) {
     else
         linker.writeExe();
 
-    auto programFile =
-            std::make_unique<ProgramFile>();
-
+//    auto programFile =
+//            std::make_unique<ProgramFile>();
 //    linker.writeRelocatable(*programFile);
 
     return 0;

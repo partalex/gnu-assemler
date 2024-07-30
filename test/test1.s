@@ -2,9 +2,9 @@
 .extern continue, four
 
 .section data
-.word 1,2,3,four
+.word four,1,2,3
 message:
-    .ascii "Hello, World!"
+    .ascii "Hello Aleksandar"
 .section test1
     ld $0x1, %r0
     push %r0

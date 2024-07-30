@@ -4,6 +4,10 @@
 #include <cstring>
 #include <stdexcept>
 
+Segment::Segment(uint32_t addr, uint32_t size) : address(addr), size(size) {
+    data.resize(size);
+}
+
 void Memory::insertSegment(Segment &segment) {
     segments.insert(segment);
 }
@@ -49,6 +53,3 @@ void Memory::mergeAdjacent() {
     }
 }
 
-Segment::Segment(uint32_t addr, uint32_t size) : address(addr), size(size) {
-    data.resize(size);
-}

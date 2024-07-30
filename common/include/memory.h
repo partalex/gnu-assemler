@@ -1,8 +1,8 @@
 #pragma once
 
-#include<cstdint>
-#include<vector>
-#include<set>
+#include <cstdint>
+#include <vector>
+#include <set>
 
 class Segment {
 public:
@@ -16,11 +16,11 @@ public:
         return address < other.address;
     }
 
-    bool overlaps(const Segment &other) const {
+    [[nodiscard]] bool overlaps(const Segment &other) const {
         return address < other.address + other.size && address + size > other.address;
     }
 
-    bool isAdjacent(const Segment &other) const {
+    [[nodiscard]] bool isAdjacent(const Segment &other) const {
         return address + size == other.address || other.address + other.size == address;
     }
 };

@@ -18,7 +18,6 @@ public:
 
     void serializeClean(std::ostream &, uint64_t startAddress = 8) const;
 
-
     void static tableHeader(std::ostream &);
 };
 

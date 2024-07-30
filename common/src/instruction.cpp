@@ -1,5 +1,7 @@
 #include "../include/operand.h"
 #include "../include/program.h"
+#include "../include/instruction.h"
+
 
 #include <iostream>
 #include <iomanip>
@@ -21,9 +23,9 @@ std::ostream &operator<<(std::ostream &out, Instruction &instr) {
 }
 
 void Instruction::setDisplacement(int16_t offset) {
-    if (offset < -2048 || offset > 2047)
+    if (!fitIn12Bits(offset))
         throw std::runtime_error("Displacement out of range.");
-    bytes.DISPLACEMENT |= offset & 0x7FF;
+    bytes.DISPLACEMENT = offset;
 }
 
 Instruction::Instruction(enum INSTRUCTION instr, uint8_t regA, uint8_t regB, uint8_t regC) {
@@ -36,6 +38,10 @@ Instruction::Instruction(enum INSTRUCTION instr, uint8_t regA, uint8_t regB, uin
 
 void Instruction::setInstr(uint8_t instr) {
     bytes.byte_0 = instr;
+}
+
+void Instruction::setMode(uint8_t mode) {
+    bytes.MODE = mode;
 }
 
 void Instruction::setRegA(uint8_t regA) {
@@ -64,7 +70,7 @@ Int_Instr::Int_Instr(std::unique_ptr<Operand> operand)
 
 Load_Instr::Load_Instr(std::unique_ptr<Operand> operand, uint8_t gpr)
         : Instruction(INSTRUCTION::LD, gpr), _operand(std::move(operand)) {
-    setRegB(15);
+    setRegB(REG_PC);
 }
 
 Load_Instr::Load_Instr(uint8_t gprD, uint8_t gprS, int16_t offset)
@@ -85,7 +91,18 @@ NoAdr_Instr::NoAdr_Instr(enum INSTRUCTION instruction) :
         Instruction(instruction) {}
 
 JmpCond_Instr::JmpCond_Instr(enum INSTRUCTION instruction, std::unique_ptr<Operand> operand)
-        : Instruction(instruction), _operand(std::move(operand)) {}
+        : Instruction(instruction), _operand(std::move(operand)) {
+    setRegA(REG_PC);
+    auto *try1 = dynamic_cast<GprGprIdent *>(_operand.get());
+    auto *try2 = dynamic_cast<GprGprLiteral *>(_operand.get());
+    if (try1) {
+        setRegB(try1->getGpr1());
+        setRegC(try1->getGpr2());
+    } else {
+        setRegB(try2->getGpr1());
+        setRegC(try2->getGpr2());
+    }
+}
 
 Call_Instr::Call_Instr(enum INSTRUCTION instruction, std::unique_ptr<Operand> operand)
         : Instruction(instruction), _operand(std::move(operand)) {}
@@ -93,7 +110,7 @@ Call_Instr::Call_Instr(enum INSTRUCTION instruction, std::unique_ptr<Operand> op
 
 Jmp_Instr::Jmp_Instr(enum INSTRUCTION instruction, std::unique_ptr<Operand> operand)
         : Instruction(instruction), _operand(std::move(operand)) {
-    setRegB(15);
+    setRegA(15);
 }
 
 
@@ -240,4 +257,12 @@ std::ostream &Instruction::logExecute(std::ostream &out) const {
                << std::setw(8) << bytes.byte_1 << " "
                << std::setw(8) << bytes.byte_2 << " "
                << std::setw(8) << bytes.byte_3 << " ";
+}
+
+bool Instruction::fitIn12Bits(int32_t value) {
+    return value >= -2048 && value <= 2047;
+}
+
+void Instruction::andMode(uint8_t value) {
+    bytes.MODE |= value;
 }

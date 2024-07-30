@@ -1,5 +1,4 @@
 #pragma once
-
 #include "enum.h"
 
 #include <string>
@@ -262,11 +261,27 @@ private:
     uint8_t _csr;
 };
 
-class GprGprIdent : public Operand {
+class TwoReg : public Operand {
 public:
-    explicit GprGprIdent(uint8_t gpr1, uint8_t gpr2, std::string ident) : _gpr1(gpr1), _gpr2(gpr2),
-                                                                          _ident(std::move(ident)) {
-    }
+    explicit TwoReg(uint8_t gpr1, uint8_t gpr2) :
+            _gpr1(gpr1), _gpr2(gpr2) {}
+
+    void log(std::ostream &) override;
+
+    uint8_t getGpr1() const { return _gpr1; }
+
+    uint8_t getGpr2() const { return _gpr2; }
+
+private:
+    uint8_t _gpr1;
+    uint8_t _gpr2;
+};
+
+
+class GprGprIdent : public TwoReg {
+public:
+    explicit GprGprIdent(uint8_t gpr1, uint8_t gpr2, std::string ident) :
+            TwoReg(gpr1, gpr2), _ident(std::move(ident)) {}
 
     void log(std::ostream &) override;
 
@@ -275,24 +290,19 @@ public:
     std::string stringValue() override { return _ident; }
 
 private:
-    uint8_t _gpr1;
-    uint8_t _gpr2;
     std::string _ident;
 };
 
-class GprGprLiteral : public Operand {
+class GprGprLiteral : public TwoReg {
 public:
-    explicit GprGprLiteral(uint8_t gpr1, uint8_t gpr2, int32_t value) : _gpr1(gpr1), _gpr2(gpr2),
-                                                                        _value(value) {
-    }
+    explicit GprGprLiteral(uint8_t gpr1, uint8_t gpr2, int32_t value) :
+            TwoReg(gpr1, gpr2), _value(value) {}
 
     std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
 
     void log(std::ostream &) override;
 
 private:
-    uint8_t _gpr1;
-    uint8_t _gpr2;
     int32_t _value;
 };
 

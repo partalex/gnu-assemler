@@ -1,6 +1,5 @@
 #pragma once
 
-#include "program_info.h"
 #include "instruction.h"
 #include "memory.h"
 
@@ -35,7 +34,6 @@ class Program {
 public:
     static std::unique_ptr<std::ofstream> LOG;
     std::vector<int32_t> registers = std::vector<int32_t>(19, 0);
-    ProgramInfo info;
     uint32_t LR = 0;
     Mnemonic currInstr{0};
     pthread_t keyboardThread;
@@ -46,19 +44,8 @@ public:
 
     Memory memory;
 
-    struct test {
-        uint32_t first;
-        uint32_t last;
-
-        // override operator < for std::set
-        bool operator<(const test &other) const {
-            return first < other.first;
-        }
-    };
-
-    std::set<test> testSet;
-
     PSW psw;
+
     bool isEnd = false;
 
     Program();

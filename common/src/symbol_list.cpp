@@ -1,4 +1,4 @@
-#include "../include/structures.h"
+#include "../include/symbol_list.h"
 
 #include <iostream>
 

@@ -2,7 +2,7 @@ SRC = src
 SRC_COMMON = ../common/src
 BIN_PATH = bin
 
-SRCS = $(SRC)/* $(SRC_COMMON)/*
+SRCS = $(SRC)/* $(SRC_COMMON)/* ../assembler/src/assembler.cpp ../assembler/src/parser.cpp ../assembler/src/lexer.cpp
 
 CC = g++
 
@@ -13,7 +13,7 @@ all: $(BIN_PATH)
 	$(CC) $(SRCS) -o $(BIN_PATH)/main
 
 debug: $(BIN_PATH)
-	$(CC) $(SRCS) -g -o $(BIN_PATH)/main
+	$(CC) -I../assembler/include $(SRCS) -g -o $(BIN_PATH)/main
 
 clean:
 	rm -rf $(BIN_PATH)

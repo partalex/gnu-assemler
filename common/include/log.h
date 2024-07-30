@@ -10,7 +10,6 @@ public:
     static const char LOG_CHARACTER = '_';
 
     static void tableFooter(std::ostream &out) {
-//    out << std::left << std::string(LOG_FOOTER, LOG_CHARACTER) << "\n" << "\n";
         out << "\n";
     }
 

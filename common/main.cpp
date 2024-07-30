@@ -1,4 +1,4 @@
-#include "./include/structures.h"
+#include "./include/symbol_list.h"
 
 int main(int argc, char *argv[]) {
     auto *list =

@@ -23,6 +23,10 @@ public:
 
     virtual void setInstr(uint8_t) final;
 
+    virtual void setMode(uint8_t) final;
+
+    virtual void andMode(uint8_t) final;
+
     virtual void setRegA(uint8_t) final;
 
     virtual void setRegB(uint8_t) final;
@@ -38,6 +42,8 @@ public:
     friend std::ostream &operator<<(std::ostream &, Instruction &);
 
     virtual std::ostream &logExecute(std::ostream &) const final;
+
+    static bool fitIn12Bits(int32_t);
 
 };
 

@@ -46,13 +46,13 @@ std::ostream &operator<<(std::ostream &out, EQU_OP op) {
     }
 }
 
-std::ostream &operator<<(std::ostream &out, enum CSR csr) {
+std::ostream &operator<<(std::ostream &out, enum REGISTERS csr) {
     switch (csr) {
-        case CSR::STATUS:
+        case REGISTERS::REG_STATUS:
             return out << "status";
-        case CSR::HANDLER:
+        case REGISTERS::REG_HANDLER:
             return out << "handler";
-        case CSR::CAUSE:
+        case REGISTERS::REG_CAUSE:
             return out << "cause";
         default:
             return out << "UND";
