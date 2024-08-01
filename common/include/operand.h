@@ -1,4 +1,5 @@
 #pragma once
+
 #include "enum.h"
 
 #include <string>
@@ -19,7 +20,7 @@ public:
         throw std::runtime_error("Operand::stringValue() not implemented");
     }
 
-    virtual std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &);
+    virtual Addressing addRelocation(Assembler &);
 };
 
 class WordOperand : public Operand {
@@ -50,7 +51,7 @@ public:
 
     void logOne(std::ostream &) override;
 
-    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
+    Addressing addRelocation(Assembler &) override;
 };
 
 class WordIdent : public WordOperand {
@@ -66,7 +67,7 @@ public:
 
     std::string stringValue() override;
 
-    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
+    Addressing addRelocation(Assembler &) override;
 
 };
 
@@ -84,7 +85,7 @@ public:
 
     void log(std::ostream &) override;
 
-    virtual void backPatch(Assembler &) = 0;
+    virtual EquResolved tryToResolve(Assembler &) = 0;
 
     virtual bool isLabel() = 0;
 
@@ -92,18 +93,18 @@ public:
 };
 
 class EquLiteral : public EquOperand {
-    int64_t _value;
+    int32_t _value;
 public:
-    explicit EquLiteral(int64_t value, unsigned char op = E_ADD, EquOperand *next = nullptr)
+    explicit EquLiteral(int32_t value, unsigned char op = E_ADD, EquOperand *next = nullptr)
             : _value(value), EquOperand(op, next) {}
 
     int64_t getValue() override;
 
     void logOne(std::ostream &) override;
 
-    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
+    Addressing addRelocation(Assembler &) override;
 
-    void backPatch(Assembler &) override;
+    EquResolved tryToResolve(Assembler &) override;
 
     bool isLabel() override { return false; }
 
@@ -121,11 +122,11 @@ public:
 
     std::string stringValue() override;
 
-    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
+    Addressing addRelocation(Assembler &) override;
 
     bool isLabel() override { return true; }
 
-    void backPatch(Assembler &) override;
+    EquResolved tryToResolve(Assembler &) override;
 };
 
 class LiteralImm : public Operand {
@@ -134,7 +135,7 @@ public:
 
     void log(std::ostream &) override;
 
-    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
+    Addressing addRelocation(Assembler &) override;
 
 private:
     int32_t _value;
@@ -146,7 +147,7 @@ public:
 
     void log(std::ostream &) override;
 
-    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
+    Addressing addRelocation(Assembler &) override;
 
 private:
     int32_t _value;
@@ -159,7 +160,7 @@ public:
 
     void log(std::ostream &) override;
 
-    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
+    Addressing addRelocation(Assembler &) override;
 
 private:
     int32_t _value;
@@ -173,7 +174,7 @@ public:
 
     std::string stringValue() override { return _ident; }
 
-    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
+    Addressing addRelocation(Assembler &) override;
 
 private:
     std::string _ident;
@@ -188,7 +189,7 @@ public:
 
     std::string stringValue() override { return _ident; }
 
-    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
+    Addressing addRelocation(Assembler &) override;
 
 private:
     std::string _ident;
@@ -200,7 +201,7 @@ public:
 
     void log(std::ostream &) override;
 
-    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
+    Addressing addRelocation(Assembler &) override;
 
 private:
     uint8_t _gpr;
@@ -212,7 +213,7 @@ public:
 
     void log(std::ostream &) override;
 
-    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
+    Addressing addRelocation(Assembler &) override;
 
 private:
     uint8_t _gpr;
@@ -224,7 +225,7 @@ public:
 
     void log(std::ostream &) override;
 
-    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
+    Addressing addRelocation(Assembler &) override;
 
 private:
     uint8_t _gpr;
@@ -237,7 +238,7 @@ public:
 
     void log(std::ostream &) override;
 
-    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
+    Addressing addRelocation(Assembler &) override;
 
 
     std::string stringValue() override { return _ident; }
@@ -245,20 +246,6 @@ public:
 private:
     uint8_t _gpr;
     std::string _ident;
-};
-
-class GprCsr : public Operand {
-public:
-    explicit GprCsr(uint8_t gpr, uint8_t csr) : _gpr(gpr), _csr(csr) {
-    }
-
-    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
-
-    void log(std::ostream &) override;
-
-private:
-    uint8_t _gpr;
-    uint8_t _csr;
 };
 
 class TwoReg : public Operand {
@@ -277,7 +264,6 @@ private:
     uint8_t _gpr2;
 };
 
-
 class GprGprIdent : public TwoReg {
 public:
     explicit GprGprIdent(uint8_t gpr1, uint8_t gpr2, std::string ident) :
@@ -285,7 +271,7 @@ public:
 
     void log(std::ostream &) override;
 
-    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
+    Addressing addRelocation(Assembler &) override;
 
     std::string stringValue() override { return _ident; }
 
@@ -295,10 +281,9 @@ private:
 
 class GprGprLiteral : public TwoReg {
 public:
-    explicit GprGprLiteral(uint8_t gpr1, uint8_t gpr2, int32_t value) :
-            TwoReg(gpr1, gpr2), _value(value) {}
+    explicit GprGprLiteral(uint8_t, uint8_t gpr2, int32_t);
 
-    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
+    Addressing addRelocation(Assembler &) override;
 
     void log(std::ostream &) override;
 
@@ -312,7 +297,7 @@ public:
 
     void log(std::ostream &) override;
 
-    std::pair<ADDRESSING, uint32_t> addRelocation(Assembler &) override;
+    Addressing addRelocation(Assembler &) override;
 
     std::string stringValue() override;
 

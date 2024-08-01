@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../../common/include/enum.h"
+
 #include <list>
 #include <memory>
 #include <vector>
@@ -29,7 +31,7 @@ public:
 
     std::unordered_map<Symbol *, std::unique_ptr<EquOperand>> _equExpr;
     std::unordered_map<Symbol *, std::list<Instruction *>> _equBackPatch;
-    // backPatch for .word
+    // tryToResolve for .word
     std::unordered_map<Symbol *, std::list<void *>> _wordBackPatch;
 
     int32_t _currSection = 0;
@@ -69,7 +71,7 @@ public:
     // instructions
     void parseHalt();                                   // done
 
-    void parseInt(Operand *);                           // done
+    void parseInt();                                    // done
 
     void parseJmp(unsigned char, Operand *);            // done
 

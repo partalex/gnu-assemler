@@ -17,12 +17,12 @@ void WordOperand::log(std::ostream &out) {
     }
 }
 
-std::pair<ADDRESSING, uint32_t> WordLiteral::addRelocation(Assembler &as) {
+Addressing WordLiteral::addRelocation(Assembler &as) {
     as._sections[as._currSection]->writeAndIncr(getValue(), as._sections[as._currSection]->locCnt, 4);
-    return {ADDR_UND, as._sections[as._currSection]->locCnt};
+    return {ADDR_UND, (int32_t) as._sections[as._currSection]->locCnt};
 }
 
-std::pair<ADDRESSING, uint32_t> WordIdent::addRelocation(Assembler &as) {
+Addressing WordIdent::addRelocation(Assembler &as) {
     // If operand is label
     auto label = stringValue();
     auto symbol = as.findSymbol(label);
@@ -76,14 +76,15 @@ void EquLiteral::logOne(std::ostream &out) {
     out << _value;
 }
 
-std::pair<ADDRESSING, uint32_t> EquLiteral::addRelocation(Assembler &as) {
+Addressing EquLiteral::addRelocation(Assembler &as) {
     throw std::runtime_error("EquLiteral::addRelocation() should not be used!");
 }
 
-void EquLiteral::backPatch(Assembler &as) {
+EquResolved EquLiteral::tryToResolve(Assembler &as) {
+    return {true, _value};
 }
 
-std::pair<ADDRESSING, uint32_t> EquIdent::addRelocation(Assembler &as) {
+Addressing EquIdent::addRelocation(Assembler &as) {
     throw std::runtime_error("EquIdent::addRelocation() should not be used!");
 }
 
@@ -99,17 +100,23 @@ std::string EquIdent::stringValue() {
     return _ident;
 }
 
-void EquIdent::backPatch(Assembler &as) {
+EquResolved EquIdent::tryToResolve(Assembler &as) {
     auto symbol = as.findSymbol(_ident);
     if (symbol.first != -1) {
-        // Symbol is in symbols
-        if (symbol.second->core.flags.symbolType == GLOBAL)
+        // Symbol is defined
+         if(symbol.second->core.flags.defined){
+            auto sectionInd = symbol.second->core.sectionIndex;
+            auto section = as._sections[sectionInd].get();
+            auto ptr = section->core.data.data() + symbol.second->core.offset;
+            return {true, *reinterpret_cast<int32_t *>(ptr)};
+        }
+        else if (symbol.second->core.flags.symbolType != NO_TYPE && symbol.second->core.flags.symbolType != EQU)
             // Symbol is defined, exit
             as.symbolDuplicate(symbol.second->core.name);
-        // if Local do nothing
     } else
         // Symbol does not exist, add it
         as.declareSymbol(_ident);
+    return {false};
 }
 
 void TwoReg::log(std::ostream &out) {
@@ -122,11 +129,16 @@ void GprGprLiteral::log(std::ostream &out) {
     out << ", " << _value;
 }
 
-std::pair<ADDRESSING, uint32_t> GprGprLiteral::addRelocation(Assembler &as) {
+Addressing GprGprLiteral::addRelocation(Assembler &as) {
     auto fitIn12Bits = Instruction::fitIn12Bits(_value);
     if (fitIn12Bits)
-        return {IMMEDIATE_LITERAL_RO, _value};
-    throw std::runtime_error("Error: Value " + std::to_string(_value) + " is too big.");
+        return {REG_DIR, _value};
+    as.addRelLiteral(_value);
+    return {IN_DIR_OFFSET, 0, REG_PC};
+}
+
+GprGprLiteral::GprGprLiteral(uint8_t gpr1, uint8_t gpr2, int32_t offset) :
+        TwoReg(gpr1, gpr2), _value(offset) {
 }
 
 void GprGprIdent::log(std::ostream &out) {
@@ -134,109 +146,99 @@ void GprGprIdent::log(std::ostream &out) {
     out << ", " << _ident;
 }
 
-std::pair<ADDRESSING, uint32_t> GprGprIdent::addRelocation(Assembler &as) {
+Addressing GprGprIdent::addRelocation(Assembler &as) {
     auto symbol = as.findSymbol(_ident);
     if (symbol.first == -1)
         as.declareSymbol(_ident);
     as.addRelIdent(_ident);
-    return {IMMEDIATE_SYMBOL, 0};
+    return {REG_DIR, 0, REG_PC};
 }
 
 void LiteralImm::log(std::ostream &out) {
     out << _value;
 }
 
-std::pair<ADDRESSING, uint32_t> LiteralImm::addRelocation(Assembler &as) {
+Addressing LiteralImm::addRelocation(Assembler &as) {
     auto fitIn12Bits = Instruction::fitIn12Bits(_value);
     if (fitIn12Bits)
-        return {IMMEDIATE_LITERAL_RO, _value};
-    else
-        as.addRelLiteral(_value);
-    return {IMMEDIATE_LITERAL_PC, 0};
+        return {REG_DIR, _value};
+    as.addRelLiteral(_value);
+    return {IN_DIR_OFFSET, 0, REG_PC};
 }
 
 void LiteralInDir::log(std::ostream &out) {
     out << _value;
 }
 
-std::pair<ADDRESSING, uint32_t> LiteralInDir::addRelocation(Assembler &as) {
+Addressing LiteralInDir::addRelocation(Assembler &as) {
     auto fitIn12Bits = Instruction::fitIn12Bits(_value);
     if (fitIn12Bits)
-        return {INDIRECT_LITERAL_12bits, _value};
-    else
-        as.addRelLiteral(_value);
-    return {INDIRECT_LITERAL, 0};
-}
-
-void GprCsr::log(std::ostream &out) {
-    out << "[%r" << _gpr << "+$" << static_cast<REGISTERS>(_csr) << "]";
-}
-
-std::pair<ADDRESSING, uint32_t> GprCsr::addRelocation(Assembler &as) {
-    return {GRP_CSR, _csr};
+        return {REG_DIR, _value};
+    as.addRelLiteral(_value);
+    return {IN_DIR_OFFSET, 0, REG_PC};
 }
 
 void IdentImm::log(std::ostream &out) {
     out << "$" << _ident;
 }
 
-std::pair<ADDRESSING, uint32_t> IdentImm::addRelocation(Assembler &as) {
+Addressing IdentImm::addRelocation(Assembler &as) {
     auto symbol = as.findSymbol(_ident);
     if (symbol.first == -1)
         as.declareSymbol(_ident);
     as.addRelIdent(_ident);
-    return {IMMEDIATE_SYMBOL, 0};
+    return {REG_DIR, 0, REG_PC};
 }
 
 void RegInDir::log(std::ostream &out) {
     out << "[%r" << _gpr << "]";
 }
 
-std::pair<ADDRESSING, uint32_t> RegInDir::addRelocation(Assembler &as) {
-    return {INDIRECT_REGISTER, _gpr};
+Addressing RegInDir::addRelocation(Assembler &as) {
+    return {IN_DIR_OFFSET, 0, _gpr};
 }
 
 void RegDir::log(std::ostream &out) {
     out << "%r" << _gpr;
 }
 
-std::pair<ADDRESSING, uint32_t> RegDir::addRelocation(Assembler &as) {
-    return {DIRECT_REGISTER, _gpr};
+Addressing RegDir::addRelocation(Assembler &as) {
+    return {REG_DIR, 0, _gpr};
 }
 
 void RegInDirOffLiteral::log(std::ostream &out) {
     out << "[%r" << _gpr << "+" << _offset << "]";
 }
 
-std::pair<ADDRESSING, uint32_t> RegInDirOffLiteral::addRelocation(Assembler &as) {
+Addressing RegInDirOffLiteral::addRelocation(Assembler &as) {
     auto fitIn12Bits = Instruction::fitIn12Bits(_offset);
     if (!fitIn12Bits)
         throw std::runtime_error("Error: Offset " + std::to_string(_offset) + " is too big.");
-    return {INDIRECT_REG_LITERAL, _offset};
+    return {IN_DIR_INDEX, _offset};
 }
 
 void RegInDirOffIdent::log(std::ostream &out) {
     out << "[%r" << _gpr << "+" << _ident << "]";
 }
 
-std::pair<ADDRESSING, uint32_t> RegInDirOffIdent::addRelocation(Assembler &as) {
+Addressing RegInDirOffIdent::addRelocation(Assembler &as) {
     auto symbol = as.findSymbol(_ident);
     if (symbol.first == -1)
         as.declareSymbol(_ident);
     as.addRelIdent(_ident);
-    return {INDIRECT_REG_SYMBOL, 0};
+    return {IN_DIR_OFFSET, 0, REG_PC};
 }
 
 void CsrOp::log(std::ostream &out) {
-    out << "%" << static_cast<REGISTERS>(_csr);
+    out << "%" << static_cast<REG_GPR>(_csr);
 }
 
 std::string CsrOp::stringValue() {
     throw std::runtime_error("CsrOp::stringValue() not implemented");
 }
 
-std::pair<ADDRESSING, uint32_t> CsrOp::addRelocation(Assembler &as) {
-    return {CSR_OP, _csr};
+Addressing CsrOp::addRelocation(Assembler &as) {
+    return {CSR_OP, 0, _csr};
 }
 
 void *WordLiteral::getValue() {
@@ -263,28 +265,26 @@ void IdentAddr::log(std::ostream &out) {
     out << _ident;
 }
 
-std::pair<ADDRESSING, uint32_t> IdentAddr::addRelocation(Assembler &as) {
+Addressing IdentAddr::addRelocation(Assembler &as) {
     auto symbol = as.findSymbol(_ident);
     if (symbol.first == -1)
         as.declareSymbol(_ident);
     as.addRelIdent(_ident);
-    return {INDIRECT_SYMBOL, 0};
+    return {IN_DIR_OFFSET, 0, REG_PC};
 }
 
 void LiteralImmReg::log(std::ostream &out) {
     out << "$" << _value;
 }
 
-std::pair<ADDRESSING, uint32_t> LiteralImmReg::addRelocation(Assembler &as) {
+Addressing LiteralImmReg::addRelocation(Assembler &as) {
     auto fitIn12Bits = Instruction::fitIn12Bits(_value);
     if (fitIn12Bits)
-        return {IMMEDIATE_LITERAL_RO, _value};
-    else
-        as.addRelLiteral(_value);
-    return {IMMEDIATE_LITERAL_PC, 0};
+        return {REG_DIR, _value};
+    as.addRelLiteral(_value);
+    return {IN_DIR_OFFSET, 0, REG_PC};
 }
 
-std::pair<ADDRESSING, uint32_t> Operand::addRelocation(Assembler &as) {
+Addressing Operand::addRelocation(Assembler &as) {
     throw std::runtime_error("Operand::addRelocation() not implemented");
 }
-

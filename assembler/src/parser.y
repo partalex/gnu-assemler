@@ -74,9 +74,9 @@
 %token              I_ST
 %token              I_CSRRD
 %token              I_CSRWR
-%token              CSR_STATUS
-%token              CSR_HANDLER
-%token              CSR_CAUSE
+%token              STATUS_CSR
+%token              HANDLER_CSR
+%token              CAUSE_CSR
 
 %token <num_u8>     REG
 %token <num_u8>     SP
@@ -92,7 +92,6 @@
 %type <num_u8>      tworeg
 %type <operand>     jmpOperand
 %type <operand>     jmpCondOperand
-%type <operand>     intOperand
 %type <operand>     oneRegOperand
 %type <wordOperand> wordOperand
 %type <equOperand>  equOperand
@@ -196,8 +195,8 @@ instruction
   | I_NOT T_PERCENT REG 
   { Assembler::singleton().parseNot($3); }
 
-  | I_INT T_PERCENT intOperand
-  { Assembler::singleton().parseInt($3); }
+  | I_INT T_PERCENT
+  { Assembler::singleton().parseInt(); }
 
   | I_XCHG T_PERCENT REG T_COMMA T_PERCENT REG
   { Assembler::singleton().parseXchg($3, $6); }
@@ -254,39 +253,26 @@ oneRegOperand
   | T_OBRACKET gpr T_CBRACKET
   { $$ = new RegInDir($2); }
 
-  | T_OBRACKET gpr T_PLUS T_LITERAL T_CBRACKET
+  | T_OBRACKET gpr T_PLUS T_LITERAL T_CBRACKET // st [%r1+0], %r2
   { $$ = new RegInDirOffLiteral($2, $4); }
 
   | T_OBRACKET gpr T_PLUS T_IDENT T_CBRACKET
   { $$ = new RegInDirOffIdent($2, $4); }
 
-  | T_OBRACKET gpr T_PLUS csr T_CBRACKET
-  { $$ = new GprCsr($2, $4); };
-
 csr
-  : CSR_STATUS
-  { $$ = REGISTERS::REG_STATUS; }
+  : STATUS_CSR
+  { $$ = REG_CSR::CSR_STATUS; }
 
-  | CSR_HANDLER
-  { $$ = REGISTERS::REG_HANDLER; }
+  | HANDLER_CSR
+  { $$ = REG_CSR::CSR_HANDLER; }
 
-  | CSR_CAUSE
-  { $$ = REGISTERS::REG_CAUSE; };
+  | CAUSE_CSR
+  { $$ = REG_CSR::CSR_CAUSE; };
 
 gpr
   : REG
   | SP
   | PC;
-
-intOperand
-  : REG
-  { $$ = new RegDir($1); }
-
-  | T_LITERAL
-  { $$ = new LiteralImm($1); }
-
-  | T_IDENT
-  { $$ = new IdentAddr($1); };
 
 noadr
   : I_IRET

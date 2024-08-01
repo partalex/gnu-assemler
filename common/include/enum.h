@@ -15,19 +15,12 @@ enum EQU_OP {
 
 enum ADDRESSING {
     ADDR_UND,
-    IMMEDIATE_LITERAL_RO,
-    IMMEDIATE_LITERAL_PC,
-    IMMEDIATE_SYMBOL,
-    INDIRECT_LITERAL,
-    INDIRECT_LITERAL_12bits,
-    INDIRECT_SYMBOL,
-    DIRECT_REGISTER,
-    INDIRECT_REGISTER,
-    INDIRECT_REG_LITERAL,
-    INDIRECT_REG_SYMBOL,
-    GRP_CSR,
-    CSR_OP
+    REG_DIR,            // reg = reg[B=gpr] + D=value                   // noRel
+    IN_DIR_OFFSET,      // reg = mem[reg[B=PC] + reg[C=0] + offset] // noRel or R_PC_12Bits
+    IN_DIR_INDEX,       // reg = mem[reg[B]]   reg[B]=reg[B]+index; // noRel
+    CSR_OP              // reg = csr[B] + D                         // noRel
 };
+
 // gpr[B] = PC, cause PC is gpr[15]
 //1. $<literal> - vrednost <literal>
 // literal fitIn12Bits ?
@@ -68,12 +61,31 @@ enum DEFINED {
     NOT_DEFINED, DEFINED
 };
 
-enum REGISTERS {
-    REG_SP = 14,
-    REG_PC,
-    REG_STATUS,
-    REG_HANDLER,
-    REG_CAUSE
+enum REG_GPR {
+    GPR_R0,
+    GPR_R1,
+    GPR_R2,
+    GPR_R3,
+    GPR_R4,
+    GPR_R5,
+    GPR_R6,
+    GPR_R7,
+    GPR_R8,
+    GPR_R9,
+    GPR_R10,
+    GPR_R11,
+    GPR_R12,
+    GPR_R13,
+    GPR_R14,
+    REG_SP = GPR_R14,
+    GPR_R15,
+    REG_PC = GPR_R15,
+};
+
+enum REG_CSR {
+    CSR_STATUS,
+    CSR_HANDLER,
+    CSR_CAUSE
 };
 
 enum RELOCATION {
@@ -103,15 +115,16 @@ typedef union {
     };
 } PSW;
 
-typedef union {
-    struct {
-        uint32_t byte_0: 8, byte_1: 8, byte_2: 8, byte_3: 8;
-    };
-    struct {
-        uint32_t OC: 4, MODE: 4, REG_A: 4, REG_B: 4, REG_C: 4, DISPLACEMENT: 12;
-    };
-    uint32_t value;
-} Mnemonic;
+struct Addressing {
+    ADDRESSING addressing = ADDR_UND;
+    int32_t value = 0;
+    uint8_t reg = 0;
+};
+
+struct EquResolved {
+    bool resolved = false;
+    int32_t value = 0;
+};
 
 enum INSTRUCTION {
     HALT = 0b00000000,              // halt
@@ -156,6 +169,17 @@ enum INSTRUCTION {
     CSR_LD_POST_INC = 0b10010111,   // csr[A]<=memory[gpr[B]]; gpr[B]<=gpr[B]+D
 };
 
+typedef union {
+    struct {
+        uint32_t byte_0: 8, byte_1: 8, byte_2: 8, byte_3: 8;
+    };
+    struct {
+        uint32_t MODE: 4, OC: 4, REG_B: 4, REG_A: 4, REG_C: 4, DISPLACEMENT: 12;
+    };
+    uint32_t value;
+} Mnemonic;
+
+
 std::ostream &operator<<(std::ostream &, MARKER);
 
 std::ostream &operator<<(std::ostream &, enum DEFINED);
@@ -164,7 +188,9 @@ std::ostream &operator<<(std::ostream &, SOURCE);
 
 std::ostream &operator<<(std::ostream &, EQU_OP);
 
-std::ostream &operator<<(std::ostream &, enum REGISTERS);
+std::ostream &operator<<(std::ostream &, enum REG_GPR);
+
+std::ostream &operator<<(std::ostream &, enum REG_CSR);
 
 std::ostream &operator<<(std::ostream &, enum SYMBOL);
 

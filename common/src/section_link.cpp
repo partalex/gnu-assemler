@@ -16,13 +16,13 @@ std::ostream &operator<<(std::ostream &out, const SectionLink &sec) {
                << "\n";
 }
 
-void SectionLink::serialize(std::ostream &out, uint64_t startAddress) const {
+void SectionLink::serialize(std::ostream &out, uint64_t startAddress, char fillChar) const {
     out << name << " " << std::dec << data.size() << std::right;
-    serializeClean(out, startAddress);
+    serializeClean(out, startAddress, fillChar);
     out << "\n" << ".end" << "\n" << "\n";
 }
 
-void SectionLink::serializeClean(std::ostream &out, uint64_t startAddress) const {
+void SectionLink::serializeClean(std::ostream &out, uint64_t startAddress, char fillChar) const {
     const int tokensByLine = 16;
     for (auto i = 0; i < data.size(); ++i) {
         if (i % tokensByLine == 0)
@@ -42,9 +42,8 @@ void SectionLink::serializeClean(std::ostream &out, uint64_t startAddress) const
     }
     auto remaining = data.size() % tokensByLine;
     if (remaining != 0) {
-        // Fill the remaining space with zeros
         for (auto i = data.size(); i < data.size() + (tokensByLine - remaining); ++i) {
-            out << "00 ";
+            out << fillChar << fillChar << " ";
             if (i % 8 == 7 && i != data.size() + (tokensByLine - remaining) - 1)
                 out << "  ";
         }

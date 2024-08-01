@@ -46,16 +46,55 @@ std::ostream &operator<<(std::ostream &out, EQU_OP op) {
     }
 }
 
-std::ostream &operator<<(std::ostream &out, enum REGISTERS csr) {
+std::ostream &operator<<(std::ostream &out, enum REG_GPR gpr) {
+    switch (gpr) {
+        case GPR_R0:
+            return out << "r0";
+        case GPR_R1:
+            return out << "r1";
+        case GPR_R2:
+            return out << "r2";
+        case GPR_R3:
+            return out << "r3";
+        case GPR_R4:
+            return out << "r4";
+        case GPR_R5:
+            return out << "r5";
+        case GPR_R6:
+            return out << "r6";
+        case GPR_R7:
+            return out << "r7";
+        case GPR_R8:
+            return out << "r8";
+        case GPR_R9:
+            return out << "r9";
+        case GPR_R10:
+            return out << "r10";
+        case GPR_R11:
+            return out << "r11";
+        case GPR_R12:
+            return out << "r12";
+        case GPR_R13:
+            return out << "r13";
+        case GPR_R14:
+            return out << "SP";
+        case GPR_R15:
+            return out << "PC";
+        default:
+            throw std::runtime_error("Unknown GPR register");
+    }
+}
+
+std::ostream &operator<<(std::ostream &out, enum REG_CSR csr) {
     switch (csr) {
-        case REGISTERS::REG_STATUS:
+        case CSR_STATUS:
             return out << "status";
-        case REGISTERS::REG_HANDLER:
+        case CSR_HANDLER:
             return out << "handler";
-        case REGISTERS::REG_CAUSE:
+        case CSR_CAUSE:
             return out << "cause";
         default:
-            return out << "UND";
+            throw std::runtime_error("Unknown CSR register");
     }
 }
 

@@ -104,9 +104,7 @@ void Linker::resolveSymbols() {
                     else {
                         // If defined, add it to the map with value &symbol
                         _globSymMapSymbol[symbol.name] = &symbol;
-                        // if symbol is equ then add nullptr to section
-                        if (symbol.flags.symbolType != EQU)
-                            _globSymMapSection[symbol.name] = &file._sections[symbol.sectionIndex];
+                        _globSymMapSection[symbol.name] = &file._sections[symbol.sectionIndex];
                     }
                 else if (it->second != nullptr) {
                     if (symbol.flags.defined)
@@ -116,8 +114,7 @@ void Linker::resolveSymbols() {
                 else {
                     // If defined, add it to the map with value &symbol
                     _globSymMapSymbol[symbol.name] = &symbol;
-                    if (symbol.flags.symbolType != EQU)
-                        _globSymMapSection[symbol.name] = &file._sections[symbol.sectionIndex];
+                    _globSymMapSection[symbol.name] = &file._sections[symbol.sectionIndex];
                 }
             }
     }
@@ -191,7 +188,7 @@ void Linker::placeSection() {
 }
 
 void Linker::checkDisplacement(int32_t value) const {
-    if (value > 0x7FF || value < -0x800)
+    if (value > 2047 || value < -2048)
         throw std::runtime_error("Displacement out of bounds: " + std::to_string(value));
 }
 
@@ -264,23 +261,23 @@ void Linker::link() {
             // find symbol
             auto &symbol = *_globSymMapSymbol[file._symbols[rel.symbolIndex].name];
 
-//            if (rel.type == R_WORD) {
-//                // find address of the symbol
-//                auto destAddr = reinterpret_cast<char *>(destSect.data.data()) + rel.offset;
-//                // value of equ is in offset
-//                auto srcAddr = reinterpret_cast<char *>(&symbol.offset);
-//                // copy 4 bytes from srcSect to destSect
-//                std::memcpy(destAddr, srcAddr, 4);
-//            } else {
             auto srcSect = _globSymMapSection[symbol.name];
             auto srcAddr = _sectionAddr[srcSect] + symbol.offset;
             auto destAddr = _sectionAddr[&destSect] + rel.offset;
             auto diff = (int32_t) (srcAddr - destAddr);
-            // check if greater than 12 bits
-            checkDisplacement(diff);
             auto final = destSect.data.data() + rel.offset;
             writeDisplacement(final, diff);
-//            }
+            switch (rel.type) {
+                case R_WORD:
+                    std::memcpy(final, &diff, 4);
+                    break;
+                case R_PC_12Bits:
+                    checkDisplacement(diff);
+                    writeDisplacement(final, diff);
+                    break;
+                default:
+                    throw std::runtime_error("Unknown relocation type");
+            }
         }
 
 }

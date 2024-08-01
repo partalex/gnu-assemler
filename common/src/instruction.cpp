@@ -22,7 +22,7 @@ std::ostream &operator<<(std::ostream &out, Instruction &instr) {
     return out;
 }
 
-void Instruction::setDisplacement(int16_t offset) {
+void Instruction::setDisplacement(int32_t offset) {
     if (!fitIn12Bits(offset))
         throw std::runtime_error("Displacement out of range.");
     bytes.DISPLACEMENT = offset;
@@ -44,16 +44,20 @@ void Instruction::setMode(uint8_t mode) {
     bytes.MODE = mode;
 }
 
+void Instruction::andMode(uint8_t value) {
+    bytes.MODE &= value;
+}
+
 void Instruction::setRegA(uint8_t regA) {
-    bytes.REG_A |= regA << 4;
+    bytes.REG_A = regA;
 }
 
 void Instruction::setRegB(uint8_t regB) {
-    bytes.REG_B |= regB;
+    bytes.REG_B = regB;
 }
 
 void Instruction::setRegC(uint8_t regC) {
-    bytes.REG_C |= regC << 4;
+    bytes.REG_C = regC;
 }
 
 Push_Instr::Push_Instr(uint8_t gpr)
@@ -65,8 +69,8 @@ Pop_Instr::Pop_Instr(uint8_t grp)
 Not_Instr::Not_Instr(uint8_t gpr)
         : Instruction(INSTRUCTION::NOT, gpr) {}
 
-Int_Instr::Int_Instr(std::unique_ptr<Operand> operand)
-        : Instruction(INSTRUCTION::INT), _operand(std::move(operand)) {}
+Int_Instr::Int_Instr()
+        : Instruction(INSTRUCTION::INT) {}
 
 Load_Instr::Load_Instr(std::unique_ptr<Operand> operand, uint8_t gpr)
         : Instruction(INSTRUCTION::LD, gpr), _operand(std::move(operand)) {
@@ -105,7 +109,10 @@ JmpCond_Instr::JmpCond_Instr(enum INSTRUCTION instruction, std::unique_ptr<Opera
 }
 
 Call_Instr::Call_Instr(enum INSTRUCTION instruction, std::unique_ptr<Operand> operand)
-        : Instruction(instruction), _operand(std::move(operand)) {}
+        : Instruction(instruction), _operand(std::move(operand)) {
+    setRegA(REG_PC);
+    setRegB(0);
+}
 
 
 Jmp_Instr::Jmp_Instr(enum INSTRUCTION instruction, std::unique_ptr<Operand> operand)
@@ -121,7 +128,7 @@ void Instruction::execute(Mnemonic bytes, Program &prog) {
     auto instr = static_cast<INSTRUCTION>(bytes.byte_0);
     static int counter = 0;
     *Program::LOG << "Executing " << ++counter << ". " << instr << '\n';
-    uint32_t temp;
+    int32_t temp;
     switch (instr) {
         case INSTRUCTION::HALT:
             prog.isEnd = true;
@@ -132,10 +139,6 @@ void Instruction::execute(Mnemonic bytes, Program &prog) {
             prog.CAUSE() = STATUS::SOFTWARE;
             prog.STATUS() &= ~0x1;
             prog.PC() = prog.HANDLER();
-            // TODO: implement
-//            prog.PC() = prog.getMemoryOffset(
-//                    prog.registers[bytes.REG_A] + prog.registers[bytes.REG_B] + bytes.DISPLACEMENT);
-//            prog.PC() = prog.memory.readWord
             break;
         case INSTRUCTION::CALL:
             prog.push(prog.PC());
@@ -208,16 +211,17 @@ void Instruction::execute(Mnemonic bytes, Program &prog) {
             prog.registers[bytes.REG_A] = prog.shr(prog.registers[bytes.REG_B], prog.registers[bytes.REG_C]);
             break;
         case INSTRUCTION::ST:
-            prog.registers[prog.registers[bytes.REG_A] + prog.registers[bytes.REG_B] + bytes.DISPLACEMENT] =
-                    prog.registers[bytes.REG_C];
+            prog.setMemory(prog.registers[bytes.REG_A] + prog.registers[bytes.REG_B] + bytes.DISPLACEMENT,
+                           prog.registers[bytes.REG_C]);
             break;
         case INSTRUCTION::ST_IND:
-            prog.registers[prog.registers[bytes.REG_A] + prog.registers[bytes.REG_B] + bytes.DISPLACEMENT] =
-                    prog.registers[prog.registers[bytes.REG_C]];
+            prog.setMemory(
+                    prog.getMemory(prog.registers[bytes.REG_A] + prog.registers[bytes.REG_B] + bytes.DISPLACEMENT),
+                    prog.registers[bytes.REG_C]);
             break;
         case INSTRUCTION::ST_POST_INC:
             prog.registers[bytes.REG_A] = prog.registers[bytes.REG_A] + bytes.DISPLACEMENT;
-            prog.registers[prog.registers[bytes.REG_A]] = prog.registers[bytes.REG_C];
+            prog.setMemory(prog.registers[bytes.REG_A], prog.registers[bytes.REG_C]);
             break;
         case INSTRUCTION::LD_CSR:
             prog.registers[bytes.REG_A] = prog.registers[bytes.REG_B];
@@ -225,12 +229,27 @@ void Instruction::execute(Mnemonic bytes, Program &prog) {
         case INSTRUCTION::LD:
             prog.registers[bytes.REG_A] = prog.registers[bytes.REG_B] + bytes.DISPLACEMENT;
             break;
+        case INSTRUCTION::LD_IND:
+            prog.registers[bytes.REG_A] =
+                    prog.registers[bytes.REG_B] + prog.registers[bytes.REG_C] + bytes.DISPLACEMENT;
+            break;
         case INSTRUCTION::LD_POST_INC:
-            prog.registers[bytes.REG_A] = prog.getMemory(
-                    prog.registers[bytes.REG_B] + prog.registers[bytes.REG_C] + bytes.DISPLACEMENT);
+            prog.registers[bytes.REG_A] = prog.getMemory(prog.registers[bytes.REG_B]);
+            prog.registers[bytes.REG_B] = prog.registers[bytes.REG_B] + bytes.DISPLACEMENT;
             break;
         case INSTRUCTION::CSR_LD:
             prog.registers[bytes.REG_A] = prog.getMemory(prog.registers[bytes.REG_B] + bytes.DISPLACEMENT);
+            break;
+        case INSTRUCTION::CSR_LD_OR:
+            prog.registers[bytes.REG_A] = prog.getMemory(prog.registers[bytes.REG_B]) | bytes.DISPLACEMENT;
+            break;
+        case INSTRUCTION::CSR_LD_IND:
+            prog.registers[bytes.REG_A] =
+                    prog.getMemory(prog.registers[bytes.REG_B] + prog.registers[bytes.REG_C] + bytes.DISPLACEMENT);
+            break;
+        case INSTRUCTION::CSR_LD_POST_INC:
+            prog.registers[bytes.REG_A] = prog.getMemory(prog.registers[bytes.REG_B]);
+            prog.registers[bytes.REG_B] = prog.registers[bytes.REG_B] + bytes.DISPLACEMENT;
             break;
         default:
             throw std::runtime_error("Unknown instruction: " + std::to_string(bytes.byte_0));
@@ -238,7 +257,9 @@ void Instruction::execute(Mnemonic bytes, Program &prog) {
 }
 
 Store_Instr::Store_Instr(uint8_t gpr, std::unique_ptr<Operand> operand)
-        : Instruction(INSTRUCTION::ST, gpr), _operand(std::move(operand)) {}
+        : Instruction(INSTRUCTION::ST), _operand(std::move(operand)) {
+    setRegC(gpr);
+}
 
 void Instruction::tableHeader(std::ostream &out) {
     out << std::left <<
@@ -263,6 +284,4 @@ bool Instruction::fitIn12Bits(int32_t value) {
     return value >= -2048 && value <= 2047;
 }
 
-void Instruction::andMode(uint8_t value) {
-    bytes.MODE |= value;
-}
+

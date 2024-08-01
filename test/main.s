@@ -3,8 +3,6 @@
 .global my_start, my_counter
 .extern handler
 
-.equ two, 3 - one
-.equ one, 1
 .equ initial_sp, 0xFFFFFEFE
 .equ timer_config, 0xFFFFFF10
 

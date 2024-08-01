@@ -100,9 +100,9 @@ OFFSET      [\+\-]({HEX}|{DEC})
 "sp"                { yylval.num_u8 = 14; return SP; }
 "pc"                { yylval.num_u8 = 15; return PC; } /* T - li treba da se vrati PC */
 
-"%handler"           { return CSR_HANDLER; }
-"%cause"             { return CSR_CAUSE; }
-"%status"            { return CSR_STATUS; }
+"%handler"           { return HANDLER_CSR; }
+"%cause"             { return CAUSE_CSR; }
+"%status"            { return STATUS_CSR; }
 
 {STRING}            {
                       char* temp = strdup(yytext+1);

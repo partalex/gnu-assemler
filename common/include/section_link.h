@@ -14,9 +14,9 @@ public:
 
     SectionLink() = default;
 
-    void serialize(std::ostream &, uint64_t startAddress = 8) const;
+    void serialize(std::ostream &, uint64_t startAddress = 0, char fillChar = '.') const;
 
-    void serializeClean(std::ostream &, uint64_t startAddress = 8) const;
+    void serializeClean(std::ostream &, uint64_t startAddress = 0, char fillChar = '.') const;
 
     void static tableHeader(std::ostream &);
 };

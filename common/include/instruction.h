@@ -33,7 +33,7 @@ public:
 
     virtual void setRegC(uint8_t) final;
 
-    virtual void setDisplacement(int16_t) final;
+    virtual void setDisplacement(int32_t) final;
 
     static void execute(Mnemonic , Program &);
 
@@ -83,7 +83,7 @@ public:
 class Int_Instr : public Instruction {
     std::unique_ptr<Operand> _operand;
 public:
-    explicit Int_Instr(std::unique_ptr<Operand>);
+    explicit Int_Instr();
 
     explicit Int_Instr(uint32_t bytes) : Instruction(bytes) {}
 
