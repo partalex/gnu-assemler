@@ -33,7 +33,8 @@
 class Program {
 public:
     static std::unique_ptr<std::ofstream> LOG;
-    std::vector<int32_t> registers = std::vector<int32_t>(19, 0);
+    std::vector<int32_t> gpr_registers = std::vector<int32_t>(15, 0);
+    std::vector<int32_t> csr_registers = std::vector<int32_t>(3, 0);
     uint32_t LR = 0;
     Mnemonic currInstr{0};
     pthread_t keyboardThread;
@@ -47,6 +48,8 @@ public:
     PSW psw;
 
     bool isEnd = false;
+    bool incrementPC = true;
+    uint32_t instrCounter = 0;
 
     Program();
 
@@ -62,9 +65,9 @@ public:
 
     void load(const std::string &);
 
-    uint32_t pop();
+    int32_t pop();
 
-    void push(uint32_t);
+    void push(int32_t);
 
     void getInstr();
 
@@ -92,7 +95,7 @@ public:
 
     void setMemory(uint32_t, uint32_t);
 
-    uint32_t getMemory(uint32_t);
+    int32_t getMemory(uint32_t);
 
     void keyInterr();
 

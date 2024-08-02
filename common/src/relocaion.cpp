@@ -16,9 +16,9 @@ void Relocation::tableHeader(std::ostream &out) {
     RelocationLink::tableHeader(out);
 }
 
-Relocation::Relocation(std::string symbol, uint64_t symbolIndex, uint64_t sectionIndex, uint64_t offset, uint64_t size,
+Relocation::Relocation(std::string symbol, uint64_t symbolIndex, uint64_t sectionIndex, uint64_t offset,
                        RELOCATION type)
         : _symbol(std::move(symbol)) {
-    _core = {symbolIndex, sectionIndex, offset, size, type};
+    _core = {symbolIndex, sectionIndex, offset, type};
 }
 

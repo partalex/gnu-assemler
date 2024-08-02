@@ -44,7 +44,7 @@ uint32_t Program::signExt(uint32_t val, size_t size) {
     return val;
 }
 
-void Program::push(uint32_t val) {
+void Program::push(int32_t val) {
     if (SP() <= STACK_END)
         throw std::runtime_error("Stack overflow!");
     *LOG << "Stack push " << std::hex << val << '\n';
@@ -52,7 +52,7 @@ void Program::push(uint32_t val) {
     memory.writeWord(SP(), val);
 }
 
-uint32_t Program::pop() {
+int32_t Program::pop() {
     if (SP() >= STACK_START)
         throw std::runtime_error("Stack underflow!");
     auto ret = memory.readWord(SP());
@@ -90,16 +90,17 @@ void Program::initNew() {
 }
 
 void Program::readNext() {
-    PC() += INSTR_SIZE;
+    if (incrementPC)
+        PC() += INSTR_SIZE;
     getInstr();
 }
 
 void Program::setMemory(uint32_t val, uint32_t addr) {
-    *LOG << "Set memory " << std::hex << addr << " - " << val << "\n";
+    *LOG << "Set memory: [0x" << std::hex << addr << "] = " << val << "\n";
     memory.writeWord(addr, val);
 }
 
-uint32_t Program::getMemory(uint32_t addr) {
+int32_t Program::getMemory(uint32_t addr) {
     uint32_t res = memory.readWord(addr);
     *LOG << "Fetched memory from " << std::hex << addr << " - " << res << '\n';
     return res;
@@ -112,7 +113,7 @@ void Program::logState() {
                  << std::setw(2) << std::left
                  << std::dec << i + j << "=0x"
                  << std::setfill('0') << std::setw(8)
-                 << std::hex << registers[i + j] << " ";
+                 << std::hex << gpr_registers[i + j] << " ";
         }
         *LOG << '\n';
     }
@@ -120,9 +121,9 @@ void Program::logState() {
          << "LR =0x" << std::setfill('0') << std::setw(8) << std::hex << LR << " "
          << "SP =0x" << std::setfill('0') << std::setw(8) << std::hex << SP() << " "
          << "psw=0x" << std::setfill('0') << std::setw(8) << std::hex << psw.val << '\n';
-    *LOG << "STATUS =0x" << std::setfill('0') << std::setw(8) << std::hex << registers[16] << " "
-         << "HANDLER =0x" << std::setfill('0') << std::setw(8) << std::hex << registers[17] << " "
-         << "CAUSE =0x" << std::setfill('0') << std::setw(8) << std::hex << registers[18] << '\n';
+    *LOG << "STATUS =0x" << std::setfill('0') << std::setw(8) << std::hex << csr_registers[16] << " "
+         << "HANDLER =0x" << std::setfill('0') << std::setw(8) << std::hex << csr_registers[17] << " "
+         << "CAUSE =0x" << std::setfill('0') << std::setw(8) << std::hex << csr_registers[18] << '\n';
 //    uint32_t Tr: 1, Tl: 1, I: 1, : 24, Z: 1, O: 1, C: 1, N: 1;
 
     *LOG << "TR=" << psw.Tr << " TL=" << psw.Tl << " I=" << psw.I <<
@@ -132,7 +133,154 @@ void Program::logState() {
 
 void Program::executeCurrent() {
     logState();
-    Instruction::execute(currInstr, *this);
+    int32_t temp;
+    auto code = (INSTRUCTION)currInstr.byte_0;
+    switch (code) {
+        case HALT:              // halt
+            isEnd = true;
+            break;
+        case INT:               // push status; push pc; cause<=4; status<=status&(~0x1); pc<=handler;
+            push(STATUS());
+            push(PC());
+            CAUSE() = STATUS::SOFTWARE;
+            STATUS() &= ~0x1;
+            PC() = HANDLER();
+            incrementPC = false;
+            break;
+        case CALL:              // push pc; pc<=gpr[A=PC]+gpr[B=0]+D
+            push(PC());
+            PC() = gpr_registers[currInstr.REG_A] + gpr_registers[currInstr.REG_B] + currInstr.DISPLACEMENT;
+            incrementPC = false;
+            break;
+        case CALL_MEM:         // push pc; pc<=memory[gpr[A=PC]+gpr[B=0]+D]
+            push(PC());
+            PC() = getMemory(
+                    gpr_registers[currInstr.REG_A] + gpr_registers[currInstr.REG_B] + currInstr.DISPLACEMENT);
+            incrementPC = false;
+            break;
+        case JMP:               // pc<=gpr[A=PC]+D
+            PC() = gpr_registers[currInstr.REG_A] + currInstr.DISPLACEMENT;
+            incrementPC = false;
+            break;
+        case BEQ :               // if (gpr[B] == gpr[C]) pc<=gpr[A=PC]+D
+            if (gpr_registers[currInstr.REG_B] == gpr_registers[currInstr.REG_C])
+                PC() = gpr_registers[currInstr.REG_A] + currInstr.DISPLACEMENT;
+            incrementPC = false;
+            break;
+        case BNE:               // if (gpr[B] != gpr[C]) pc<=gpr[A=PC]+D
+            if (gpr_registers[currInstr.REG_B] != gpr_registers[currInstr.REG_C])
+                PC() = gpr_registers[currInstr.REG_A] + currInstr.DISPLACEMENT;
+            incrementPC = false;
+            break;
+        case BGT:             // if (gpr[B] signed> gpr[C]) pc<=gpr[A]+D
+            if (gpr_registers[currInstr.REG_B] > gpr_registers[currInstr.REG_C])
+                PC() = gpr_registers[currInstr.REG_A] + currInstr.DISPLACEMENT;
+            incrementPC = false;
+            break;
+        case JMP_MEM:           // pc<=memory[gpr[A]+D]
+            PC() = getMemory(gpr_registers[currInstr.REG_A] + currInstr.DISPLACEMENT);
+            incrementPC = false;
+            break;
+        case BEQ_MEM:           // if (gpr[B] == gpr[C]) pc<=memory[gpr[A=PC]+D]
+            if (gpr_registers[currInstr.REG_B] == gpr_registers[currInstr.REG_C])
+                PC() = getMemory(gpr_registers[currInstr.REG_A] + currInstr.DISPLACEMENT);
+            incrementPC = false;
+            break;
+        case BNE_MEM:          // if (gpr[B] != gpr[C]) pc<=memory[gpr[A=PC]+D]
+            if (gpr_registers[currInstr.REG_B] != gpr_registers[currInstr.REG_C])
+                PC() = getMemory(gpr_registers[currInstr.REG_A] + currInstr.DISPLACEMENT);
+            incrementPC = false;
+            break;
+        case BGT_MEM:          // if (gpr[B] signed> gpr[C]) pc<=memory[gpr[A=PC]+D]
+            if (gpr_registers[currInstr.REG_B] > gpr_registers[currInstr.REG_C])
+                PC() = getMemory(gpr_registers[currInstr.REG_A] + currInstr.DISPLACEMENT);
+            incrementPC = false;
+            break;
+        case XCHG:              // temp<=gpr[B]; gpr[B]<=gpr[C]; gpr[C]<=temp;
+            temp = gpr_registers[currInstr.REG_B];
+            gpr_registers[currInstr.REG_B] = gpr_registers[currInstr.REG_C];
+            gpr_registers[currInstr.REG_C] = temp;
+            break;
+        case ADD:              // gpr[A]<=gpr[B]+gpr[C]
+            gpr_registers[currInstr.REG_A] = sum(gpr_registers[currInstr.REG_B],
+                                                 gpr_registers[currInstr.REG_C]);
+            break;
+        case SUB:               // gpr[A]<=gpr[B]-gpr[C]
+            gpr_registers[currInstr.REG_A] = sub(gpr_registers[currInstr.REG_B],
+                                                 gpr_registers[currInstr.REG_C]);
+            break;
+        case MUL:              // gpr[A]<=gpr[B] * gpr[C]
+            gpr_registers[currInstr.REG_A] = mul(gpr_registers[currInstr.REG_B],
+                                                 gpr_registers[currInstr.REG_C]);
+            break;
+        case DIV:             // gpr[A]<=gpr[B] / gpr[C]
+            gpr_registers[currInstr.REG_A] = div(gpr_registers[currInstr.REG_B],
+                                                 gpr_registers[currInstr.REG_C]);
+            break;
+        case NOT:             // gpr[A]<=~gpr[B]
+            gpr_registers[currInstr.REG_A] = not_(gpr_registers[currInstr.REG_B]);
+            break;
+        case AND:              // gpr[A]<=gpr[B] & gpr[C]
+            gpr_registers[currInstr.REG_A] = gpr_registers[currInstr.REG_B] & gpr_registers[currInstr.REG_C];
+            break;
+        case OR:               // gpr[A]<=gpr[B] | gpr[C]
+            gpr_registers[currInstr.REG_A] = or_(gpr_registers[currInstr.REG_B],
+                                                 gpr_registers[currInstr.REG_C]);
+            break;
+        case XOR:               // gpr[A]<=gpr[B] ^ gpr[C]
+            gpr_registers[currInstr.REG_A] = xor_(gpr_registers[currInstr.REG_B],
+                                                  gpr_registers[currInstr.REG_C]);
+            break;
+        case SHL:               // gpr[A]<=gpr[B] << gpr[C]
+            gpr_registers[currInstr.REG_A] = shl(gpr_registers[currInstr.REG_B],
+                                                 gpr_registers[currInstr.REG_C]);
+            break;
+        case SHR:              // gpr[A]<=gpr[B] >> gpr[C]
+            gpr_registers[currInstr.REG_A] = shr(gpr_registers[currInstr.REG_B],
+                                                 gpr_registers[currInstr.REG_C]);
+            break;
+        case ST:                // memory[gpr[A]+gpr[B]+D]<=gpr[C]
+            setMemory(gpr_registers[currInstr.REG_A] + gpr_registers[currInstr.REG_B] + currInstr.DISPLACEMENT,
+                      gpr_registers[currInstr.REG_C]);
+            break;
+        case ST_IND:            // memory[memory[gpr[A]+gpr[B]+D]]<=gpr[C]
+            setMemory(
+                    getMemory(gpr_registers[currInstr.REG_A] + gpr_registers[currInstr.REG_B] + currInstr.DISPLACEMENT),
+                    gpr_registers[currInstr.REG_C]);
+            break;
+        case ST_POST_INC:     // gpr[A]<=gpr[A]+D; memory[gpr[A]]<=gpr[C] // PUSH
+            gpr_registers[currInstr.REG_A] = gpr_registers[currInstr.REG_A] + currInstr.DISPLACEMENT;
+            setMemory(gpr_registers[currInstr.REG_A], gpr_registers[currInstr.REG_C]);
+            break;
+        case LD_CSR:            // gpr[A]<=csr[B] ## CSRRD
+            gpr_registers[currInstr.REG_A] = gpr_registers[currInstr.REG_B];
+            break;
+        case LD:                // gpr[A]<=gpr[B]+D
+            gpr_registers[currInstr.REG_A] = gpr_registers[currInstr.REG_B] + currInstr.DISPLACEMENT;
+            break;
+        case LD_IND:           // gpr[A]<=memory[gpr[B]+gpr[C]+D]
+            gpr_registers[currInstr.REG_A] =
+                    gpr_registers[currInstr.REG_B] + gpr_registers[currInstr.REG_C] + currInstr.DISPLACEMENT;
+            break;
+        case LD_POST_INC:       // gpr[A]<=memory[gpr[B]]; gpr[B]<=gpr[B]+D ## POP, RET
+            break;
+        case CSR_LD:            // csr[A]<=gpr[B] ## CSRWR
+            csr_registers[currInstr.REG_A] = gpr_registers[currInstr.REG_B];
+            break;
+        case CSR_LD_OR:        // csr[A]<=csr[B]|D
+            csr_registers[currInstr.REG_A] = csr_registers[currInstr.REG_B] | currInstr.DISPLACEMENT;
+            break;
+        case CSR_LD_IND:       // csr[A]<=memory[gpr[B]+gpr[C]+D]
+            csr_registers[currInstr.REG_A] =
+                    getMemory(gpr_registers[currInstr.REG_B] + gpr_registers[currInstr.REG_C] + currInstr.DISPLACEMENT);
+            break;
+        case CSR_LD_POST_INC:   // csr[A]<=memory[gpr[B]]; gpr[B]<=gpr[B]+D
+            csr_registers[currInstr.REG_A] = getMemory(gpr_registers[currInstr.REG_B]);
+            gpr_registers[currInstr.REG_B] = gpr_registers[currInstr.REG_B] + currInstr.DISPLACEMENT;
+            break;
+        default:
+            throw std::runtime_error("Unknown instruction " + std::to_string(currInstr.value));
+    }
     logState();
 //    handleInterrupts();
     *LOG << '\n';
@@ -159,23 +307,23 @@ void Program::handleInterrupts() {
 }
 
 int32_t &Program::STATUS() {
-    return registers[REG_CSR::CSR_STATUS];
+    return csr_registers[REG_CSR::CSR_STATUS];
 }
 
 int32_t &Program::HANDLER() {
-    return registers[REG_CSR::CSR_HANDLER];
+    return csr_registers[REG_CSR::CSR_HANDLER];
 }
 
 int32_t &Program::CAUSE() {
-    return registers[REG_CSR::CSR_CAUSE];
+    return csr_registers[REG_CSR::CSR_CAUSE];
 }
 
 int32_t &Program::PC() {
-    return registers[15];
+    return gpr_registers[15];
 }
 
 int32_t &Program::SP() {
-    return registers[14];
+    return gpr_registers[14];
 }
 
 void Program::keyInterr() {

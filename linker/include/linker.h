@@ -30,6 +30,7 @@ class Linker {
 public:
     LinkerOptions options;
 
+    std::string _emulatorPath = "../../emulator/bin/";
     std::string outputFile;
     std::vector<std::string> inputNames;
     std::vector<ObjectFile> inputFiles;

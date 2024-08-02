@@ -20,7 +20,7 @@ std::ostream &operator<<(std::ostream &out, enum DEFINED defined) {
         case DEFINED::DEFINED:
             return out << "YES";
         default:
-            return out << "UND";
+            throw std::runtime_error("DEFINED operator<<: unknown " + std::to_string((uint32_t) defined));
     }
 }
 
@@ -31,7 +31,7 @@ std::ostream &operator<<(std::ostream &out, SOURCE source) {
         case SOURCE::THIS:
             return out << "THIS";
         default:
-            return out << "UND";
+            throw std::runtime_error("SOURCE operator<<: unknown " + std::to_string((uint32_t) source));
     }
 }
 
@@ -42,7 +42,7 @@ std::ostream &operator<<(std::ostream &out, EQU_OP op) {
         case E_SUB:
             return out << "-";
         default:
-            return out << "UND";
+            throw std::runtime_error("EQU_OP operator<<: unknown " + std::to_string((uint32_t) op));
     }
 }
 
@@ -81,7 +81,7 @@ std::ostream &operator<<(std::ostream &out, enum REG_GPR gpr) {
         case GPR_R15:
             return out << "PC";
         default:
-            throw std::runtime_error("Unknown GPR register");
+            throw std::runtime_error("REG_GPR operator<<: unknown " + std::to_string((uint32_t) gpr));
     }
 }
 
@@ -94,7 +94,7 @@ std::ostream &operator<<(std::ostream &out, enum REG_CSR csr) {
         case CSR_CAUSE:
             return out << "cause";
         default:
-            throw std::runtime_error("Unknown CSR register");
+            throw std::runtime_error("REG_CSR operator<<: unknown " + std::to_string((uint32_t) csr));
     }
 }
 
@@ -109,23 +109,25 @@ std::ostream &operator<<(std::ostream &out, enum SYMBOL sym) {
         case SYMBOL::EQU:
             return out << "EQU";
         default:
-            return out << "UND";
+            throw std::runtime_error("SYMBOL operator<<: unknown " + std::to_string((uint32_t) sym));
     }
 }
 
-std::ostream &operator<<(std::ostream &out, SCOPE s) {
-    switch (s) {
+std::ostream &operator<<(std::ostream &out, SCOPE scope) {
+    switch (scope) {
         case SCOPE::GLOBAL:
             return out << "GLOBAL";
         case SCOPE::LOCAL:
             return out << "LOCAL";
         default:
-            return out << "UND";
+            throw std::runtime_error("SCOPE operator<<: unknown " + std::to_string((uint32_t) scope));
     }
 }
 
 std::ostream &operator<<(std::ostream &out, enum INSTRUCTION instr) {
     switch (instr) {
+        case INSTRUCTION::HALT:
+            return out << "HALT";
         case INSTRUCTION::INT:
             return out << "INT";
         case INSTRUCTION::CALL:
@@ -193,17 +195,17 @@ std::ostream &operator<<(std::ostream &out, enum INSTRUCTION instr) {
         case INSTRUCTION::CSR_LD_POST_INC:
             return out << "CSR_LD_POST_INC";
         default:
-            return out << "UND";
+            throw std::runtime_error("INSTRUCTION operator<<: unknown " + std::to_string((uint32_t) instr));
     }
 }
 
 std::ostream &operator<<(std::ostream &out, RELOCATION rel) {
     switch (rel) {
-        case RELOCATION::R_PC_12Bits:
-            return out << "R_PC_12Bits";
-        case RELOCATION::R_WORD:
-            return out << "R_WORD";
+        case RELOCATION::R_12b:
+            return out << "R_12b";
+        case RELOCATION::R_32b:
+            return out << "R_32b";
         default:
-            return out << "UND";
+            throw std::runtime_error("RELOCATION operator<<: unknown " + std::to_string((uint32_t) rel));
     }
 }

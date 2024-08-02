@@ -25,15 +25,15 @@ void Emulator::parseArgs(int argc, char **argv) {
 }
 
 void Emulator::execute() {
-
 //    program->initOld();
     program->initNew();
 
-    while (!program->isEnd) {
+    while (true) {
         program->executeCurrent();
+        if (program->isEnd)
+            break;
         program->readNext();
     }
-
 }
 
 

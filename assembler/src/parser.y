@@ -86,7 +86,6 @@
 
 %type <num_u8>      gpr
 %type <num_u8>      csr
-%type <num_u8>      noadr
 %type <num_u8>      jmpCond
 %type <num_u8>      equOP
 %type <num_u8>      tworeg
@@ -174,14 +173,17 @@ instruction
   : I_HALT
   { Assembler::singleton().parseHalt(); }
 
-  | noadr
-  { Assembler::singleton().parseNoAdr($1); }
+  | I_RET
+  { Assembler::singleton().parseRet(); }
+
+  | I_IRET
+  { Assembler::singleton().parseIRet(); }
 
   | I_CALL jmpOperand
-  { Assembler::singleton().parseJmp(INSTRUCTION::CALL, $2); }
+  { Assembler::singleton().parseCall(INSTRUCTION::CALL, $2); }
 
   | I_JMP jmpOperand
-  { Assembler::singleton().parseCall(INSTRUCTION::JMP, $2); }
+  { Assembler::singleton().parseJmp(INSTRUCTION::JMP, $2); }
 
   | jmpCond jmpCondOperand
   { Assembler::singleton().parseCondJmp($1, $2); }
@@ -195,7 +197,7 @@ instruction
   | I_NOT T_PERCENT REG 
   { Assembler::singleton().parseNot($3); }
 
-  | I_INT T_PERCENT
+  | I_INT
   { Assembler::singleton().parseInt(); }
 
   | I_XCHG T_PERCENT REG T_COMMA T_PERCENT REG
@@ -273,13 +275,6 @@ gpr
   : REG
   | SP
   | PC;
-
-noadr
-  : I_IRET
-  { $$ = INSTRUCTION::LD; }
-
-  | I_RET
-  { $$ = INSTRUCTION::LD_POST_INC; };
 
 tworeg
   : I_ADD

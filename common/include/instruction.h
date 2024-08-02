@@ -17,7 +17,7 @@ public:
 
     Mnemonic bytes;
 
-    explicit Instruction(enum INSTRUCTION, uint8_t regA = 0, uint8_t regB = 0, uint8_t regC = 0);
+    explicit Instruction(enum INSTRUCTION, uint8_t  = 0, uint8_t  = 0, uint8_t  = 0, int32_t = 0);
 
     explicit Instruction(uint32_t);
 
@@ -27,6 +27,8 @@ public:
 
     virtual void andMode(uint8_t) final;
 
+    virtual void orMode(uint8_t) final;
+
     virtual void setRegA(uint8_t) final;
 
     virtual void setRegB(uint8_t) final;
@@ -34,8 +36,6 @@ public:
     virtual void setRegC(uint8_t) final;
 
     virtual void setDisplacement(int32_t) final;
-
-    static void execute(Mnemonic , Program &);
 
     void static tableHeader(std::ostream &);
 
@@ -59,7 +59,8 @@ class Push_Instr : public Instruction {
 public:
     explicit Push_Instr(uint8_t);
 
-    explicit Push_Instr(uint32_t bytes) : Instruction(bytes) {}
+    explicit Push_Instr(uint32_t bytes) : Instruction(bytes) {
+    }
 
 };
 
@@ -76,7 +77,6 @@ public:
     explicit Not_Instr(uint8_t gpr);
 
     explicit Not_Instr(uint32_t bytes) : Instruction(bytes) {}
-
 
 };
 
@@ -131,7 +131,6 @@ public:
 
     explicit Store_Instr(uint32_t bytes) : Instruction(bytes) {}
 
-
 };
 
 class TwoReg_Instr : public Instruction {
@@ -169,10 +168,3 @@ public:
 
 };
 
-class NoAdr_Instr : public Instruction {
-public:
-    explicit NoAdr_Instr(enum INSTRUCTION);
-
-    explicit NoAdr_Instr(uint32_t bytes) : Instruction(bytes) {}
-
-};

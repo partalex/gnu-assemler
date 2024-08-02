@@ -35,8 +35,7 @@ Addressing WordIdent::addRelocation(Assembler &as) {
                     symbol.first,
                     as._currSection,
                     as._sections[as._currSection]->locCnt,
-                    4,
-                    RELOCATION::R_WORD
+                    R_32b
             ));
             as._sections[as._currSection]->addToLocCounter(4);
         } else {
@@ -104,13 +103,12 @@ EquResolved EquIdent::tryToResolve(Assembler &as) {
     auto symbol = as.findSymbol(_ident);
     if (symbol.first != -1) {
         // Symbol is defined
-         if(symbol.second->core.flags.defined){
+        if (symbol.second->core.flags.defined) {
             auto sectionInd = symbol.second->core.sectionIndex;
             auto section = as._sections[sectionInd].get();
             auto ptr = section->core.data.data() + symbol.second->core.offset;
             return {true, *reinterpret_cast<int32_t *>(ptr)};
-        }
-        else if (symbol.second->core.flags.symbolType != NO_TYPE && symbol.second->core.flags.symbolType != EQU)
+        } else if (symbol.second->core.flags.symbolType != NO_TYPE && symbol.second->core.flags.symbolType != EQU)
             // Symbol is defined, exit
             as.symbolDuplicate(symbol.second->core.name);
     } else

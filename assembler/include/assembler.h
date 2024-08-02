@@ -9,18 +9,26 @@
 #include <unordered_map>
 
 class Symbol;
+
 class Operand;
+
 class Section;
+
 class EquOperand;
+
 class Relocation;
+
 class SymbolList;
+
 class Instruction;
+
 class WordOperand;
 
 class Assembler {
     static std::unique_ptr<Assembler> _instance;
     int32_t _literalSection = -1;
 public:
+    std::string _linkerPath = "../../linker/bin/";
     std::string _output = "obj.o";
     std::string _outputTxt = "log.txt";
     std::string _input;
@@ -42,7 +50,7 @@ public:
 
     static Assembler &singleton();                      // done
 
-    int32_t &literalSectionIndex();                     // done
+    int32_t &literalSectionIndex()const;                     // done
 
     uint32_t addLiteralToPool(int32_t);                     // done
 
@@ -99,7 +107,9 @@ public:
 
     void parseStore(unsigned char, Operand *);          // done
 
-    void parseNoAdr(unsigned char);                     // done
+    void parseRet();                                    // done
+
+    void parseIRet();                                   // done
 
     std::pair<int32_t, Symbol *> findSymbol(const std::string &);
 

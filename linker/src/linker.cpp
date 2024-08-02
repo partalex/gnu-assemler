@@ -194,7 +194,10 @@ void Linker::checkDisplacement(int32_t value) const {
 
 void Linker::writeDisplacement(void *ptrDest, int32_t value) const {
     auto *ptr = reinterpret_cast<uint16_t *>(ptrDest);
-    *ptr = value & 0x0FFF;
+    *ptr &= 0xF;
+    // shift value 4 bits to the left to set lower 4 bits to 0
+    value <<= 4;
+    *ptr |= value;
 }
 
 void Linker::writeRelocatable() const {
@@ -264,16 +267,15 @@ void Linker::link() {
             auto srcSect = _globSymMapSection[symbol.name];
             auto srcAddr = _sectionAddr[srcSect] + symbol.offset;
             auto destAddr = _sectionAddr[&destSect] + rel.offset;
-            auto diff = (int32_t) (srcAddr - destAddr);
-            auto final = destSect.data.data() + rel.offset;
-            writeDisplacement(final, diff);
+            int32_t temp;
             switch (rel.type) {
-                case R_WORD:
-                    std::memcpy(final, &diff, 4);
+                case R_32b:
+                    std::memcpy(destSect.data.data() + rel.offset, srcSect->data.data() + symbol.offset, 4);
                     break;
-                case R_PC_12Bits:
-                    checkDisplacement(diff);
-                    writeDisplacement(final, diff);
+                case R_12b:
+                    temp = (int32_t) (srcAddr - destAddr) + 2;
+                    checkDisplacement(temp);
+                    writeDisplacement(destSect.data.data() + rel.offset, temp);
                     break;
                 default:
                     throw std::runtime_error("Unknown relocation type");
@@ -283,9 +285,9 @@ void Linker::link() {
 }
 
 void Linker::writeHex() const {
-    std::ofstream out(outputFile, std::ios::binary);
+    std::ofstream out(_emulatorPath + outputFile, std::ios::binary);
     if (!out)
-        throw std::runtime_error("Failed to open file: " + outputFile);
+        throw std::runtime_error("Failed to open file: " + _emulatorPath + outputFile);
 
     out << "# Sections: \n";
     for (const auto &sect: _resultSectionMapAddr)
@@ -306,9 +308,9 @@ void Linker::writeHex() const {
 void Linker::writeExe() const {
     auto exeName = outputFile;
     exeName.erase(exeName.end() - 4, exeName.end());
-    std::ofstream exeOutput(exeName);
+    std::ofstream exeOutput(_emulatorPath + exeName);
     if (!exeOutput)
-        throw std::runtime_error("Failed to open file: " + exeName);
+        throw std::runtime_error("Failed to open file: " + _emulatorPath + exeName);
 
     uint32_t numSections = _resultSectionMapAddr.size();
     // write numFields

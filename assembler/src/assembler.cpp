@@ -258,7 +258,7 @@ void Assembler::parseEqu(const std::string &str, EquOperand *operand) {
     _equExpr[symbol.second] = std::unique_ptr<EquOperand>(operand);
     auto *temp = operand;
     auto canResolve = true;
-    int32_t value;
+    int32_t value = 0;
     while (temp) {
         auto resolveResult = temp->tryToResolve(*this);
         if (resolveResult.resolved)
@@ -292,12 +292,23 @@ void Assembler::parseHalt() {
     insertInstr(instr.get());
 }
 
-void Assembler::parseNoAdr(unsigned char inst) {
+void Assembler::parseRet() {
 #ifdef LOG_PARSER
-    auto name = static_cast<enum INSTRUCTION>(inst);
-    std::cout << name << "\n";
+    std::cout << "RET" << " \n";
 #endif
-    auto instr = std::make_unique<NoAdr_Instr>(static_cast<enum INSTRUCTION>(inst));
+    auto instr = std::make_unique<Pop_Instr>((uint8_t) REG_PC);
+    insertInstr(instr.get());
+}
+
+void Assembler::parseIRet() {
+#ifdef LOG_PARSER
+    std::cout << "IRET" << " \n";
+#endif
+    auto instr = std::make_unique<Pop_Instr>((uint8_t) REG_PC);
+    insertInstr(instr.get());
+    // pop status;
+    instr = std::make_unique<Pop_Instr>((uint8_t) CSR_STATUS);
+    instr->setInstr(CSR_LD_POST_INC);
     insertInstr(instr.get());
 }
 
@@ -313,8 +324,8 @@ void Assembler::parseJmp(unsigned char inst, Operand *operand) {
     insertInstr(instr.get());
     auto addressing = operand->addRelocation(*this);
     instr->setDisplacement(addressing.value);
-    // MMMM==0b0000: pc<=gpr[PC]+D;
-    // MMMM==0b1000: pc<=mem32[gpr[PC]+D];
+    // MMMM==0b0000: pc<=gpr[A=PC]+D;
+    // MMMM==0b1000: pc<=mem32[gpr[A=PC]+D];
     switch (addressing.addressing) {
         // will line below be executed?
         case REG_DIR:         // LiteralImm
@@ -340,8 +351,8 @@ void Assembler::parseCall(unsigned char inst, Operand *operand) {
     insertInstr(instr.get());
     auto addressing = operand->addRelocation(*this);
     instr->setDisplacement(addressing.value);
-    // MMMM==0b0000: pc<=gpr[PC]+gpr[0]+D;
-    // MMMM==0b0001: pc<=mem32[gpr[PC]+gpr[0]+D]; // not used
+    // MMMM==0b0000: pc<=gpr[A=PC]+gpr[B=0]+D;
+    // MMMM==0b0001: pc<=mem32[gpr[A=PC]+gpr[B=0]+D]; // not used
     switch (addressing.addressing) {
         case REG_DIR:         // LiteralImm
             instr->setMode(0b0000);
@@ -349,6 +360,7 @@ void Assembler::parseCall(unsigned char inst, Operand *operand) {
             break;
         case IN_DIR_OFFSET:// LiteralImm, IdentAddr
             instr->setMode(0b0001);
+            // displacement will be set in by relocation
             break;
         default:
             throw std::runtime_error("Error: Invalid addressing mode for Jmp instruction.");
@@ -367,13 +379,10 @@ void Assembler::parseCondJmp(unsigned char inst, Operand *operand) {
                     static_cast<enum INSTRUCTION>(inst),
                     std::unique_ptr<Operand>(operand)
             );
-    insertInstr(instr.get());
     auto addressing = operand->addRelocation(*this);
-    // MMMM==0b0000: pc<=gpr[A=PC]+D;
     // MMMM==0b0001: if (gpr[B] == gpr[C]) pc<=gpr[A=PC]+D;
     // MMMM==0b0010: if (gpr[B] != gpr[C]) pc<=gpr[A=PC]+D;
     // MMMM==0b0011: if (gpr[B] signed> gpr[C]) pc<=gpr[A=PC]+D;
-    // MMMM==0b1000: pc<=mem32[gpr[PC]+D];
     // MMMM==0b1001: if (gpr[B] == gpr[C]) pc<=mem32[gpr[A=PC]+D];
     // MMMM==0b1010: if (gpr[B] != gpr[C]) pc<=mem32[gpr[A=PC]+D];
     // MMMM==0b1011: if (gpr[B] signed> gpr[C]) pc<=mem32[gpr[A=PC]+D];
@@ -383,11 +392,12 @@ void Assembler::parseCondJmp(unsigned char inst, Operand *operand) {
             instr->andMode(0b0111);
             break;
         case IN_DIR_OFFSET:   // GprGprLiteral
-            instr->andMode(0b1111);
+            instr->orMode(0b1000);
             break;
         default:
             throw std::runtime_error("Error: Invalid addressing mode for Jmp instruction.");
     }
+    insertInstr(instr.get());
 }
 
 void Assembler::parsePush(unsigned char gpr) {
@@ -463,34 +473,30 @@ void Assembler::parseLoad(Operand *operand, unsigned char gpr) {
     std::cout << "\n";
 #endif
     auto instr = std::make_unique<Load_Instr>(std::unique_ptr<Operand>(operand), gpr);
-    insertInstr(instr.get());
     auto addressing = operand->addRelocation(*this);
     // MMMM==0b0000: gpr[A]<=csr[B];
     // MMMM==0b0001: gpr[A]<=gpr[B]+D;
-    // MMMM==0b0010: gpr[A]<=mem32[gpr[B]+gpr[C]+D];
+    // MMMM==0b0010: gpr[A]<=mem32[gpr[B]+gpr[C=0]+D];
     // MMMM==0b0011: gpr[A]<=mem32[gpr[B]]; gpr[B]<=gpr[B]+D;
+    instr->setRegB(addressing.reg);
+    instr->setDisplacement(addressing.value);
     switch (addressing.addressing) {
         case CSR_OP: // CsrOp
-            instr->setRegB(addressing.value);
             instr->setMode(0b0000);
             break;
         case REG_DIR: // RegDir, LiteralImmReg, LiteralInDir, IdentImm
-            instr->setDisplacement(addressing.value);
-            instr->setRegB(addressing.value);
             instr->setMode(0b0001);
             break;
         case IN_DIR_OFFSET: // RegInDirOffIdent, RegInDir, LiteralImmReg, LiteralInDir, IdentAddr
-            instr->setRegB(addressing.value);
             instr->setMode(0b0010);
             break;
         case IN_DIR_INDEX: // RegInDirOffLiteral
-            instr->setRegB(addressing.reg);
-            instr->setDisplacement(addressing.value);
             instr->setMode(0b0011);
             break;
         default:
             throw std::runtime_error("Error: Invalid addressing mode for Load instruction.");
     }
+    insertInstr(instr.get());
 }
 
 void Assembler::parseLoad(unsigned char gpr1, unsigned char gpr2, int16_t offset) {
@@ -511,34 +517,30 @@ void Assembler::parseStore(unsigned char gpr, Operand *operand) {
     std::cout << "\n";
 #endif
     auto instr = std::make_unique<Store_Instr>(gpr, std::unique_ptr<Operand>(operand));
-    insertInstr(instr.get());
     auto addressing = operand->addRelocation(*this);
     // MMMM==0b0000: mem32[gpr[A=PC]+gpr[B=0]+D]<=gpr[C=gpr];
     // MMMM==0b0010: mem32[mem32[gpr[A=PC]+gpr[B=0]+D]]<=gpr[C];
     // MMMM==0b0001: gpr[A]<=gpr[A]+D; mem32[gpr[A]]<=gpr[C];
+    instr->setRegA(addressing.reg);
+    instr->setDisplacement(addressing.value);
     switch (addressing.addressing) {
         case REG_DIR:           // IdentImm, RegDir, LiteralImmReg, LiteralInDir
             // MMMM==0b0000: mem32[gpr[A=reg]+gpr[B=0]+D]<=gpr[C=gpr];
-            instr->setRegA(addressing.reg);
-            instr->setDisplacement(addressing.value);
             instr->setMode(0b0000);
             break;
         case IN_DIR_OFFSET:     // RegInDirOffIdent, RegInDir, LiteralImmReg, LiteralInDir, IdentAddr
             // MMMM==0b0010: mem32[mem32[gpr[A=PC]+gpr[B=0]+D]]<=gpr[C];
             // st [PC+off], %r1;
-            instr->setRegA(addressing.reg);
-            instr->setDisplacement(addressing.value);
             instr->setMode(0b0010);
             break;
         case IN_DIR_INDEX:      // RegInDirOffLiteral: // st [%r1+0], %r2
             // MMMM==0b0001: gpr[A]<=gpr[A]+D; mem32[gpr[A]]<=gpr[C];
-            instr->setRegA(addressing.reg);
-            instr->setDisplacement(addressing.value);
             instr->setMode(0b0001);
             break;
         default:
             throw std::runtime_error("Error: Invalid addressing mode for Store instruction.");
     }
+    insertInstr(instr.get());
 }
 
 void Assembler::parseGlobal(SymbolList *list) {
@@ -658,7 +660,7 @@ void Assembler::writeObj() {
 }
 
 void Assembler::setOutput(char *str) {
-    _outputTxt = _output = str;
+    _outputTxt = _output = _linkerPath + str;
     _outputTxt.pop_back();
     _outputTxt.append("txt");
 }
@@ -678,7 +680,7 @@ void Assembler::symbolDuplicate(const std::string &symbol) {
     throw std::runtime_error("Error: Symbol " + symbol + " already defined.");
 }
 
-int32_t &Assembler::literalSectionIndex() {
+int32_t &Assembler::literalSectionIndex() const {
     if (singleton()._literalSection == -1) {
         singleton()._sections.emplace_back(std::make_unique<Section>(".literals"));
         singleton()._literalSection = (int32_t) _sections.size() - 1;
@@ -711,14 +713,11 @@ void Assembler::declareSymbol(const std::string &ident) {
 void Assembler::addRelIdent(const std::string &ident) {
     _relocations.emplace_back(std::make_unique<Relocation>(
             ident,
-//            symbol.first == UNDEFINED ? findSymbol(ident).first : symbol.first,
             findSymbol(ident).first,
             _currSection,
             _sections[_currSection]->locCnt - 2,
-            2,
-            R_PC_12Bits
+            R_12b
     ));
-
 }
 
 void Assembler::addRelLiteral(int32_t value) {
@@ -729,7 +728,6 @@ void Assembler::addRelLiteral(int32_t value) {
             literalIndex,
             literalSection,
             _sections[literalSection]->locCnt - 2,
-            2,
-            RELOCATION::R_PC_12Bits
+            R_12b
     ));
 }
