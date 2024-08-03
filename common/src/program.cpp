@@ -95,7 +95,7 @@ void Program::readNext() {
     getInstr();
 }
 
-void Program::setMemory(uint32_t val, uint32_t addr) {
+void Program::setMemory(uint32_t addr, int32_t val) {
     *LOG << "Set memory: [0x" << std::hex << addr << "] = " << val << "\n";
     memory.writeWord(addr, val);
 }
@@ -134,7 +134,7 @@ void Program::logState() {
 void Program::executeCurrent() {
     logState();
     int32_t temp;
-    auto code = (INSTRUCTION)currInstr.byte_0;
+    auto code = (INSTRUCTION) currInstr.byte_0;
     switch (code) {
         case HALT:              // halt
             isEnd = true;
@@ -149,51 +149,51 @@ void Program::executeCurrent() {
             break;
         case CALL:              // push pc; pc<=gpr[A=PC]+gpr[B=0]+D
             push(PC());
-            PC() = gpr_registers[currInstr.REG_A] + gpr_registers[currInstr.REG_B] + currInstr.DISPLACEMENT;
+            PC() = gpr_registers[currInstr.REG_A] + gpr_registers[currInstr.REG_B] + displacement();
             incrementPC = false;
             break;
         case CALL_MEM:         // push pc; pc<=memory[gpr[A=PC]+gpr[B=0]+D]
             push(PC());
             PC() = getMemory(
-                    gpr_registers[currInstr.REG_A] + gpr_registers[currInstr.REG_B] + currInstr.DISPLACEMENT);
+                    gpr_registers[currInstr.REG_A] + gpr_registers[currInstr.REG_B] + displacement());
             incrementPC = false;
             break;
         case JMP:               // pc<=gpr[A=PC]+D
-            PC() = gpr_registers[currInstr.REG_A] + currInstr.DISPLACEMENT;
+            PC() = gpr_registers[currInstr.REG_A] + displacement();
             incrementPC = false;
             break;
         case BEQ :               // if (gpr[B] == gpr[C]) pc<=gpr[A=PC]+D
             if (gpr_registers[currInstr.REG_B] == gpr_registers[currInstr.REG_C])
-                PC() = gpr_registers[currInstr.REG_A] + currInstr.DISPLACEMENT;
+                PC() = gpr_registers[currInstr.REG_A] + displacement();
             incrementPC = false;
             break;
         case BNE:               // if (gpr[B] != gpr[C]) pc<=gpr[A=PC]+D
             if (gpr_registers[currInstr.REG_B] != gpr_registers[currInstr.REG_C])
-                PC() = gpr_registers[currInstr.REG_A] + currInstr.DISPLACEMENT;
+                PC() = gpr_registers[currInstr.REG_A] + displacement();
             incrementPC = false;
             break;
         case BGT:             // if (gpr[B] signed> gpr[C]) pc<=gpr[A]+D
             if (gpr_registers[currInstr.REG_B] > gpr_registers[currInstr.REG_C])
-                PC() = gpr_registers[currInstr.REG_A] + currInstr.DISPLACEMENT;
+                PC() = gpr_registers[currInstr.REG_A] + displacement();
             incrementPC = false;
             break;
         case JMP_MEM:           // pc<=memory[gpr[A]+D]
-            PC() = getMemory(gpr_registers[currInstr.REG_A] + currInstr.DISPLACEMENT);
+            PC() = getMemory(gpr_registers[currInstr.REG_A] + displacement());
             incrementPC = false;
             break;
         case BEQ_MEM:           // if (gpr[B] == gpr[C]) pc<=memory[gpr[A=PC]+D]
             if (gpr_registers[currInstr.REG_B] == gpr_registers[currInstr.REG_C])
-                PC() = getMemory(gpr_registers[currInstr.REG_A] + currInstr.DISPLACEMENT);
+                PC() = getMemory(gpr_registers[currInstr.REG_A] + displacement());
             incrementPC = false;
             break;
         case BNE_MEM:          // if (gpr[B] != gpr[C]) pc<=memory[gpr[A=PC]+D]
             if (gpr_registers[currInstr.REG_B] != gpr_registers[currInstr.REG_C])
-                PC() = getMemory(gpr_registers[currInstr.REG_A] + currInstr.DISPLACEMENT);
+                PC() = getMemory(gpr_registers[currInstr.REG_A] + displacement());
             incrementPC = false;
             break;
         case BGT_MEM:          // if (gpr[B] signed> gpr[C]) pc<=memory[gpr[A=PC]+D]
             if (gpr_registers[currInstr.REG_B] > gpr_registers[currInstr.REG_C])
-                PC() = getMemory(gpr_registers[currInstr.REG_A] + currInstr.DISPLACEMENT);
+                PC() = getMemory(gpr_registers[currInstr.REG_A] + displacement());
             incrementPC = false;
             break;
         case XCHG:              // temp<=gpr[B]; gpr[B]<=gpr[C]; gpr[C]<=temp;
@@ -240,27 +240,27 @@ void Program::executeCurrent() {
                                                  gpr_registers[currInstr.REG_C]);
             break;
         case ST:                // memory[gpr[A]+gpr[B]+D]<=gpr[C]
-            setMemory(gpr_registers[currInstr.REG_A] + gpr_registers[currInstr.REG_B] + currInstr.DISPLACEMENT,
+            setMemory(gpr_registers[currInstr.REG_A] + gpr_registers[currInstr.REG_B] + displacement(),
                       gpr_registers[currInstr.REG_C]);
             break;
         case ST_IND:            // memory[memory[gpr[A]+gpr[B]+D]]<=gpr[C]
             setMemory(
-                    getMemory(gpr_registers[currInstr.REG_A] + gpr_registers[currInstr.REG_B] + currInstr.DISPLACEMENT),
+                    getMemory(gpr_registers[currInstr.REG_A] + gpr_registers[currInstr.REG_B] + displacement()),
                     gpr_registers[currInstr.REG_C]);
             break;
         case ST_POST_INC:     // gpr[A]<=gpr[A]+D; memory[gpr[A]]<=gpr[C] // PUSH
-            gpr_registers[currInstr.REG_A] = gpr_registers[currInstr.REG_A] + currInstr.DISPLACEMENT;
+            gpr_registers[currInstr.REG_A] = gpr_registers[currInstr.REG_A] + displacement();
             setMemory(gpr_registers[currInstr.REG_A], gpr_registers[currInstr.REG_C]);
             break;
         case LD_CSR:            // gpr[A]<=csr[B] ## CSRRD
             gpr_registers[currInstr.REG_A] = gpr_registers[currInstr.REG_B];
             break;
         case LD:                // gpr[A]<=gpr[B]+D
-            gpr_registers[currInstr.REG_A] = gpr_registers[currInstr.REG_B] + currInstr.DISPLACEMENT;
+            gpr_registers[currInstr.REG_A] = gpr_registers[currInstr.REG_B] + displacement();
             break;
         case LD_IND:           // gpr[A]<=memory[gpr[B]+gpr[C]+D]
             gpr_registers[currInstr.REG_A] =
-                    gpr_registers[currInstr.REG_B] + gpr_registers[currInstr.REG_C] + currInstr.DISPLACEMENT;
+                    gpr_registers[currInstr.REG_B] + gpr_registers[currInstr.REG_C] + displacement();
             break;
         case LD_POST_INC:       // gpr[A]<=memory[gpr[B]]; gpr[B]<=gpr[B]+D ## POP, RET
             break;
@@ -268,15 +268,15 @@ void Program::executeCurrent() {
             csr_registers[currInstr.REG_A] = gpr_registers[currInstr.REG_B];
             break;
         case CSR_LD_OR:        // csr[A]<=csr[B]|D
-            csr_registers[currInstr.REG_A] = csr_registers[currInstr.REG_B] | currInstr.DISPLACEMENT;
+            csr_registers[currInstr.REG_A] = csr_registers[currInstr.REG_B] | displacement();
             break;
         case CSR_LD_IND:       // csr[A]<=memory[gpr[B]+gpr[C]+D]
             csr_registers[currInstr.REG_A] =
-                    getMemory(gpr_registers[currInstr.REG_B] + gpr_registers[currInstr.REG_C] + currInstr.DISPLACEMENT);
+                    getMemory(gpr_registers[currInstr.REG_B] + gpr_registers[currInstr.REG_C] + displacement());
             break;
         case CSR_LD_POST_INC:   // csr[A]<=memory[gpr[B]]; gpr[B]<=gpr[B]+D
             csr_registers[currInstr.REG_A] = getMemory(gpr_registers[currInstr.REG_B]);
-            gpr_registers[currInstr.REG_B] = gpr_registers[currInstr.REG_B] + currInstr.DISPLACEMENT;
+            gpr_registers[currInstr.REG_B] = gpr_registers[currInstr.REG_B] + displacement();
             break;
         default:
             throw std::runtime_error("Unknown instruction " + std::to_string(currInstr.value));
@@ -462,4 +462,15 @@ int32_t Program::shr(const int32_t val, const int32_t n) {
     psw.C = (val & (1 << (n - 1))) != 0;
     psw.O = false;
     return result;
+}
+
+int32_t Program::castToSign(int32_t value, uint8_t bites) {
+    auto temp = value;
+    temp <<= 32 - bites;
+    temp >>= 32 - bites;
+    return temp;
+}
+
+int32_t Program::displacement() {
+    return castToSign(currInstr.DISPLACEMENT, 12);
 }

@@ -67,6 +67,10 @@ public:
 
     int32_t pop();
 
+    int32_t castToSign(int32_t, uint8_t);
+
+    int32_t displacement();
+
     void push(int32_t);
 
     void getInstr();
@@ -93,7 +97,7 @@ public:
 
     static uint32_t signExt(uint32_t, size_t);
 
-    void setMemory(uint32_t, uint32_t);
+    void setMemory(uint32_t, int32_t);
 
     int32_t getMemory(uint32_t);
 

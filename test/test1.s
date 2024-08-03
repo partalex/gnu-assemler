@@ -6,7 +6,7 @@
 message:
     .ascii "Hello Aleksandar"
 .section test1
-    ld $0x2, %r1
+    ld $291, %r4
     push %r1
     jmp continue
 .end

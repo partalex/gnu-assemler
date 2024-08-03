@@ -313,7 +313,7 @@ void Linker::writeExe() const {
         throw std::runtime_error("Failed to open file: " + _emulatorPath + exeName);
 
     uint32_t numSections = _resultSectionMapAddr.size();
-    // write numFields
+    // write number of section
     exeOutput.write(reinterpret_cast<const char *>(&numSections), sizeof(numSections));
 
     // write sections using _sectionAddr

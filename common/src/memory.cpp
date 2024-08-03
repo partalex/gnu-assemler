@@ -23,12 +23,12 @@ uint32_t Memory::readWord(uint32_t addr) const {
     throw std::runtime_error("Address not found in any segment!");
 }
 
-void Memory::writeWord(uint32_t addr, uint32_t data) {
+void Memory::writeWord(uint32_t addr, uint32_t value) {
     for (auto &segment: segments) {
         if (addr >= segment.address && addr < segment.address + segment.size) {
             uint32_t offset = addr - segment.address;
             auto destAddr = segment.data.data() + offset;
-            std::memcpy((void *) destAddr, &data, sizeof(data));
+            std::memcpy((void *) destAddr, &value, sizeof(value));
             return;
         }
     }

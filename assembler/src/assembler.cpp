@@ -321,7 +321,6 @@ void Assembler::parseJmp(unsigned char inst, Operand *operand) {
 #endif
     auto instr = std::make_unique<Jmp_Instr>(static_cast<enum INSTRUCTION>(inst),
                                              std::unique_ptr<Operand>(operand));
-    insertInstr(instr.get());
     auto addressing = operand->addRelocation(*this);
     instr->setDisplacement(addressing.value);
     // MMMM==0b0000: pc<=gpr[A=PC]+D;
@@ -337,6 +336,7 @@ void Assembler::parseJmp(unsigned char inst, Operand *operand) {
         default:
             throw std::runtime_error("Error: Invalid addressing mode for Jmp instruction.");
     }
+    insertInstr(instr.get());
 }
 
 void Assembler::parseCall(unsigned char inst, Operand *operand) {
@@ -348,7 +348,6 @@ void Assembler::parseCall(unsigned char inst, Operand *operand) {
 #endif
     auto instr = std::make_unique<Call_Instr>(static_cast<enum INSTRUCTION>(inst),
                                               std::unique_ptr<Operand>(operand));
-    insertInstr(instr.get());
     auto addressing = operand->addRelocation(*this);
     instr->setDisplacement(addressing.value);
     // MMMM==0b0000: pc<=gpr[A=PC]+gpr[B=0]+D;
@@ -365,6 +364,7 @@ void Assembler::parseCall(unsigned char inst, Operand *operand) {
         default:
             throw std::runtime_error("Error: Invalid addressing mode for Jmp instruction.");
     }
+    insertInstr(instr.get());
 }
 
 void Assembler::parseCondJmp(unsigned char inst, Operand *operand) {
@@ -715,7 +715,7 @@ void Assembler::addRelIdent(const std::string &ident) {
             ident,
             findSymbol(ident).first,
             _currSection,
-            _sections[_currSection]->locCnt - 2,
+            _sections[_currSection]->locCnt + 2,
             R_12b
     ));
 }
@@ -727,7 +727,7 @@ void Assembler::addRelLiteral(int32_t value) {
             "PC+" + std::to_string(value),
             literalIndex,
             literalSection,
-            _sections[literalSection]->locCnt - 2,
+            _sections[literalSection]->locCnt + 2,
             R_12b
     ));
 }
