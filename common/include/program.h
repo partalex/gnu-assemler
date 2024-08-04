@@ -9,33 +9,11 @@
 #include <fstream>
 #include <set>
 
-// 1 MB of memory
-// code:  [0, 1KB)
-// data:  [1KB, 5KB)
-// stack: [5KB, 1MB)
-
-#define KB 1024
-#define MB (1024 * KB)
-
-#define INSTR_SIZE 4
-#define STACK_INCREMENT 4
-#define START_POINT 0x40000000
-
-#define STACK_SIZE (6 * KB)
-#define STACK_START STACK_SIZE
-#define STACK_END ( STACK_START - STACK_SIZE ) // 0x00000000
-
-#define KEYBOARD_POS 0x1000
-#define KEYBOARD_STATUS_POS 0x1010
-#define KEYBOARD_STATUS_MASK 1L << 9
-#define OUTPUT_POS 0x2000
-
 class Program {
 public:
     static std::unique_ptr<std::ofstream> LOG;
     std::vector<int32_t> gpr_registers = std::vector<int32_t>(15, 0);
     std::vector<int32_t> csr_registers = std::vector<int32_t>(3, 0);
-    uint32_t LR = 0;
     Mnemonic currInstr{0};
     pthread_t keyboardThread;
     std::chrono::time_point<std::chrono::system_clock> executionStart;
@@ -44,14 +22,12 @@ public:
     std::unordered_map<int, std::function<bool()> > conditionTesters;
 
     Memory memory;
-
     PSW psw;
+    bool _isEnd = false;
+    bool _incrementPC = true;
+    uint32_t _instrCounter;
 
-    bool isEnd = false;
-    bool incrementPC = true;
-    uint32_t instrCounter = 0;
-
-    Program();
+    explicit Program();
 
     int32_t &STATUS();
 
@@ -73,7 +49,7 @@ public:
 
     void push(int32_t);
 
-    void getInstr();
+    void loadInstr();
 
     void initOld();
 
@@ -122,6 +98,5 @@ public:
     int32_t shl(int32_t, int32_t);
 
     int32_t shr(int32_t, int32_t);
-
 
 };

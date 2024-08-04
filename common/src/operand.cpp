@@ -268,7 +268,7 @@ Addressing IdentAddr::addRelocation(Assembler &as) {
     if (symbol.first == -1)
         as.declareSymbol(_ident);
     as.addRelIdent(_ident);
-    return {IN_DIR_OFFSET, 0, REG_PC};
+    return {REG_DIR, 0, REG_PC};
 }
 
 void LiteralImmReg::log(std::ostream &out) {

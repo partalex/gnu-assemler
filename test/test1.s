@@ -12,7 +12,7 @@ message:
 .end
 
 # with addresses
-# 0x40000000:   ld $0x1, %r0
+# 0x40000000:   ld $0x$291, %r4
 # 0x40000004:   push %r0
 # 0x40000008:   jmp continue
 # 0x4000000c:   .word 10

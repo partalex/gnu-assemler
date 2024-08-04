@@ -2,7 +2,7 @@
 
 int main(int argc, char *argv[]) {
 
-    Emulator &emulator = Emulator::singleton();
+    auto &emulator = Emulator::singleton();
     emulator.parseArgs(argc, argv);
     emulator.execute();
 

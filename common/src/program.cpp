@@ -1,4 +1,5 @@
 #include "../include/program.h"
+#include "../../emulator/include/emulator.h"
 
 #include <iostream>
 #include <cstring>
@@ -9,13 +10,14 @@ volatile char Program::keyboardBuf;
 volatile bool Program::keyBarrier;
 std::unique_ptr<std::ofstream> Program::LOG = nullptr;
 
-Program::Program() {
+Program::Program() : memory(MIN_ADDRESS, MEM_SIZE, SEGMENT_SIZE) {
     LOG = std::make_unique<std::ofstream>("log.txt");
-    PC() = START_POINT;
-    SP() = STACK_START;
+    PC() = DEFAULT_PC;
+    SP() = DEFAULT_SP;
     if (!LOG->is_open())
         throw std::runtime_error("Could not open log file!");
 }
+
 
 void Program::load(const std::string &inputFile) {
     std::ifstream file(inputFile);
@@ -23,15 +25,16 @@ void Program::load(const std::string &inputFile) {
         throw std::runtime_error("Could not open file " + inputFile);
 
     uint32_t numSections;
+    auto tempVector = std::vector<uint8_t>();
     file.read(reinterpret_cast<char *>(&numSections), sizeof(numSections));
     for (uint32_t i = 0; i < numSections; ++i) {
-        uint32_t sectionAddr;
-        file.read(reinterpret_cast<char *>(&sectionAddr), sizeof(sectionAddr));
-        uint32_t sectionSize;
-        file.read(reinterpret_cast<char *>(&sectionSize), sizeof(sectionSize));
-        auto segment = Segment{sectionAddr, sectionSize};
-        file.read(reinterpret_cast<char *>(segment.data.data()), sectionSize);
-        memory.insertSegment(segment);
+        uint32_t startAddr;
+        file.read(reinterpret_cast<char *>(&startAddr), sizeof(startAddr));
+        uint32_t segmentSize;
+        file.read(reinterpret_cast<char *>(&segmentSize), sizeof(segmentSize));
+        tempVector.resize(segmentSize);
+        file.read(reinterpret_cast<char *>(tempVector.data()), segmentSize);
+        memory.loadMemory(startAddr, tempVector);
     }
     file.close();
 }
@@ -45,7 +48,7 @@ uint32_t Program::signExt(uint32_t val, size_t size) {
 }
 
 void Program::push(int32_t val) {
-    if (SP() <= STACK_END)
+    if (SP() < memory._minAddr)
         throw std::runtime_error("Stack overflow!");
     *LOG << "Stack push " << std::hex << val << '\n';
     SP() -= STACK_INCREMENT;
@@ -53,7 +56,7 @@ void Program::push(int32_t val) {
 }
 
 int32_t Program::pop() {
-    if (SP() >= STACK_START)
+    if (SP() >= memory._minAddr + memory._size)
         throw std::runtime_error("Stack underflow!");
     auto ret = memory.readWord(SP());
     SP() += STACK_INCREMENT;
@@ -62,8 +65,6 @@ int32_t Program::pop() {
 }
 
 void Program::initOld() {
-    PC() = START_POINT;
-    SP() = STACK_START;
     psw.val = 0;
     psw.Tr = 1;
     executionStart = std::chrono::system_clock::now();
@@ -72,27 +73,27 @@ void Program::initOld() {
     if (iRet1)
         throw std::runtime_error(&"Error - pthread_create() return code: "[iRet1]);
     //call first routine
-    push(LR);
-    LR = PC();
+//    push(LR);
+//    LR = PC();
     push(psw.val);
     psw.I = 1;
-//    memcpy(&PC(), memory.data(), INSTR_SIZE);
     PC() = memory.readWord(0);
-//    PC() += START_POINT;
 }
 
-void Program::getInstr() {
+void Program::loadInstr() {
     currInstr.value = memory.readWord(PC());
 }
 
 void Program::initNew() {
-    getInstr();
+    loadInstr();
 }
 
 void Program::readNext() {
-    if (incrementPC)
+    if (_incrementPC)
         PC() += INSTR_SIZE;
-    getInstr();
+    INSTR_SIZE;
+    _incrementPC = true;
+    loadInstr();
 }
 
 void Program::setMemory(uint32_t addr, int32_t val) {
@@ -118,7 +119,7 @@ void Program::logState() {
         *LOG << '\n';
     }
     *LOG << "PC =0x" << std::setfill('0') << std::setw(8) << std::hex << PC() << " "
-         << "LR =0x" << std::setfill('0') << std::setw(8) << std::hex << LR << " "
+//         << "LR =0x" << std::setfill('0') << std::setw(8) << std::hex << LR << " "
          << "SP =0x" << std::setfill('0') << std::setw(8) << std::hex << SP() << " "
          << "psw=0x" << std::setfill('0') << std::setw(8) << std::hex << psw.val << '\n';
     *LOG << "STATUS =0x" << std::setfill('0') << std::setw(8) << std::hex << csr_registers[16] << " "
@@ -137,7 +138,7 @@ void Program::executeCurrent() {
     auto code = (INSTRUCTION) currInstr.byte_0;
     switch (code) {
         case HALT:              // halt
-            isEnd = true;
+            _isEnd = true;
             break;
         case INT:               // push status; push pc; cause<=4; status<=status&(~0x1); pc<=handler;
             push(STATUS());
@@ -145,56 +146,56 @@ void Program::executeCurrent() {
             CAUSE() = STATUS::SOFTWARE;
             STATUS() &= ~0x1;
             PC() = HANDLER();
-            incrementPC = false;
+            _incrementPC = false;
             break;
         case CALL:              // push pc; pc<=gpr[A=PC]+gpr[B=0]+D
             push(PC());
             PC() = gpr_registers[currInstr.REG_A] + gpr_registers[currInstr.REG_B] + displacement();
-            incrementPC = false;
+            _incrementPC = false;
             break;
         case CALL_MEM:         // push pc; pc<=memory[gpr[A=PC]+gpr[B=0]+D]
             push(PC());
             PC() = getMemory(
                     gpr_registers[currInstr.REG_A] + gpr_registers[currInstr.REG_B] + displacement());
-            incrementPC = false;
+            _incrementPC = false;
             break;
         case JMP:               // pc<=gpr[A=PC]+D
             PC() = gpr_registers[currInstr.REG_A] + displacement();
-            incrementPC = false;
+            _incrementPC = false;
             break;
         case BEQ :               // if (gpr[B] == gpr[C]) pc<=gpr[A=PC]+D
             if (gpr_registers[currInstr.REG_B] == gpr_registers[currInstr.REG_C])
                 PC() = gpr_registers[currInstr.REG_A] + displacement();
-            incrementPC = false;
+            _incrementPC = false;
             break;
         case BNE:               // if (gpr[B] != gpr[C]) pc<=gpr[A=PC]+D
             if (gpr_registers[currInstr.REG_B] != gpr_registers[currInstr.REG_C])
                 PC() = gpr_registers[currInstr.REG_A] + displacement();
-            incrementPC = false;
+            _incrementPC = false;
             break;
         case BGT:             // if (gpr[B] signed> gpr[C]) pc<=gpr[A]+D
             if (gpr_registers[currInstr.REG_B] > gpr_registers[currInstr.REG_C])
                 PC() = gpr_registers[currInstr.REG_A] + displacement();
-            incrementPC = false;
+            _incrementPC = false;
             break;
         case JMP_MEM:           // pc<=memory[gpr[A]+D]
             PC() = getMemory(gpr_registers[currInstr.REG_A] + displacement());
-            incrementPC = false;
+            _incrementPC = false;
             break;
         case BEQ_MEM:           // if (gpr[B] == gpr[C]) pc<=memory[gpr[A=PC]+D]
             if (gpr_registers[currInstr.REG_B] == gpr_registers[currInstr.REG_C])
                 PC() = getMemory(gpr_registers[currInstr.REG_A] + displacement());
-            incrementPC = false;
+            _incrementPC = false;
             break;
         case BNE_MEM:          // if (gpr[B] != gpr[C]) pc<=memory[gpr[A=PC]+D]
             if (gpr_registers[currInstr.REG_B] != gpr_registers[currInstr.REG_C])
                 PC() = getMemory(gpr_registers[currInstr.REG_A] + displacement());
-            incrementPC = false;
+            _incrementPC = false;
             break;
         case BGT_MEM:          // if (gpr[B] signed> gpr[C]) pc<=memory[gpr[A=PC]+D]
             if (gpr_registers[currInstr.REG_B] > gpr_registers[currInstr.REG_C])
                 PC() = getMemory(gpr_registers[currInstr.REG_A] + displacement());
-            incrementPC = false;
+            _incrementPC = false;
             break;
         case XCHG:              // temp<=gpr[B]; gpr[B]<=gpr[C]; gpr[C]<=temp;
             temp = gpr_registers[currInstr.REG_B];
@@ -263,6 +264,8 @@ void Program::executeCurrent() {
                     gpr_registers[currInstr.REG_B] + gpr_registers[currInstr.REG_C] + displacement();
             break;
         case LD_POST_INC:       // gpr[A]<=memory[gpr[B]]; gpr[B]<=gpr[B]+D ## POP, RET
+            gpr_registers[currInstr.REG_A] = getMemory(gpr_registers[currInstr.REG_B]);
+            gpr_registers[currInstr.REG_B] = gpr_registers[currInstr.REG_B] + displacement();
             break;
         case CSR_LD:            // csr[A]<=gpr[B] ## CSRWR
             csr_registers[currInstr.REG_A] = gpr_registers[currInstr.REG_B];
@@ -297,9 +300,9 @@ void Program::handleInterrupts() {
     if (keyBarrier)
         keyInterr();
     // TODO
-    auto state = memory.readWord(OUTPUT_POS);
+    auto state = memory.readWord(OUTPUT_STATUS_POS);
     if (state != 0) {
-        memory.writeWord(OUTPUT_POS, 0);
+        memory.writeWord(OUTPUT_STATUS_POS, 0);
         std::cout << state;
         std::cout.flush();
         *LOG << "Print char: " << state << '\n';
@@ -337,8 +340,8 @@ void Program::keyInterr() {
     memory.writeWord(KEYBOARD_POS, temp);
     auto mask = KEYBOARD_STATUS_MASK;
     memory.writeWord(KEYBOARD_STATUS_POS, mask);
-    push(LR);
-    LR = PC();
+//    push(LR);
+//    LR = PC();
     push(psw.val);
     psw.I = 1;
     // TODO
@@ -356,8 +359,8 @@ void Program::timerInterrupt() {
         return;
     }
     *LOG << "Timer interrupt!" << '\n';
-    push(LR);
-    LR = PC();
+//    push(LR);
+//    LR = PC();
     push(psw.val);
     psw.I = 1;
     // TODO
@@ -474,3 +477,4 @@ int32_t Program::castToSign(int32_t value, uint8_t bites) {
 int32_t Program::displacement() {
     return castToSign(currInstr.DISPLACEMENT, 12);
 }
+

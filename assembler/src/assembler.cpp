@@ -327,10 +327,10 @@ void Assembler::parseJmp(unsigned char inst, Operand *operand) {
     // MMMM==0b1000: pc<=mem32[gpr[A=PC]+D];
     switch (addressing.addressing) {
         // will line below be executed?
-        case REG_DIR:         // LiteralImm
+        case REG_DIR:         // LiteralImm, IdentAddr
             instr->setMode(0b0000);
             break;
-        case IN_DIR_OFFSET:   // IdentAddr, LiteralImm
+        case IN_DIR_OFFSET:   // LiteralImm
             instr->setMode(0b1000);
             break;
         default:

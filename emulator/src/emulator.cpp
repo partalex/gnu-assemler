@@ -4,11 +4,12 @@
 #include <iostream>
 
 std::unique_ptr<Emulator> Emulator::_instance = nullptr;
-std::unique_ptr<Program> Emulator::program = nullptr;
 
 Emulator &Emulator::singleton() {
-    if (!_instance)
+    if (!_instance) {
         _instance = std::make_unique<Emulator>();
+        _instance->_program = std::make_unique<Program>();
+    }
     return *_instance;
 }
 
@@ -17,22 +18,17 @@ void Emulator::parseArgs(int argc, char **argv) {
         std::cerr << "No input file" << '\n';
         exit(EXIT_FAILURE);
     }
-    program = std::make_unique<Program>();
-    program->load(argv[1]);
-    auto stackSegment = Segment{STACK_START, STACK_SIZE};
-    program->memory.insertSegment(stackSegment);
-    program->memory.mergeAdjacent();
+    _program = std::make_unique<Program>();
+    _program->load(argv[1]);
 }
 
 void Emulator::execute() {
-//    program->initOld();
-    program->initNew();
-
+    _program->initNew();
     while (true) {
-        program->executeCurrent();
-        if (program->isEnd)
+        _program->executeCurrent();
+        if (_program->_isEnd)
             break;
-        program->readNext();
+        _program->readNext();
     }
 }
 
