@@ -261,10 +261,14 @@ void Linker::link() {
             // write to this section
             auto &destSect = file._sections[rel.sectionIndex];
 
-            // find symbol
-            auto &symbol = *_globSymMapSymbol[file._symbols[rel.symbolIndex].name];
+            auto &symbol = file._symbols[rel.symbolIndex];
+            SectionLink *srcSect;
+            if (symbol.flags.scope == GLOBAL) {
+                symbol = *_globSymMapSymbol[file._symbols[rel.symbolIndex].name];
+                srcSect = _globSymMapSection[symbol.name];
+            } else
+                srcSect = &file._sections[symbol.sectionIndex];
 
-            auto srcSect = _globSymMapSection[symbol.name];
             auto srcAddr = _sectionAddr[srcSect] + symbol.offset;
             auto destAddr = _sectionAddr[&destSect] + rel.offset;
             int32_t temp;

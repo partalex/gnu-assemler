@@ -26,7 +26,6 @@ class WordOperand;
 
 class Assembler {
     static std::unique_ptr<Assembler> _instance;
-    int32_t _literalSection = -1;
 public:
     std::string _linkerPath = "../../linker/bin/";
     std::string _output = "obj.o";
@@ -49,10 +48,6 @@ public:
     void operator=(Assembler const &) = delete;
 
     static Assembler &singleton();                      // done
-
-    int32_t &literalSectionIndex()const;                     // done
-
-    uint32_t addLiteralToPool(int32_t);                     // done
 
     static int pass(int, char **);                      // done
 
@@ -140,4 +135,7 @@ public:
     void addRelLiteral(int32_t);
 
     void insertInstr(Instruction *instr);
+
+    void correctRelocations();
+
 };

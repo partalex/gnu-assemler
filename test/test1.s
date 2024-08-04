@@ -1,15 +1,21 @@
 .global message
 .extern continue, four
 
+.equ init_pc, 0xFFEEDDCC
+
 .section data
-.word four,1,2,3
+.word four,1,2,init_pc
 message:
     .ascii "Hello Aleksandar"
 .section test1
-    ld $291, %r4
-    push %r1
+    ld $2047, %r2
+    ld $2048, %r2
+    ld $init_pc, %r2
     jmp continue
 .end
+# .literalstest1
+# 00000000: 00 00 07 FF CC DD EE FF   00 00 00 00 .. .. .. ..   |................|
+
 
 # with addresses
 # 0x40000000:   ld $0x$291, %r4

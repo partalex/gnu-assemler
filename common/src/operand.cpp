@@ -18,8 +18,8 @@ void WordOperand::log(std::ostream &out) {
 }
 
 Addressing WordLiteral::addRelocation(Assembler &as) {
-    as._sections[as._currSection]->writeAndIncr(getValue(), as._sections[as._currSection]->locCnt, 4);
-    return {ADDR_UND, (int32_t) as._sections[as._currSection]->locCnt};
+    as._sections[as._currSection]->writeAndIncr(getValue(), as._sections[as._currSection]->_locCnt, 4);
+    return {ADDR_UND, (int32_t) as._sections[as._currSection]->_locCnt};
 }
 
 Addressing WordIdent::addRelocation(Assembler &as) {
@@ -34,22 +34,22 @@ Addressing WordIdent::addRelocation(Assembler &as) {
                     symbol.second->core.name,
                     symbol.first,
                     as._currSection,
-                    as._sections[as._currSection]->locCnt,
+                    as._sections[as._currSection]->_locCnt,
                     R_32b
             ));
-            as._sections[as._currSection]->addToLocCounter(4);
+            as._sections[as._currSection]->_core.addToLocCounter(4);
         } else {
             // if symbol is not defined, add it to wordBackPatch
             if (!symbol.second->core.flags.defined) {
                 auto addrToFill =
-                        as._sections[as._currSection]->core.data.data() + as._sections[as._currSection]->locCnt;
+                        as._sections[as._currSection]->_core._data.data() + as._sections[as._currSection]->_locCnt;
                 as._wordBackPatch[symbol.second].push_back(addrToFill);
-                as._sections[as._currSection]->addToLocCounter(4);
+                as._sections[as._currSection]->_core.addToLocCounter(4);
             } else {
                 // symbol is defined, writeAndIncr it
                 auto section = as._sections[symbol.second->core.sectionIndex].get();
-                auto ptr = section->core.data.data() + symbol.second->core.offset;
-                as._sections[as._currSection]->writeAndIncr(ptr, as._sections[as._currSection]->locCnt, 4);
+                auto ptr = section->_core._data.data() + symbol.second->core.offset;
+                as._sections[as._currSection]->writeAndIncr(ptr, as._sections[as._currSection]->_locCnt, 4);
             }
         }
     } else
@@ -106,7 +106,7 @@ EquResolved EquIdent::tryToResolve(Assembler &as) {
         if (symbol.second->core.flags.defined) {
             auto sectionInd = symbol.second->core.sectionIndex;
             auto section = as._sections[sectionInd].get();
-            auto ptr = section->core.data.data() + symbol.second->core.offset;
+            auto ptr = section->_core._data.data() + symbol.second->core.offset;
             return {true, *reinterpret_cast<int32_t *>(ptr)};
         } else if (symbol.second->core.flags.symbolType != NO_TYPE && symbol.second->core.flags.symbolType != EQU)
             // Symbol is defined, exit

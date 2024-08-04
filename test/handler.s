@@ -25,7 +25,3 @@ handle_terminal:
     call isr_terminal
     jmp finish
 .end
-
-.literals       # 0x00000014
-    0x004FF960  # 0x00000014
-

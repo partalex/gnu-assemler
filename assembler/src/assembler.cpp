@@ -73,10 +73,11 @@ void Assembler::parseSkip(int literal) {
 #ifdef LOG_PARSER
     std::cout << "SKIP: " << literal << "\n";
 #endif
-    _sections[_currSection]->addToLocCounter(literal);
+    _sections[_currSection]->_core.addToLocCounter(literal);
 }
 
 void Assembler::resolveEqu() {
+    // value of equ is now offset
     std::unordered_set<Symbol *> unresolvedEqu;
     for (auto &sym: _symbols)
         if (sym->core.flags.symbolType == NO_TYPE) {
@@ -92,11 +93,7 @@ void Assembler::resolveEqu() {
             }
         }
 
-    if (_literalSection == -1)
-        return;
-
     auto newResolved = true;
-    auto literalsSection = literalSectionIndex();
     while (newResolved) {
         newResolved = false;
         for (auto &symbol: unresolvedEqu) {
@@ -110,7 +107,7 @@ void Assembler::resolveEqu() {
                 else {
                     auto sym1 = findSymbol(expr->stringValue());
                     if (sym1.second->core.flags.defined) {
-                        auto increment = _sections[literalsSection]->readWord(sym1.second->core.offset);
+                        auto increment = sym1.second->core.offset;
                         value += isAdd ? increment : -increment;
                     } else
                         break;
@@ -119,9 +116,9 @@ void Assembler::resolveEqu() {
                 expr = expr->_next;
             }
             if (!expr) {
-                _sections[literalsSection]->write((void *) &value, symbol->core.offset, 4);
+                // set offset to value
+                symbol->core.offset = value;
                 symbol->core.flags.defined = true;
-                symbol->core.sectionIndex = literalsSection;
                 unresolvedEqu.erase(symbol);
                 newResolved = true;
                 break;
@@ -143,7 +140,7 @@ void Assembler::resolveWord() {
                 src = (char *) &symbol->core.offset;
             } else {
                 auto section = _sections[symbol->core.sectionIndex].get();
-                auto base = section->core.data.data();
+                auto base = section->_core._data.data();
                 src = base + symbol->core.offset;
             }
             std::memcpy(dest, src, 4);
@@ -157,6 +154,7 @@ void Assembler::parseEnd() {
 #endif
     resolveEqu();
     resolveWord();
+    correctRelocations();
     writeTxt();
     checkUnresolvedSymbols();
     writeObj();
@@ -174,7 +172,7 @@ void Assembler::parseLabel(const std::string &str) {
             symbolDuplicate(symbol.second->core.name);
 
         // Set symbol
-        symbol.second->core.offset = _sections[_currSection]->locCnt;
+        symbol.second->core.offset = _sections[_currSection]->_locCnt;
         symbol.second->core.sectionIndex = _currSection;
         symbol.second->core.flags.symbolType = SYMBOL::LABEL;
         symbol.second->core.flags.defined = DEFINED;
@@ -184,7 +182,7 @@ void Assembler::parseLabel(const std::string &str) {
                 str,
                 _currSection,
                 SCOPE::LOCAL,
-                _sections[_currSection]->locCnt,
+                _sections[_currSection]->_locCnt,
                 SYMBOL::LABEL,
                 THIS,
                 DEFINED
@@ -197,7 +195,7 @@ void Assembler::parseSection(const std::string &str) {
     std::cout << "SECTION: " << str << "\n";
 #endif
     auto it = std::find_if(_sections.begin(), _sections.end(), [&](const auto &section) {
-        return section->core.name == str;
+        return section->_core._name == str;
     });
     if (it == _sections.end()) {
         _sections.emplace_back(std::make_unique<Section>(str));
@@ -231,27 +229,21 @@ void Assembler::parseEqu(const std::string &str, EquOperand *operand) {
     if (symbol.first != -1) {
         // Symbol is in symbols
         if (symbol.second->core.flags.symbolType == NO_TYPE) {
-            auto literalsSection = literalSectionIndex();
-            symbol.second->core.sectionIndex = literalsSection;
-            symbol.second->core.offset = _sections[literalsSection]->locCnt;
-            _sections[literalsSection]->addToLocCounter(4);
             symbol.second->core.flags.symbolType = EQU;
         } else if (symbol.second->core.flags.symbolType != EQU)
             // Symbol is not EQU then it's duplicate, exit
             symbolDuplicate(symbol.second->core.name);
     } else {
-        auto literalsSection = literalSectionIndex();
         // add symbol to symbols
         _symbols.emplace_back(std::make_unique<Symbol>(
                 str,
-                literalsSection,
+                MARKER::UNDEFINED,
                 LOCAL,
-                _sections[literalsSection]->locCnt,
+                MARKER::UNDEFINED,
                 EQU,
                 THIS,
                 NOT_DEFINED
         ));
-        _sections[literalsSection]->addToLocCounter(4);
     }
 
     symbol = findSymbol(str);
@@ -270,7 +262,7 @@ void Assembler::parseEqu(const std::string &str, EquOperand *operand) {
         temp = temp->_next;
     }
     if (canResolve) {
-        _sections[literalSectionIndex()]->write((void *) &value, symbol.second->core.offset, 4);
+        symbol.second->core.offset = value;
         symbol.second->core.flags.defined = DEFINED;
     }
 
@@ -280,7 +272,7 @@ void Assembler::parseAscii(const std::string &str) {
 #ifdef LOG_PARSER
     std::cout << "ASCII: " << str << "\n";
 #endif
-    _sections[_currSection]->writeAndIncr((void *) str.c_str(), _sections[_currSection]->locCnt,
+    _sections[_currSection]->writeAndIncr((void *) str.c_str(), _sections[_currSection]->_locCnt,
                                           str.length());
 }
 
@@ -643,12 +635,12 @@ void Assembler::writeObj() {
 
     // writeAndIncr Sections: name_size, name, data_size
     for (auto &sect: _sections) {
-        uint32_t name_size = sect->core.name.size();
+        uint32_t name_size = sect->_core._name.size();
         out.write((char *) &name_size, sizeof(name_size));
-        out.write(sect->core.name.c_str(), name_size);
+        out.write(sect->_core._name.c_str(), name_size);
         auto data_size = sect->getSize();
         out.write((char *) &data_size, sizeof(data_size));
-        out.write(reinterpret_cast<const char *>(sect->core.data.data()), data_size);
+        out.write(reinterpret_cast<const char *>(sect->_core._data.data()), data_size);
     }
 
     // writeAndIncr Relocations: symbol_index, section_index, offset, type
@@ -666,7 +658,7 @@ void Assembler::setOutput(char *str) {
 }
 
 void Assembler::insertInstr(Instruction *instr) {
-    _sections[_currSection]->writeInstr((void *) &instr->bytes, _sections[_currSection]->locCnt);
+    _sections[_currSection]->writeInstr((void *) &instr->bytes, _sections[_currSection]->_locCnt);
 }
 
 std::pair<int32_t, Symbol *> Assembler::findSymbol(const std::string &symbol) {
@@ -678,24 +670,6 @@ std::pair<int32_t, Symbol *> Assembler::findSymbol(const std::string &symbol) {
 
 void Assembler::symbolDuplicate(const std::string &symbol) {
     throw std::runtime_error("Error: Symbol " + symbol + " already defined.");
-}
-
-int32_t &Assembler::literalSectionIndex() const {
-    if (singleton()._literalSection == -1) {
-        singleton()._sections.emplace_back(std::make_unique<Section>(".literals"));
-        singleton()._literalSection = (int32_t) _sections.size() - 1;
-    }
-    return singleton()._literalSection;
-}
-
-uint32_t Assembler::addLiteralToPool(int32_t value) {
-    auto index = literalSectionIndex();
-    auto *ptr = (int32_t *) _sections[index]->core.data.data();
-    for (int i = 0; i < _sections[index]->locCnt; i += 4)
-        if (ptr[i] == value)
-            return i;
-    _sections[index]->writeAndIncr((void *) &value, _sections[index]->locCnt, 4);
-    return _sections[index]->locCnt;
 }
 
 void Assembler::declareSymbol(const std::string &ident) {
@@ -715,19 +689,26 @@ void Assembler::addRelIdent(const std::string &ident) {
             ident,
             findSymbol(ident).first,
             _currSection,
-            _sections[_currSection]->locCnt + 2,
+            _sections[_currSection]->_locCnt + 2,
             R_12b
     ));
 }
 
 void Assembler::addRelLiteral(int32_t value) {
-    auto literalIndex = addLiteralToPool(value);
-    auto literalSection = literalSectionIndex();
+    auto &section = *_sections[_currSection].get();
+    auto offset = section.addLiteral(value);
     _relocations.emplace_back(std::make_unique<Relocation>(
             "PC+" + std::to_string(value),
-            literalIndex,
-            literalSection,
-            _sections[literalSection]->locCnt + 2,
+            offset / 4,
+            _currSection,
+            offset,
             R_12b
     ));
 }
+
+void Assembler::correctRelocations() {
+    for (auto &rel: _relocations)
+        if (rel->_core.type == R_32b_NEW)
+            rel->_core.offset += _sections[rel->_core.sectionIndex]->_core._data.size() + 4;
+}
+

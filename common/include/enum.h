@@ -90,7 +90,8 @@ enum REG_CSR {
 
 enum RELOCATION {
     R_12b,   // fill highest 12 bits of 2 bytes
-    R_32b   //  copy 4 bytes
+    R_32b, //  copy 4 bytes
+    R_32b_NEW
 };
 
 enum STATUS {
