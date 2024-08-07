@@ -27,12 +27,6 @@ OFFSET      [\+\-]({HEX}|{DEC})
                         sscanf(yytext, "%d", &yylval.num_32);
                         return T_LITERAL;
                     }
-{OFFSET}            {
-                        sscanf(yytext, "%d", &yylval.num_32);
-                        if (yytext[0] == '-')
-                            yylval.num_32 *= -1;
-                        return T_OFFSET;
-                    }
 
 ","                 { return T_COMMA; }             /* "\"" { return T_QUATATION; } */
 ":"                 { return T_COLON; }

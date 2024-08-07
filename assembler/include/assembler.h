@@ -8,6 +8,9 @@
 #include <string>
 #include <unordered_map>
 
+static constexpr auto JMP_OVER_LITERALS = 4;
+static constexpr auto DISPLACEMENT_SIZE_BYTES = 2;
+
 class Symbol;
 
 class Operand;
@@ -27,21 +30,21 @@ class WordOperand;
 class Assembler {
     static std::unique_ptr<Assembler> _instance;
 public:
-    std::string _linkerPath = "../../linker/bin/";
-    std::string _output = "obj.o";
-    std::string _outputTxt = "log.txt";
-    std::string _input;
+    std::string linkerPath = "../../linker/bin/";
+    std::string output = "obj.o";
+    std::string outputTxt = "log.txt";
+    std::string input;
 
-    std::vector<std::unique_ptr<Symbol>> _symbols;
-    std::vector<std::unique_ptr<Section>> _sections;
-    std::vector<std::unique_ptr<Relocation>> _relocations;
+    std::vector<std::unique_ptr<Symbol>> symbols;
+    std::vector<std::unique_ptr<Section>> sections;
+    std::vector<std::unique_ptr<Relocation>> relocations;
 
-    std::unordered_map<Symbol *, std::unique_ptr<EquOperand>> _equExpr;
-    std::unordered_map<Symbol *, std::list<Instruction *>> _equBackPatch;
+    std::unordered_map<Symbol *, std::unique_ptr<EquOperand>> equExpr;
+    std::unordered_map<Symbol *, std::list<Instruction *>> equBackPatch;
     // tryToResolve for .word
-    std::unordered_map<Symbol *, std::list<void *>> _wordBackPatch;
+    std::unordered_map<Symbol *, std::list<void *>> wordBackPatch;
 
-    int32_t _currSection = 0;
+    int32_t currSection = 0;
 
     ~Assembler() = default;
 
@@ -80,7 +83,7 @@ public:
 
     void parseCall(unsigned char, Operand *);           // done
 
-    void parseCondJmp(unsigned char, Operand *);        // done
+    void parseCondJmp(unsigned char, unsigned char, unsigned char, Operand *);        // done
 
     void parsePush(unsigned char);                      // done
 
@@ -98,15 +101,15 @@ public:
 
     void parseLoad(Operand *, unsigned char);           // done
 
-    void parseLoad(unsigned char, unsigned char, int16_t);           // done
+    void parseLoad(unsigned char, int16_t, unsigned char);           // done
 
     void parseStore(unsigned char, Operand *);          // done
+
+    void parseStore(unsigned char, unsigned char, int16_t);          // done
 
     void parseRet();                                    // done
 
     void parseIRet();                                   // done
-
-    std::pair<int32_t, Symbol *> findSymbol(const std::string &);
 
     void resolveEqu();
 
@@ -128,14 +131,30 @@ public:
 
     void setOutput(char *string);
 
-    void declareSymbol(const std::string &);
+    IndexSymbol findSymbol(const std::string &) const;
 
-    void addRelIdent(const std::string &);
+    IndexSymbol declareSymbol(const std::string &);
 
-    void addRelLiteral(int32_t);
+    int32_t getSymbolIndex(const std::string &) const;
+
+    Relocation *addRelLiteral(IndexSymbol, int = 0);
+
+    Relocation *addRelSymbol(IndexSymbol, int = 0);
+
+    Relocation *symbolAlreadyRelocated(IndexSymbol) const;
+
+    Relocation *addRelLiteral(int32_t, int = 0);
 
     void insertInstr(Instruction *instr);
 
     void correctRelocations();
+
+    void appendLiterals();
+
+    bool isSymbolDefined(Symbol *) const;
+
+    RELOCATION getRelocationType(Symbol *) const;
+
+    int32_t getValueOfSymbol(Symbol *) const;
 
 };

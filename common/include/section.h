@@ -8,26 +8,25 @@
 #include <cstdint>
 #include <unordered_map>
 
+class Relocation;
+
 class Section {
 public:
 
-    uint32_t _locCnt = 0;
-    SectionLink _core;
-    SectionLink _literalsSection;
-    std::unordered_map<int32_t, uint32_t> _literalsMap;
+    SectionLink core;
+    SectionLink literalsSection;
+    std::unordered_map<int32_t, uint32_t> literalsMap;
+    std::unordered_map<std::string, uint32_t> labelsMap;
 
-    // return offset of literal
     uint32_t addLiteral(int32_t);
+
+    uint32_t addLabel(const std::string &);
 
     explicit Section(std::string);
 
-    void writeAndIncr(void *, uint32_t, uint32_t);
-
-    void write(void *, uint32_t, uint32_t);
-
     int32_t readWord(uint32_t offset);
 
-    void writeInstr(void *, uint32_t);
+    void appendInstr(void *);
 
     void serialize(std::ostream &) const;
 
@@ -36,6 +35,8 @@ public:
     void static tableHeader(std::ostream &);
 
     [[nodiscard]] uint32_t getSize() const;
+
+    void appendLiterals();
 
 };
 

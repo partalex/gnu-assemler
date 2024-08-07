@@ -4,6 +4,13 @@
 #include <memory>
 #include <iostream>
 
+class Symbol;
+
+typedef struct {
+    int32_t index;
+    Symbol *symbol;
+} IndexSymbol;
+
 enum MARKER {
     UNDEFINED = 0xFFFFFFFF,
     LITERALS = 0xFFFFFFFE
@@ -15,9 +22,13 @@ enum EQU_OP {
 
 enum ADDRESSING {
     ADDR_UND,
-    REG_DIR,            // reg = reg[B=gpr] + D=value                   // noRel
+    REG_DIR,            // reg = reg[B=gpr] + D=value               // noRel
     IN_DIR_OFFSET,      // reg = mem[reg[B=PC] + reg[C=0] + offset] // noRel or R_PC_12Bits
     IN_DIR_INDEX,       // reg = mem[reg[B]]   reg[B]=reg[B]+index; // noRel
+    IN_DIR_IN_DIR,      // push tempREG;
+    // tempREG = mem[reg[B=PC] + reg[C=0] + offset] // load address of value
+    // pc = mem[reg[B=tempREG] + reg[C=0] + D=0]    // load value
+    // pop tempREG
     CSR_OP              // reg = csr[B] + D                         // noRel
 };
 
@@ -76,6 +87,7 @@ enum REG_GPR {
     GPR_R11,
     GPR_R12,
     GPR_R13,
+    GPR_TEMP = GPR_R13,
     GPR_R14,
     REG_SP = GPR_R14,
     GPR_R15,
@@ -89,9 +101,10 @@ enum REG_CSR {
 };
 
 enum RELOCATION {
-    R_12b,   // fill highest 12 bits of 2 bytes
-    R_32b, //  copy 4 bytes
-    R_32b_NEW
+    R_12b,          // fill highest 12 bits of 2 bytes
+    R_32b_LOCAL,          //  copy 4 bytes
+    R_32_GLOBAL,   //  correctRelocations
+    R_32_UND,   //  correctRelocations
 };
 
 enum STATUS {
@@ -183,6 +196,9 @@ typedef union {
     uint32_t value;
 } Mnemonic;
 
+[[nodiscard]] bool fitIn12Bits(int32_t value);
+
+void writeDisplacement(void *, int32_t);
 
 std::ostream &operator<<(std::ostream &, MARKER);
 

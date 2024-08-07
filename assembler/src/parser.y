@@ -47,7 +47,6 @@
 %token              T_ASCII
 %token              T_END
 %token<ident>       T_STRING
-%token<offset>      T_OFFSET
 %token              I_HALT
 %token              I_INT
 %token              I_IRET
@@ -89,8 +88,8 @@
 %type <num_u8>      jmpCond
 %type <num_u8>      equOP
 %type <num_u8>      tworeg
+%type <num_32>      offsetReg
 %type <operand>     jmpOperand
-%type <operand>     jmpCondOperand
 %type <operand>     oneRegOperand
 %type <wordOperand> wordOperand
 %type <equOperand>  equOperand
@@ -185,8 +184,8 @@ instruction
   | I_JMP jmpOperand
   { Assembler::singleton().parseJmp(INSTRUCTION::JMP, $2); }
 
-  | jmpCond jmpCondOperand
-  { Assembler::singleton().parseCondJmp($1, $2); }
+  | jmpCond T_PERCENT gpr T_COMMA T_PERCENT gpr T_COMMA jmpOperand
+  { Assembler::singleton().parseCondJmp($1, $3, $6, $8); }
 
   | I_PUSH T_PERCENT REG
   { Assembler::singleton().parsePush($3); }
@@ -215,16 +214,26 @@ instruction
   | I_LD oneRegOperand T_COMMA T_PERCENT gpr
   { Assembler::singleton().parseLoad($2, $5); }
 
-  /* ld [%r1], %r2 */
-  | I_LD T_OBRACKET T_PERCENT gpr T_CBRACKET T_COMMA T_PERCENT gpr
-  { Assembler::singleton().parseLoad($4, $8, 0); }
+  | I_ST T_PERCENT gpr T_COMMA oneRegOperand
+  { Assembler::singleton().parseStore($3, $5); }
 
   /* ld [%r1+0], %r2 */
-  | I_LD T_OBRACKET T_PERCENT gpr T_OFFSET T_CBRACKET T_COMMA T_PERCENT gpr
-  { Assembler::singleton().parseLoad($4, $9, $5); }
+  | I_LD T_OBRACKET T_PERCENT gpr offsetReg T_CBRACKET T_COMMA T_PERCENT gpr
+  { Assembler::singleton().parseLoad($4, $5, $9); }
 
-  | I_ST T_PERCENT gpr T_COMMA oneRegOperand
-  { Assembler::singleton().parseStore($3, $5); };
+  /* st %r1, [%r2+0x2] */
+  | I_ST T_PERCENT gpr T_COMMA T_OBRACKET T_PERCENT gpr offsetReg T_CBRACKET
+  { Assembler::singleton().parseStore($3, $7, $8); };
+
+offsetReg
+  :
+  { $$ = 0; };
+
+  | T_LITERAL
+  { $$ = $1; };
+
+  | T_PLUS T_LITERAL
+  { $$ = $2; };
 
 symbolList
   : T_IDENT
@@ -235,10 +244,10 @@ symbolList
 
 oneRegOperand
   : T_DOLLAR T_LITERAL
-  { $$ = new LiteralImmReg($2); }
+  { $$ = new LiteralImm($2); }
 
   | T_DOLLAR T_IDENT
-  { $$ = new IdentImm($2); }
+  { $$ = new IdentAddr($2); }
 
   | csr
   { $$ = new CsrOp($1); }
@@ -320,12 +329,5 @@ jmpOperand
 
   | T_IDENT
   { $$ = new IdentAddr($1); };
-
-jmpCondOperand
-  : T_PERCENT gpr T_COMMA T_PERCENT gpr T_COMMA T_IDENT
-  { $$ = new GprGprIdent($2, $5, $7); }
-
-  | T_PERCENT gpr T_COMMA T_PERCENT gpr T_COMMA T_LITERAL
-  { $$ = new GprGprLiteral($2, $5, $7); };
 
 %%

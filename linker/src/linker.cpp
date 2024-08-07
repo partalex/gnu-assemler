@@ -187,19 +187,6 @@ void Linker::placeSection() {
     }
 }
 
-void Linker::checkDisplacement(int32_t value) const {
-    if (value > 2047 || value < -2048)
-        throw std::runtime_error("Displacement out of bounds: " + std::to_string(value));
-}
-
-void Linker::writeDisplacement(void *ptrDest, int32_t value) const {
-    auto *ptr = reinterpret_cast<uint16_t *>(ptrDest);
-    *ptr &= 0xF;
-    // shift value 4 bits to the left to set lower 4 bits to 0
-    value <<= 4;
-    *ptr |= value;
-}
-
 void Linker::writeRelocatable() const {
     std::ofstream output(outputFile, std::ios::binary);
     if (!output)
@@ -273,12 +260,14 @@ void Linker::link() {
             auto destAddr = _sectionAddr[&destSect] + rel.offset;
             int32_t temp;
             switch (rel.type) {
-                case R_32b:
+                case R_32_GLOBAL:
                     std::memcpy(destSect.data.data() + rel.offset, srcSect->data.data() + symbol.offset, 4);
                     break;
+//                case R_12b:
                 case R_12b:
                     temp = (int32_t) (srcAddr - destAddr) + 2;
-                    checkDisplacement(temp);
+                    if (!fitIn12Bits(temp))
+                        throw std::runtime_error("Displacement out of range");
                     writeDisplacement(destSect.data.data() + rel.offset, temp);
                     break;
                 default:

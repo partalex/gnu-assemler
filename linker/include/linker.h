@@ -72,10 +72,6 @@ public:
 
     void writeExe() const;
 
-    void checkDisplacement(int32_t) const;
-
-    void writeDisplacement(void*, int32_t) const;
-
     void writeHex() const;
 
     // must be -hex or -relocatable

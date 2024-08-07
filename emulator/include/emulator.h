@@ -22,9 +22,9 @@ static constexpr auto OUTPUT_STATUS_POS = 0x2010;
 class Program;
 
 class Emulator {
-    static std::unique_ptr<Emulator> _instance;
-    std::unique_ptr<Program> _program;
-    std::string _inputFile;
+    static std::unique_ptr<Emulator> instance;
+    std::unique_ptr<Program> program;
+    std::string inputFile;
 public:
 
     void operator=(Emulator const &) = delete;

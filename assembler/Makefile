@@ -10,12 +10,6 @@ PARSER = src/parser.y
 ARGS = -o $(SRC_AS)/izlaz.o ../test/handler.s
 CC = g++
 
-run: debug
-	$(BIN_PATH)/main $(ARGS)
-
-all: $(BIN_PATH) parser
-	$(CC) -I$(INCLUDE_AS) $(SRCS) -o $(BIN_PATH)/main
-
 debug: $(BIN_PATH) parser
 	$(CC) -I$(INCLUDE_AS) $(SRCS) -g -o $(BIN_PATH)/main
 

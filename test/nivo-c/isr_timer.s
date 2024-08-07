@@ -2,15 +2,15 @@
 
 .extern terminal_out
 
-.section isr    # 0x00500000
+.section isr
 # prekidna rutina za tajmer
 .equ line_feed, 0xA
 .equ carriage_return, 0xD
 .equ message_len, message_end - message_start
 .global isr_timer
-isr_timer:      # 0x00500000
-    push %r1    # 0x00500000
-    push %r2    # 0x00500004
+isr_timer:
+    push %r1
+    push %r2
     push %r3
     ld $0, %r2
 loop:

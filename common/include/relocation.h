@@ -9,8 +9,8 @@
 
 class Relocation {
 public:
-    std::string _symbol;
-    RelocationLink _core;
+    std::string symbol;
+    RelocationLink core;
 
     Relocation(std::string, uint64_t, uint64_t, uint64_t, RELOCATION);
 

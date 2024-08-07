@@ -1,7 +1,6 @@
 #include "../include/operand.h"
 #include "../include/program.h"
-#include "../include/instruction.h"
-
+#include "../../assembler/include/assembler.h"
 
 #include <iostream>
 #include <iomanip>
@@ -47,6 +46,7 @@ void Instruction::setMode(uint8_t mode) {
 void Instruction::andMode(uint8_t value) {
     bytes.MODE |= value;
 }
+
 void Instruction::orMode(uint8_t value) {
     bytes.MODE |= value;
 }
@@ -77,8 +77,36 @@ Not_Instr::Not_Instr(uint8_t gpr)
 Int_Instr::Int_Instr()
         : Instruction(INSTRUCTION::INT) {}
 
-Load_Instr::Load_Instr(std::unique_ptr<Operand> operand, uint8_t gpr)
-        : Instruction(INSTRUCTION::LD, gpr), _operand(std::move(operand)) {
+Load_Instr::Load_Instr(Operand *operand, uint8_t gpr, Assembler *as)
+        : Instruction(INSTRUCTION::LD, gpr) {
+    auto addressing = operand->addRelocation(as);
+    delete operand;
+    // MMMM==0b0000: gpr[A]<=csr[B];
+    // MMMM==0b0001: gpr[A]<=gpr[B]+D;
+    // MMMM==0b0010: gpr[A]<=mem32[gpr[B]+gpr[C=0]+D];
+    // MMMM==0b0011: gpr[A]<=mem32[gpr[B]]; gpr[B]<=gpr[B]+D;
+    setRegB(addressing.reg);
+    setDisplacement(addressing.value);
+    switch (addressing.addressing) {
+        case CSR_OP: // CsrOp
+            setMode(0b0000);
+            break;
+        case REG_DIR: // RegDir, LiteralInDir, IdentImm
+            setMode(0b0001);
+            break;
+        case IN_DIR_OFFSET: // RegInDirOffIdent, RegInDir, LiteralInDir, IdentAddr
+            setMode(0b0010);
+            break;
+        case IN_DIR_INDEX: // RegInDirOffLiteral
+            setMode(0b0011);
+            break;
+        case IN_DIR_IN_DIR:
+            isInDirInDir = true;
+            setMode(0b0010);
+            break;
+        default:
+            throw std::runtime_error("Error: Invalid addressing mode for Load instruction.");
+    }
 }
 
 Load_Instr::Load_Instr(uint8_t gprD, uint8_t gprS, int16_t offset)
@@ -95,37 +123,127 @@ Csrrd_Instr::Csrrd_Instr(uint8_t csr, uint8_t gpr)
 Xchg_Instr::Xchg_Instr(uint8_t regA, uint8_t regB)
         : Instruction(INSTRUCTION::XCHG, regA, regB) {}
 
-JmpCond_Instr::JmpCond_Instr(enum INSTRUCTION instruction, std::unique_ptr<Operand> operand)
-        : Instruction(instruction), _operand(std::move(operand)) {
+JmpCond_Instr::JmpCond_Instr(INSTRUCTION instr, uint8_t regS, uint8_t regD, Operand *operand, Assembler *as)
+        : Instruction(instr) {
     setRegA(REG_PC);
-    auto *try1 = dynamic_cast<GprGprIdent *>(_operand.get());
-    auto *try2 = dynamic_cast<GprGprLiteral *>(_operand.get());
-    if (try1) {
-        setRegB(try1->getGpr1());
-        setRegC(try1->getGpr2());
-    } else {
-        setRegB(try2->getGpr1());
-        setRegC(try2->getGpr2());
+    setRegB(regS);
+    setRegC(regD);
+    auto addressing = operand->addRelocation(as);
+    delete operand;
+    // MMMM==0b0001: if (gpr[B] == gpr[C]) pc<=gpr[A=PC]+D;
+    // MMMM==0b0010: if (gpr[B] != gpr[C]) pc<=gpr[A=PC]+D;
+    // MMMM==0b0011: if (gpr[B] signed> gpr[C]) pc<=gpr[A=PC]+D;
+    // MMMM==0b1001: if (gpr[B] == gpr[C]) pc<=mem32[gpr[A=PC]+D];
+    // MMMM==0b1010: if (gpr[B] != gpr[C]) pc<=mem32[gpr[A=PC]+D];
+    // MMMM==0b1011: if (gpr[B] signed> gpr[C]) pc<=mem32[gpr[A=PC]+D];
+    switch (addressing.addressing) {
+        case REG_DIR:     // LiteralInDir, IdentAddr
+            setDisplacement(addressing.value);
+            andMode(0b0111);
+            break;
+        case IN_DIR_OFFSET:   // LiteralInDir
+            orMode(0b1000);
+            break;
+        case IN_DIR_IN_DIR:   // LiteralInDir
+            isInDirInDir = true;
+            orMode(0b1000);
+            break;
+        default:
+            throw std::runtime_error("Error: Invalid addressing mode for JmpCond instruction.");
     }
 }
 
-Call_Instr::Call_Instr(enum INSTRUCTION instruction, std::unique_ptr<Operand> operand)
-        : Instruction(instruction), _operand(std::move(operand)) {
+Call_Instr::Call_Instr(enum INSTRUCTION instruction, Operand *operand, Assembler *as)
+        : Instruction(instruction) {
     setRegA(REG_PC);
     setRegB(GPR_R0);
+    auto addressing = operand->addRelocation(as);
+    delete operand;
+    setDisplacement(addressing.value);
+    // MMMM==0b0000: pc<=gpr[A=PC]+gpr[B=0]+D;
+    // MMMM==0b0001: pc<=mem32[gpr[A=PC]+gpr[B=0]+D]; // not used
+    switch (addressing.addressing) {
+        case REG_DIR:         // LiteralImm
+            setMode(0b0000);
+            setDisplacement(addressing.value);
+            break;
+        case IN_DIR_OFFSET:// LiteralImm, IdentAddr
+            setMode(0b0001);
+            // displacement will be set in by relocation
+            break;
+        case IN_DIR_IN_DIR:
+            isInDirInDir = true;
+            setMode(0b0001);
+            break;
+        default:
+            throw std::runtime_error("Error: Invalid addressing mode for Jmp instruction.");
+    }
 }
 
-Jmp_Instr::Jmp_Instr(enum INSTRUCTION instruction, std::unique_ptr<Operand> operand)
-        : Instruction(instruction), _operand(std::move(operand)) {
+Jmp_Instr::Jmp_Instr(enum INSTRUCTION instruction, Operand *operand, Assembler *as)
+        : Instruction(instruction) {
     setRegA(15);
+    auto addressing = operand->addRelocation(as);
+    delete operand;
+    setDisplacement(addressing.value);
+    // MMMM==0b0000: pc<=gpr[A=PC]+D;
+    // MMMM==0b1000: pc<=mem32[gpr[A=PC]+D];
+    switch (addressing.addressing) {
+        // will line below be executed?
+        case REG_DIR:         // LiteralImm, IdentAddr
+            setMode(0b0000);
+            break;
+        case IN_DIR_OFFSET:   // LiteralImm
+            setMode(0b1000);
+            break;
+        case IN_DIR_IN_DIR:
+            isInDirInDir = true;
+            setMode(0b1000);
+            break;
+        default:
+            throw std::runtime_error("Error: Invalid addressing mode for Jmp instruction.");
+    }
 }
 
 TwoReg_Instr::TwoReg_Instr(enum INSTRUCTION instruction, uint8_t regD, uint8_t regS)
         : Instruction(instruction, regD, regS, regS) {}
 
-Store_Instr::Store_Instr(uint8_t gpr, std::unique_ptr<Operand> operand)
-        : Instruction(INSTRUCTION::ST), _operand(std::move(operand)) {
+Store_Instr::Store_Instr(uint8_t gpr, Operand *operand, Assembler *as)
+        : Instruction(INSTRUCTION::ST) {
     setRegC(gpr);
+    auto addressing = operand->addRelocation(as);
+    delete operand;
+    // MMMM==0b0000: mem32[gpr[A=PC]+gpr[B=0]+D]<=gpr[C=gpr];
+    // MMMM==0b0010: mem32[mem32[gpr[A=PC]+gpr[B=0]+D]]<=gpr[C];
+    // MMMM==0b0001: gpr[A]<=gpr[A]+D; mem32[gpr[A]]<=gpr[C];
+    setRegA(addressing.reg);
+    setDisplacement(addressing.value);
+    switch (addressing.addressing) {
+        case REG_DIR:           // IdentImm, RegDir, LiteralInDir
+            // MMMM==0b0000: mem32[gpr[A=reg]+gpr[B=0]+D]<=gpr[C=gpr];
+            setMode(0b0000);
+            break;
+        case IN_DIR_OFFSET:     // RegInDirOffIdent, RegInDir, LiteralInDir, IdentAddr
+            // MMMM==0b0010: mem32[mem32[gpr[A=PC]+gpr[B=0]+D]]<=gpr[C];
+            // st [PC+off], %r1;
+            setMode(0b0010);
+            break;
+        case IN_DIR_INDEX:      // RegInDirOffLiteral: // st [%r1+0], %r2
+            // MMMM==0b0001: gpr[A]<=gpr[A]+D; mem32[gpr[A]]<=gpr[C];
+            setMode(0b0001);
+            break;
+        case IN_DIR_IN_DIR:
+            isInDirInDir = true;
+            setMode(0b0010);
+            break;
+        default:
+            throw std::runtime_error("Error: Invalid addressing mode for Store instruction.");
+    }
+}
+
+Store_Instr::Store_Instr(uint8_t gprD, int16_t offset, uint8_t gprS)
+        : Instruction(INSTRUCTION::ST, gprD, gprS) {
+    setDisplacement(offset);
 }
 
 void Instruction::tableHeader(std::ostream &out) {
@@ -140,6 +258,26 @@ Instruction::Instruction(uint32_t value) {
     bytes.value = value;
 }
 
+void Instruction::insertInstr(Assembler *as) {
+    if (isInDirInDir) {
+        // push GPR_TEMP
+        as->insertInstr(std::make_unique<Push_Instr>((uint8_t) GPR_TEMP).get());
+
+        // MMMM==0b0010: gpr[A=GPR_TEMP]<=mem32[gpr[B=PC]+gpr[C=0]+D];
+        auto loadInstr = std::make_unique<Load_Instr>((uint8_t) GPR_TEMP, REG_PC, 0);
+        loadInstr->setMode(0b0010);
+        as->insertInstr(this);
+
+        // insert instr
+        as->insertInstr(this);
+
+        // pop GPR_TEMP
+        as->insertInstr(std::make_unique<Pop_Instr>((uint8_t) GPR_TEMP).get());
+        return;
+    }
+    as->insertInstr(this);
+}
+
 std::ostream &Instruction::logExecute(std::ostream &out) const {
     return out << std::hex << std::setfill('0') << std::setw(8) << bytes.byte_0 << " "
                << std::setw(8) << bytes.byte_1 << " "
@@ -147,7 +285,10 @@ std::ostream &Instruction::logExecute(std::ostream &out) const {
                << std::setw(8) << bytes.byte_3 << " ";
 }
 
-bool Instruction::fitIn12Bits(int32_t value) {
-    return value >= -2048 && value <= 2047;
-}
+IRet_Instr::IRet_Instr()
+        : Instruction(INSTRUCTION::LD_POST_INC, REG_PC, REG_SP, 0, 4) {}
 
+void IRet_Instr::insertInstr(Assembler *as) {
+    as->insertInstr(this);
+    as->insertInstr(std::make_unique<Pop_Instr>((uint8_t) CSR_STATUS).get());
+}

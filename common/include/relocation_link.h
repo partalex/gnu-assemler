@@ -11,6 +11,8 @@ public:
 
     void static tableHeader(std::ostream &);
 
+    static void resolveRelocation(int8_t *, RelocationLink *, void *);
+
     friend std::ostream &operator<<(std::ostream &, const RelocationLink &);
 
 };

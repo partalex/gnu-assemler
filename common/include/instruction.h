@@ -10,9 +10,11 @@
 
 class Operand;
 
-class Program;
+class Assembler;
 
 class Instruction {
+protected:
+    bool isInDirInDir = false;
 public:
 
     Mnemonic bytes;
@@ -37,13 +39,13 @@ public:
 
     virtual void setDisplacement(int32_t) final;
 
+    virtual void insertInstr(Assembler *);
+
     void static tableHeader(std::ostream &);
 
     friend std::ostream &operator<<(std::ostream &, Instruction &);
 
     virtual std::ostream &logExecute(std::ostream &) const final;
-
-    static bool fitIn12Bits(int32_t);
 
 };
 
@@ -59,8 +61,7 @@ class Push_Instr : public Instruction {
 public:
     explicit Push_Instr(uint8_t);
 
-    explicit Push_Instr(uint32_t bytes) : Instruction(bytes) {
-    }
+    explicit Push_Instr(uint32_t bytes) : Instruction(bytes) {}
 
 };
 
@@ -69,6 +70,16 @@ public:
     explicit Pop_Instr(uint8_t);
 
     explicit Pop_Instr(uint32_t bytes) : Instruction(bytes) {}
+
+};
+
+class IRet_Instr : public Instruction {
+public:
+    explicit IRet_Instr();
+
+    explicit IRet_Instr(uint32_t bytes) : Instruction(bytes) {}
+
+    void insertInstr(Assembler *) override;
 
 };
 
@@ -81,7 +92,6 @@ public:
 };
 
 class Int_Instr : public Instruction {
-    std::unique_ptr<Operand> _operand;
 public:
     explicit Int_Instr();
 
@@ -114,23 +124,21 @@ public:
 };
 
 class Load_Instr : public Instruction {
-    std::unique_ptr<Operand> _operand;
 public:
-    explicit Load_Instr(std::unique_ptr<Operand>, uint8_t);
+    explicit Load_Instr(Operand *, uint8_t, Assembler *);
 
     explicit Load_Instr(uint32_t bytes) : Instruction(bytes) {}
 
     explicit Load_Instr(uint8_t, uint8_t, int16_t);
-
 };
 
 class Store_Instr : public Instruction {
-    std::unique_ptr<Operand> _operand;
 public:
-    explicit Store_Instr(uint8_t, std::unique_ptr<Operand>);
+    explicit Store_Instr(uint8_t, Operand *, Assembler *);
 
     explicit Store_Instr(uint32_t bytes) : Instruction(bytes) {}
 
+    explicit Store_Instr(uint8_t, int16_t, uint8_t);
 };
 
 class TwoReg_Instr : public Instruction {
@@ -142,29 +150,22 @@ public:
 };
 
 class Jmp_Instr : public Instruction {
-    std::unique_ptr<Operand> _operand;
 public:
-    explicit Jmp_Instr(enum INSTRUCTION instruction, std::unique_ptr<Operand>);
+    explicit Jmp_Instr(enum INSTRUCTION instruction, Operand *, Assembler *);
 
     explicit Jmp_Instr(uint32_t bytes) : Instruction(bytes) {}
-
 };
 
 class Call_Instr : public Instruction {
-    std::unique_ptr<Operand> _operand;
 public:
-    explicit Call_Instr(enum INSTRUCTION, std::unique_ptr<Operand>);
+    explicit Call_Instr(enum INSTRUCTION, Operand *, Assembler *);
 
     explicit Call_Instr(uint32_t bytes) : Instruction(bytes) {}
-
 };
 
 class JmpCond_Instr : public Instruction {
-    std::unique_ptr<Operand> _operand;
 public:
-    explicit JmpCond_Instr(enum INSTRUCTION, std::unique_ptr<Operand>);
-
     explicit JmpCond_Instr(uint32_t bytes) : Instruction(bytes) {}
 
+    explicit JmpCond_Instr(INSTRUCTION, uint8_t, uint8_t, Operand *, Assembler *);
 };
-

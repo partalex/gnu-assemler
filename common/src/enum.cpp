@@ -2,6 +2,19 @@
 
 #include <iomanip>
 
+bool fitIn12Bits(int32_t value) {
+    // have to fit inside 12 bits
+    return value <= 2047 && value >= -2048;
+}
+
+void writeDisplacement(void *ptrDest, int32_t value) {
+    auto *ptr = reinterpret_cast<uint16_t *>(ptrDest);
+    *ptr &= 0xF;
+    // shift value 4 bits to the left to set lower 4 bits to 0
+    value <<= 4;
+    *ptr |= value;
+}
+
 std::ostream &operator<<(std::ostream &out, MARKER marker) {
     switch (marker) {
         case MARKER::LITERALS:
@@ -203,8 +216,12 @@ std::ostream &operator<<(std::ostream &out, RELOCATION rel) {
     switch (rel) {
         case RELOCATION::R_12b:
             return out << "R_12b";
-        case RELOCATION::R_32b:
-            return out << "R_32b";
+        case RELOCATION::R_32b_LOCAL:
+            return out << "R_32b_LOCAL";
+        case RELOCATION::R_32_GLOBAL:
+            return out << "R_32_GLOBAL";
+        case RELOCATION::R_32_UND:
+            return out << "R_32_UND";
         default:
             throw std::runtime_error("RELOCATION operator<<: unknown " + std::to_string((uint32_t) rel));
     }

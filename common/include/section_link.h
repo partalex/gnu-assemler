@@ -4,13 +4,13 @@
 
 class SectionLink {
 public:
-    std::vector<uint8_t> _data;
-    std::string _name;
+    std::vector<uint8_t> data;
+    std::string name;
 
     friend std::ostream &operator<<(std::ostream &, const SectionLink &);
 
     explicit SectionLink(std::string name)
-            : _name(std::move(name)) {}
+            : name(std::move(name)) {}
 
     SectionLink() = default;
 
@@ -28,9 +28,11 @@ public:
 
     void write(void *, uint32_t, uint32_t);
 
-    void writeAndIncr(void *, uint32_t, uint32_t);
+    void writeWord(void *, uint32_t);
 
-    void writeInstr(void *, uint32_t);
+    void append(void *, uint32_t);
+
+    void appendSection(SectionLink *);
 
     [[nodiscard]] uint32_t locationCnt() const;
 

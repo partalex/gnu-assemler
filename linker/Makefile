@@ -6,12 +6,6 @@ SRCS = $(SRC)/* $(SRC_COMMON)/* ../assembler/src/assembler.cpp ../assembler/src/
 
 CC = g++
 
-run: debug
-	$(BIN_PATH)/main $(ARGS)
-
-all: $(BIN_PATH)
-	$(CC) $(SRCS) -o $(BIN_PATH)/main
-
 debug: $(BIN_PATH)
 	$(CC) -I../assembler/include $(SRCS) -g -o $(BIN_PATH)/main
 
