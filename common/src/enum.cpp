@@ -1,10 +1,12 @@
 #include "../include/instruction.h"
+#include "../include/enum.h"
+
 
 #include <iomanip>
 
-bool fitIn12Bits(int32_t value) {
-    // have to fit inside 12 bits
-    return value <= 2047 && value >= -2048;
+bool fitIn12Bits(uint32_t value) {
+    auto temp = (int32_t) value;
+    return temp <= DISPLACEMENT_MAX_VALUE && temp >= DISPLACEMENT_MIN_VALUE;
 }
 
 void writeDisplacement(void *ptrDest, int32_t value) {
@@ -17,8 +19,8 @@ void writeDisplacement(void *ptrDest, int32_t value) {
 
 std::ostream &operator<<(std::ostream &out, MARKER marker) {
     switch (marker) {
-        case MARKER::LITERALS:
-            return out << "LITERALS";
+        case MARKER::ABSOLUTE:
+            return out << "ABS";
         case MARKER::UNDEFINED:
             return out << "UND";
         default:
@@ -218,11 +220,17 @@ std::ostream &operator<<(std::ostream &out, RELOCATION rel) {
             return out << "R_12b";
         case RELOCATION::R_32b_LOCAL:
             return out << "R_32b_LOCAL";
-        case RELOCATION::R_32_GLOBAL:
-            return out << "R_32_GLOBAL";
+        case RELOCATION::R_32_IMMEDIATE:
+            return out << "R_32_IMMEDIATE";
+        case RELOCATION::R_32_IN_DIR:
+            return out << "R_32_IN_DIR";
         case RELOCATION::R_32_UND:
             return out << "R_32_UND";
         default:
             throw std::runtime_error("RELOCATION operator<<: unknown " + std::to_string((uint32_t) rel));
     }
+}
+
+void displacementToBig(int32_t value) {
+    throw std::runtime_error("Error: Displacement " + std::to_string(value) + " out of range.");
 }

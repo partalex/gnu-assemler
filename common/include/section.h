@@ -15,10 +15,10 @@ public:
 
     SectionLink core;
     SectionLink literalsSection;
-    std::unordered_map<int32_t, uint32_t> literalsMap;
+    std::unordered_map<uint32_t, uint32_t> literalsMap;
     std::unordered_map<std::string, uint32_t> labelsMap;
 
-    uint32_t addLiteral(int32_t);
+    uint32_t addLiteral(uint32_t);
 
     uint32_t addLabel(const std::string &);
 
@@ -34,7 +34,9 @@ public:
 
     void static tableHeader(std::ostream &);
 
-    [[nodiscard]] uint32_t getSize() const;
+    [[nodiscard]] uint32_t coreSize() const;
+
+    [[nodiscard]] uint32_t literalsSize() const;\
 
     void appendLiterals();
 

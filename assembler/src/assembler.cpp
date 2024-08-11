@@ -50,20 +50,35 @@ void Assembler::parseExtern(SymbolList *list) {
 #endif
     SymbolList *temp = list;
     while (temp) {
-        auto symbol = findSymbol(temp->_symbol);
-        if (symbol.index == -1)
-            symbols.emplace_back(
-                    std::make_unique<Symbol>(
-                            temp->_symbol,
-                            UNDEFINED,
-                            SCOPE::GLOBAL,
-                            UNDEFINED,
-                            SYMBOL::NO_TYPE,
-                            OTHER,
-                            NOT_DEFINED
-                    ));
-        else if (symbol.symbol->core.flags.scope == SCOPE::GLOBAL)
-            throw std::runtime_error("Error: Symbol " + temp->_symbol + " already defined as global.");
+        if (!isSymbolDeclared(temp->_symbol))
+            addSymbol(temp->_symbol, UNDEFINED, SCOPE::GLOBAL,
+                      UNDEFINED, SYMBOL::NO_TYPE, OTHER, NOT_DEFINED);
+        else
+            symbolDuplicate(temp->_symbol);
+        temp = temp->_next;
+    }
+    delete list;
+}
+
+void Assembler::parseGlobal(SymbolList *list) {
+#ifdef LOG_PARSER
+    std::cout << "GLOBAL: ";
+    list->log(std::cout);
+#endif
+    SymbolList *temp = list;
+    while (temp) {
+        if (!isSymbolDeclared(temp->_symbol))
+            addSymbol(
+                    temp->_symbol,
+                    UNDEFINED,
+                    SCOPE::GLOBAL,
+                    UNDEFINED,
+                    SYMBOL::NO_TYPE,
+                    THIS,
+                    NOT_DEFINED
+            );
+        else
+            symbolDuplicate(temp->_symbol);
         temp = temp->_next;
     }
     delete list;
@@ -79,17 +94,18 @@ void Assembler::parseSkip(int literal) {
 void Assembler::resolveEqu() {
     std::unordered_set<Symbol *> unresolvedEqu;
     for (auto &sym: symbols)
-        if (!sym->core.flags.defined)
+        if (!sym->core.flags.defined) {
             if (sym->core.flags.symbolType == EQU)
                 unresolvedEqu.insert(sym.get());
             else if (sym->core.flags.symbolType != NO_TYPE)
-                throw std::runtime_error("Error: Symbol " + sym->core.name + " is not defined.");
+                symbolNotDefined(sym->core.name);
+        }
 
     auto newResolved = true;
     while (newResolved) {
         newResolved = false;
         for (auto &symbol: unresolvedEqu) {
-            auto expr = equExpr[symbol].get();
+            auto expr = equExpr[symbol];
             int64_t value = 0;
             EquOperand *prev = nullptr;
             while (expr) {
@@ -110,20 +126,23 @@ void Assembler::resolveEqu() {
             if (!expr) {
                 // set offset to value
                 symbol->core.offset = value;
-                symbol->core.flags.defined = true;
+                symbol->core.flags.defined = DEFINED;
+                symbol->core.sectionIndex = ABSOLUTE;
                 unresolvedEqu.erase(symbol);
                 newResolved = true;
                 break;
             }
         }
     }
+    for (auto &par: equExpr)
+        delete par.second;
 }
 
 void Assembler::resolveWord() {
     for (auto &par: wordBackPatch) {
         auto symbol = par.first;
         if (!symbol->core.flags.defined)
-            throw std::runtime_error("Error: Symbol " + symbol->core.name + " is not defined.");
+            symbolNotDefined(symbol->core.name);
         auto list = par.second;
         for (auto &dest: list) {
             void *src;
@@ -149,6 +168,7 @@ void Assembler::parseEnd() {
     writeTxt();
     checkUnresolvedSymbols();
     correctRelocations();
+//    deleteRelocations();
     appendLiterals();
     writeTxt();
     writeObj();
@@ -158,21 +178,21 @@ void Assembler::parseLabel(const std::string &str) {
 #ifdef LOG_PARSER
     std::cout << "LABEL: " << str << "\n";
 #endif
-    auto symbol = findSymbol(str);
-    if (symbol.index != -1) {
+    auto indexSymbol = findSymbol(str);
+    if (isSymbolDeclared(indexSymbol)) {
         // Symbol is in symbols
 
-        if (symbol.symbol->core.flags.symbolType != NO_TYPE)
-            symbolDuplicate(symbol.symbol->core.name);
+        if (indexSymbol.symbol->core.flags.symbolType != NO_TYPE)
+            symbolDuplicate(indexSymbol.symbol->core.name);
 
         // Set symbol
-        symbol.symbol->core.offset = sections[currSection]->core.locationCnt();
-        symbol.symbol->core.sectionIndex = currSection;
-        symbol.symbol->core.flags.symbolType = SYMBOL::LABEL;
-        symbol.symbol->core.flags.defined = DEFINED;
+        indexSymbol.symbol->core.offset = sections[currSection]->core.locationCnt();
+        indexSymbol.symbol->core.sectionIndex = currSection;
+        indexSymbol.symbol->core.flags.symbolType = SYMBOL::LABEL;
+        indexSymbol.symbol->core.flags.defined = DEFINED;
     } else {
         // Symbol does not exist, add it
-        symbols.emplace_back(std::make_unique<Symbol>(
+        addSymbol(
                 str,
                 currSection,
                 SCOPE::LOCAL,
@@ -180,7 +200,7 @@ void Assembler::parseLabel(const std::string &str) {
                 SYMBOL::LABEL,
                 THIS,
                 DEFINED
-        ));
+        );
     }
 }
 
@@ -195,7 +215,7 @@ void Assembler::parseSection(const std::string &str) {
         sections.emplace_back(std::make_unique<Section>(str));
         it = std::prev(sections.end());
     }
-    currSection = it - sections.begin();
+    currSection = (int32_t) (it - sections.begin());
 }
 
 void Assembler::parseWord(WordOperand *operand) {
@@ -207,7 +227,7 @@ void Assembler::parseWord(WordOperand *operand) {
     auto *temp = operand;
     while (temp) {
         temp->addRelocation(this);
-        temp = temp->_next;
+        temp = temp->next;
     }
     delete operand;
 }
@@ -219,17 +239,17 @@ void Assembler::parseEqu(const std::string &str, EquOperand *operand) {
     std::cout << "\n";
 #endif
     // Str is EQU symbol
-    auto symbol = findSymbol(str);
-    if (symbol.index != -1) {
+    auto indexSymbol = findSymbol(str);
+    if (isSymbolDeclared(indexSymbol)) {
         // Symbol is in symbols
-        if (symbol.symbol->core.flags.symbolType == NO_TYPE) {
-            symbol.symbol->core.flags.symbolType = EQU;
-        } else if (symbol.symbol->core.flags.symbolType != EQU)
+        if (indexSymbol.symbol->core.flags.symbolType == NO_TYPE)
+            indexSymbol.symbol->core.flags.symbolType = EQU;
+        else if (indexSymbol.symbol->core.flags.symbolType != EQU)
             // Symbol is not EQU then it's duplicate, exit
-            symbolDuplicate(symbol.symbol->core.name);
-    } else {
+            symbolDuplicate(indexSymbol.symbol->core.name);
+    } else
         // add symbol to symbols
-        symbols.emplace_back(std::make_unique<Symbol>(
+        addSymbol(
                 str,
                 MARKER::UNDEFINED,
                 LOCAL,
@@ -237,16 +257,13 @@ void Assembler::parseEqu(const std::string &str, EquOperand *operand) {
                 EQU,
                 THIS,
                 NOT_DEFINED
-        ));
-    }
-
-    symbol = findSymbol(str);
-    equExpr[symbol.symbol] = std::unique_ptr<EquOperand>(operand);
-    auto *temp = operand;
+        );
+    indexSymbol = findSymbol(str);
+    auto temp = equExpr[indexSymbol.symbol] = operand;
     auto canResolve = true;
-    int32_t value = 0;
+    uint32_t value = 0;
     while (temp) {
-        auto resolveResult = temp->tryToResolve(this);
+        auto resolveResult = tryToResolveEqu(temp);
         if (resolveResult.resolved)
             value += resolveResult.value;
         else {
@@ -256,8 +273,9 @@ void Assembler::parseEqu(const std::string &str, EquOperand *operand) {
         temp = temp->next;
     }
     if (canResolve) {
-        symbol.symbol->core.offset = value;
-        symbol.symbol->core.flags.defined = DEFINED;
+        indexSymbol.symbol->core.offset = value;
+        indexSymbol.symbol->core.flags.defined = DEFINED;
+        indexSymbol.symbol->core.sectionIndex = ABSOLUTE;
     }
 
 }
@@ -291,11 +309,6 @@ void Assembler::parseIRet() {
 #endif
     auto instr = std::make_unique<IRet_Instr>();
     instr->insertInstr(this);
-    // TODO
-//    insertInstr(instr.get());
-//    instr = std::make_unique<Pop_Instr>((uint8_t) CSR_STATUS);
-//    instr->setInstr(CSR_LD_POST_INC);
-//    insertInstr(instr.get());
 }
 
 void Assembler::parseJmp(unsigned char inst, Operand *operand) {
@@ -305,9 +318,11 @@ void Assembler::parseJmp(unsigned char inst, Operand *operand) {
     operand->log(std::cout);
     std::cout << "\n";
 #endif
+    parsingJmp = true;
     auto instr = std::make_unique<Jmp_Instr>(static_cast<enum INSTRUCTION>(inst),
                                              operand, this);
     instr->insertInstr(this);
+    parsingJmp = false;
 }
 
 void Assembler::parseCall(unsigned char inst, Operand *operand) {
@@ -317,8 +332,10 @@ void Assembler::parseCall(unsigned char inst, Operand *operand) {
     operand->log(std::cout);
     std::cout << "\n";
 #endif
+    parsingJmp = true;
     auto instr = std::make_unique<Call_Instr>(static_cast<enum INSTRUCTION>(inst), operand, this);
     instr->insertInstr(this);
+    parsingJmp = false;
 }
 
 void Assembler::parsePush(unsigned char gpr) {
@@ -416,32 +433,6 @@ void Assembler::parseStore(unsigned char gpr, Operand *operand) {
     instr->insertInstr(this);
 }
 
-void Assembler::parseGlobal(SymbolList *list) {
-#ifdef LOG_PARSER
-    std::cout << "GLOBAL: ";
-    list->log(std::cout);
-#endif
-    SymbolList *temp = list;
-    while (temp) {
-        auto symbol = findSymbol(temp->_symbol);
-        if (symbol.index == -1)
-            symbols.emplace_back(
-                    std::make_unique<Symbol>(
-                            temp->_symbol,
-                            UNDEFINED,
-                            SCOPE::GLOBAL,
-                            UNDEFINED,
-                            SYMBOL::NO_TYPE,
-                            THIS,
-                            NOT_DEFINED
-                    ));
-        else
-            symbolDuplicate(temp->_symbol);
-        temp = temp->_next;
-    }
-    delete list;
-}
-
 void Assembler::log(std::ostream &out) const {
     logSymbols(out);
     logRelocations(out);
@@ -450,8 +441,12 @@ void Assembler::log(std::ostream &out) const {
 
 void Assembler::checkUnresolvedSymbols() {
     for (auto &sym: symbols)
-        if (!sym->core.flags.defined && sym->core.flags.source != OTHER)
-            throw std::runtime_error("Error: Symbol " + sym->core.name + " is not defined.");
+        if (!sym->core.flags.defined) {
+            if (sym->core.flags.source != OTHER)
+                symbolNotDefined(sym->core.name);
+            else if (sym->core.flags.symbolType == EQU)
+                symbolNotDefined(sym->core.name);
+        }
 }
 
 void Assembler::logSections(std::ostream &out) const {
@@ -519,7 +514,7 @@ void Assembler::writeObj() {
         uint32_t name_size = sect->core.name.size();
         out.write((char *) &name_size, sizeof(name_size));
         out.write(sect->core.name.c_str(), name_size);
-        auto data_size = sect->getSize();
+        auto data_size = sect->coreSize();
         out.write((char *) &data_size, sizeof(data_size));
         out.write(reinterpret_cast<const char *>(sect->core.data.data()), data_size);
     }
@@ -549,11 +544,11 @@ int32_t Assembler::getSymbolIndex(const std::string &symbol) const {
     return -1;
 }
 
-IndexSymbol Assembler::findSymbol(const std::string &symbol) const {
-    auto index = getSymbolIndex(symbol);
-    if (index == -1)
-        return {-1, nullptr};
-    return {index, symbols[index].get()};
+IndexSymbol Assembler::findSymbol(const std::string &ident) const {
+    for (uint32_t i = 0; i < symbols.size(); ++i)
+        if (symbols[i]->core.name == ident)
+            return {i, symbols[i].get()};
+    return {0, nullptr};
 }
 
 void Assembler::symbolDuplicate(const std::string &symbol) {
@@ -561,7 +556,7 @@ void Assembler::symbolDuplicate(const std::string &symbol) {
 }
 
 IndexSymbol Assembler::declareSymbol(const std::string &ident) {
-    symbols.emplace_back(std::make_unique<Symbol>(
+    addSymbol(
             ident,
             UNDEFINED,
             LOCAL,
@@ -569,8 +564,8 @@ IndexSymbol Assembler::declareSymbol(const std::string &ident) {
             NO_TYPE,
             THIS,
             NOT_DEFINED
-    ));
-    return {(int32_t) symbols.size() - 1, symbols.back().get()};
+    );
+    return {(uint32_t) symbols.size() - 1, symbols.back().get()};
 }
 
 Relocation *Assembler::addRelLiteral(IndexSymbol symbol, int offset) {
@@ -601,7 +596,7 @@ Relocation *Assembler::addRelSymbol(IndexSymbol symbol, int offsetLiteral) {
     return relocations.back().get();
 }
 
-Relocation *Assembler::addRelLiteral(int32_t value, int offsetLiteral) {
+Relocation *Assembler::addRelLiteral(uint32_t value, int offsetLiteral) {
     auto &section = *sections[currSection].get();
     auto offset = section.addLiteral(value);
     relocations.emplace_back(std::make_unique<Relocation>(
@@ -624,25 +619,22 @@ void Assembler::correctRelocations() {
             auto symbol = symbols[rel->core.symbolIndex].get();
             auto value = getValueOfSymbol(symbol);
             auto section = sections[rel->core.sectionIndex].get()->literalsSection;
-            section.write(&value, rel->core.offset, 4);
-        }
+            section.fixWord(&value, rel->core.offset);
+        } else if (rel->core.type == R_32_IMMEDIATE)
+            rel->core.offset += (int32_t) sections[rel->core.sectionIndex]->core.locationCnt() + JMP_OVER_LITERALS;
     }
     for (auto &rel: relocations) {
         if (rel->core.type == R_12b) {
-            auto section = sections[rel->core.sectionIndex].get();
-            auto destPtr = section->core.data.data() + rel->core.offset;
-            auto symbolIndex = rel->core.symbolIndex;
-            int32_t symbolOffset = sections[rel->core.sectionIndex]->core.locationCnt()
-                                   - (rel->core.offset - DISPLACEMENT_SIZE_BYTES) + JMP_OVER_LITERALS;
-            for (auto &rel2: relocations)
-                if (rel2->core.type == R_32b_LOCAL || rel2->core.type == R_32_GLOBAL)
-                    if (rel2->core.symbolIndex == symbolIndex && rel2->core.sectionIndex == rel->core.sectionIndex) {
-                        symbolOffset += (int32_t) rel2->core.offset;
-                        break;
-                    }
+            auto destPtr =
+                    sections[rel->core.sectionIndex].get()->core.data.data() + rel->core.offset;
+            int32_t symbolOffset = (int32_t) sections[rel->core.sectionIndex]->core.locationCnt()
+                                   - (rel->core.offset - DISPLACEMENT_SIZE_BYTES) + JMP_OVER_LITERALS + 4;
             writeDisplacement(destPtr, symbolOffset);
         }
     }
+}
+
+void Assembler::deleteRelocations() {
     relocations
             .erase(std::remove_if(
                            relocations.begin(),
@@ -659,25 +651,16 @@ void Assembler::appendLiterals() {
         literalsSize = sect->literalsSection.locationCnt();
         if (literalsSize > 0) {
             auto instr =
-                    std::make_unique<Jmp_Instr>(JMP, new LiteralImm(literalsSize), this);
+                    std::make_unique<Jmp_Instr>(JMP, new LiteralImm(literalsSize + 4), this);
             sect->appendInstr(&instr->bytes);
             sect->appendLiterals();
         }
     }
 }
 
-bool Assembler::isSymbolDefined(Symbol *symbol) const {
-    auto indexSymbol = findSymbol(symbol->core.name);
-    if (indexSymbol.index == -1)
-        return false;
-    if (!symbol->core.flags.defined)
-        return false;
-    return true;
-}
-
-int32_t Assembler::getValueOfSymbol(Symbol *symbol) const {
+uint32_t Assembler::getValueOfSymbol(Symbol *symbol) const {
     if (symbol->core.flags.symbolType == EQU)
-        return (int32_t) symbol->core.offset;
+        return symbol->core.offset;
     auto section = sections[symbol->core.sectionIndex].get();
     return section->readWord(symbol->core.offset);
 }
@@ -690,13 +673,16 @@ Relocation *Assembler::symbolAlreadyRelocated(IndexSymbol symbol) const {
     return nullptr;
 }
 
-RELOCATION Assembler::getRelocationType(Symbol *symbol) const {
-    if (symbol->core.flags.source == THIS)
+RELOCATION Assembler::getRelocationType(Symbol *symbol, bool fromWord) const {
+    if (symbol->core.flags.source == THIS) {
         if (symbol->core.sectionIndex == UNDEFINED)
             return R_32_UND;
         else if (symbol->core.sectionIndex == currSection)
             return R_32b_LOCAL;
-    return R_32_GLOBAL;
+    }
+    if (fromWord)
+        return R_32_IN_DIR;
+    return R_32_IMMEDIATE;
 }
 
 void Assembler::parseCondJmp(unsigned char inst, unsigned char regS, unsigned char regD, Operand *operand) {
@@ -706,15 +692,98 @@ void Assembler::parseCondJmp(unsigned char inst, unsigned char regS, unsigned ch
     operand->log(std::cout);
     std::cout << "\n";
 #endif
+    parsingJmp = true;
     auto instr = std::make_unique<JmpCond_Instr>(static_cast<enum INSTRUCTION>(inst),
                                                  regS, regD, operand, this);
     instr->insertInstr(this);
+    parsingJmp = false;
 }
 
 void Assembler::parseStore(unsigned char gpr1, unsigned char gpr2, int16_t offset) {
 #ifdef LOG_PARSER
-    std::cout << "STORE: %r" << static_cast<int>(gpr1) << ", [%r" << static_cast<int>(gpr2) << "+" << offset << "]\n";
+    std::cout << "STORE: %r" << static_cast<int>(gpr1) << ", [%r" << static_cast<int>(gpr2) << "+" << offset
+              << "]\n";
 #endif
     auto instr = std::make_unique<Store_Instr>(gpr1, gpr2, offset);
     instr->insertInstr(this);
+}
+
+bool Assembler::isIndexSymbolDefined(IndexSymbol &indexSymbol) {
+    if (indexSymbol.symbol == nullptr)
+        return false;
+    return indexSymbol.symbol->core.flags.defined;
+}
+
+IndexSymbol Assembler::isSymbolDefined(const std::string &ident) const {
+    auto indexSymbol = findSymbol(ident);
+    if (!isIndexSymbolDefined(indexSymbol))
+        return {0, nullptr};
+    return indexSymbol;
+}
+
+bool Assembler::isSymbolDeclared(const std::string &ident) const {
+    auto indexSymbol = findSymbol(ident);
+    return isSymbolDeclared(indexSymbol);
+}
+
+bool Assembler::isSymbolDeclared(IndexSymbol &indexSymbol) {
+    if (indexSymbol.symbol == nullptr)
+        return false;
+    return true;
+}
+
+bool Assembler::isSymbolDefined(IndexSymbol &indexSymbol) {
+    if (!isIndexSymbolDefined(indexSymbol))
+        return false;
+    return true;
+}
+
+bool Assembler::isSymbolGlobal(const std::string &ident) const {
+    auto indexSymbol = findSymbol(ident);
+    return isSymbolGlobal(indexSymbol);
+}
+
+bool Assembler::isSymbolGlobal(IndexSymbol &indexSymbol) {
+    if (indexSymbol.symbol == nullptr)
+        throw std::runtime_error("Error: Symbol does not exist.");
+    return indexSymbol.symbol->core.flags.scope == SCOPE::GLOBAL;
+}
+
+EquResolved Assembler::tryToResolveEqu(EquOperand *operand) {
+    if (!operand->isLabel())
+        return {true, operand->getValue()};
+    auto ident = operand->getIdent();
+    auto symbolIndex = isSymbolDefined(ident);
+    if (isIndexSymbolDefined(symbolIndex))
+        return {true, getValueOfSymbol(symbolIndex.symbol)};
+    if (isSymbolDeclared(symbolIndex)) {
+        if (symbolIndex.symbol->core.flags.symbolType != NO_TYPE
+            && symbolIndex.symbol->core.flags.symbolType != EQU)
+            symbolDuplicate(symbolIndex.symbol->core.name);
+        else
+            declareSymbol(ident);
+    }
+    return {false};
+}
+
+IndexSymbol Assembler::addSymbol
+        (const std::string &ident, uint32_t sectionIndex,
+         SCOPE scope, uint32_t offset,
+         enum SYMBOL symbolType,
+         SOURCE source, enum DEFINED defined) {
+    symbols.emplace_back(
+            std::make_unique<Symbol>(
+                    ident,
+                    sectionIndex,
+                    scope,
+                    offset,
+                    symbolType,
+                    source,
+                    defined
+            ));
+    return {(uint32_t) symbols.size() - 1, symbols.back().get()};
+}
+
+void Assembler::symbolNotDefined(const std::string &ident) {
+    throw std::runtime_error("Error: Symbol " + ident + " is not defined.");
 }

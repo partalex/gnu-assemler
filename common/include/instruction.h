@@ -37,7 +37,7 @@ public:
 
     virtual void setRegC(uint8_t) final;
 
-    virtual void setDisplacement(int32_t) final;
+    virtual void setDisplacement(uint32_t) final;
 
     virtual void insertInstr(Assembler *);
 
@@ -129,7 +129,7 @@ public:
 
     explicit Load_Instr(uint32_t bytes) : Instruction(bytes) {}
 
-    explicit Load_Instr(uint8_t, uint8_t, int16_t);
+    explicit Load_Instr(uint8_t, uint8_t, uint32_t);
 };
 
 class Store_Instr : public Instruction {

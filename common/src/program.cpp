@@ -18,7 +18,6 @@ Program::Program() : memory(MIN_ADDRESS, MEM_SIZE, SEGMENT_SIZE) {
         throw std::runtime_error("Could not open log file!");
 }
 
-
 void Program::load(const std::string &inputFile) {
     std::ifstream file(inputFile);
     if (!file.is_open())
@@ -89,10 +88,9 @@ void Program::initNew() {
 }
 
 void Program::readNext() {
-    if (_incrementPC)
+    if (incrementPC)
         PC() += INSTR_SIZE;
-    INSTR_SIZE;
-    _incrementPC = true;
+    incrementPC = true;
     loadInstr();
 }
 
@@ -119,7 +117,7 @@ void Program::logState() {
         *LOG << '\n';
     }
     *LOG << "PC =0x" << std::setfill('0') << std::setw(8) << std::hex << PC() << " "
-//         << "LR =0x" << std::setfill('0') << std::setw(8) << std::hex << LR << " "
+         //         << "LR =0x" << std::setfill('0') << std::setw(8) << std::hex << LR << " "
          << "SP =0x" << std::setfill('0') << std::setw(8) << std::hex << SP() << " "
          << "psw=0x" << std::setfill('0') << std::setw(8) << std::hex << psw.val << '\n';
     *LOG << "STATUS =0x" << std::setfill('0') << std::setw(8) << std::hex << csr_registers[16] << " "
@@ -138,7 +136,7 @@ void Program::executeCurrent() {
     auto code = (INSTRUCTION) currInstr.byte_0;
     switch (code) {
         case HALT:              // halt
-            _isEnd = true;
+            isEnd = true;
             break;
         case INT:               // push status; push pc; cause<=4; status<=status&(~0x1); pc<=handler;
             push(STATUS());
@@ -146,56 +144,56 @@ void Program::executeCurrent() {
             CAUSE() = STATUS::SOFTWARE;
             STATUS() &= ~0x1;
             PC() = HANDLER();
-            _incrementPC = false;
+            incrementPC = false;
             break;
         case CALL:              // push pc; pc<=gpr[A=PC]+gpr[B=0]+D
             push(PC());
             PC() = gpr_registers[currInstr.REG_A] + gpr_registers[currInstr.REG_B] + displacement();
-            _incrementPC = false;
+            incrementPC = false;
             break;
         case CALL_MEM:         // push pc; pc<=memory[gpr[A=PC]+gpr[B=0]+D]
             push(PC());
             PC() = getMemory(
                     gpr_registers[currInstr.REG_A] + gpr_registers[currInstr.REG_B] + displacement());
-            _incrementPC = false;
+            incrementPC = false;
             break;
         case JMP:               // pc<=gpr[A=PC]+D
             PC() = gpr_registers[currInstr.REG_A] + displacement();
-            _incrementPC = false;
+            incrementPC = false;
             break;
         case BEQ :               // if (gpr[B] == gpr[C]) pc<=gpr[A=PC]+D
             if (gpr_registers[currInstr.REG_B] == gpr_registers[currInstr.REG_C])
                 PC() = gpr_registers[currInstr.REG_A] + displacement();
-            _incrementPC = false;
+            incrementPC = false;
             break;
         case BNE:               // if (gpr[B] != gpr[C]) pc<=gpr[A=PC]+D
             if (gpr_registers[currInstr.REG_B] != gpr_registers[currInstr.REG_C])
                 PC() = gpr_registers[currInstr.REG_A] + displacement();
-            _incrementPC = false;
+            incrementPC = false;
             break;
         case BGT:             // if (gpr[B] signed> gpr[C]) pc<=gpr[A]+D
             if (gpr_registers[currInstr.REG_B] > gpr_registers[currInstr.REG_C])
                 PC() = gpr_registers[currInstr.REG_A] + displacement();
-            _incrementPC = false;
+            incrementPC = false;
             break;
         case JMP_MEM:           // pc<=memory[gpr[A]+D]
             PC() = getMemory(gpr_registers[currInstr.REG_A] + displacement());
-            _incrementPC = false;
+            incrementPC = false;
             break;
         case BEQ_MEM:           // if (gpr[B] == gpr[C]) pc<=memory[gpr[A=PC]+D]
             if (gpr_registers[currInstr.REG_B] == gpr_registers[currInstr.REG_C])
                 PC() = getMemory(gpr_registers[currInstr.REG_A] + displacement());
-            _incrementPC = false;
+            incrementPC = false;
             break;
         case BNE_MEM:          // if (gpr[B] != gpr[C]) pc<=memory[gpr[A=PC]+D]
             if (gpr_registers[currInstr.REG_B] != gpr_registers[currInstr.REG_C])
                 PC() = getMemory(gpr_registers[currInstr.REG_A] + displacement());
-            _incrementPC = false;
+            incrementPC = false;
             break;
         case BGT_MEM:          // if (gpr[B] signed> gpr[C]) pc<=memory[gpr[A=PC]+D]
             if (gpr_registers[currInstr.REG_B] > gpr_registers[currInstr.REG_C])
                 PC() = getMemory(gpr_registers[currInstr.REG_A] + displacement());
-            _incrementPC = false;
+            incrementPC = false;
             break;
         case XCHG:              // temp<=gpr[B]; gpr[B]<=gpr[C]; gpr[C]<=temp;
             temp = gpr_registers[currInstr.REG_B];
@@ -260,8 +258,7 @@ void Program::executeCurrent() {
             gpr_registers[currInstr.REG_A] = gpr_registers[currInstr.REG_B] + displacement();
             break;
         case LD_IND:           // gpr[A]<=memory[gpr[B]+gpr[C]+D]
-            gpr_registers[currInstr.REG_A] =
-                    gpr_registers[currInstr.REG_B] + gpr_registers[currInstr.REG_C] + displacement();
+            gpr_registers[currInstr.REG_A] = getMemory(gpr_registers[currInstr.REG_B] + gpr_registers[currInstr.REG_C] + displacement());
             break;
         case LD_POST_INC:       // gpr[A]<=memory[gpr[B]]; gpr[B]<=gpr[B]+D ## POP, RET
             gpr_registers[currInstr.REG_A] = getMemory(gpr_registers[currInstr.REG_B]);
@@ -478,3 +475,6 @@ int32_t Program::displacement() {
     return castToSign(currInstr.DISPLACEMENT, 12);
 }
 
+void Program::setReg0() {
+    gpr_registers[GPR_R0] = 0;
+}

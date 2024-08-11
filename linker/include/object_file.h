@@ -12,12 +12,12 @@
 
 class ObjectFile {
 public:
-    std::string _name;
-    std::vector<SectionLink> _sections;
-    std::vector<SymbolLink> _symbols;
-    std::vector<RelocationLink> _relocations;
+    std::string name;
+    std::vector<SectionLink> sections;
+    std::vector<SymbolLink> symbols;
+    std::vector<RelocationLink> relocations;
 
-    explicit ObjectFile(std::string name) : _name(std::move(name)) {}
+    explicit ObjectFile(std::string name) : name(std::move(name)) {}
 
     void loadFromFile(const std::string &);
 

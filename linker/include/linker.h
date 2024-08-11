@@ -13,7 +13,7 @@ typedef struct {
 
 struct SortedMapSection {
     std::string name;
-    uint32_t addr;
+    uintptr_t addr;
 
     bool operator<(const SortedMapSection &other) const {
         return addr < other.addr;
@@ -30,7 +30,7 @@ class Linker {
 public:
     LinkerOptions options;
 
-    std::string _emulatorPath = "../../emulator/bin/";
+    std::string emulatorPath = "../../emulator/bin/";
     std::string outputFile;
     std::vector<std::string> inputNames;
     std::vector<ObjectFile> inputFiles;
@@ -38,13 +38,14 @@ public:
     std::set<SortedMapSection> _willingSectionMapAddr; // in parseArgs()
 
     std::vector<SectionLink *> sections; // in resolveSymbols()
-    std::unordered_map<std::string, SymbolLink *> _globSymMapSymbol; // in resolveSymbols()
-    std::unordered_map<std::string, SectionLink *> _globSymMapSection; // in resolveSymbols()
-    std::unordered_map<SectionLink *, ObjectFile *> _sectionMapFile; // in resolveSymbols()
-    std::unordered_map<std::string, std::list<SectionLink *>> _mapSameSections; // in resolveSymbols()
+    std::unordered_map<std::string, SymbolLink *> globSymMapSymbol; // in resolveSymbols()
+    std::unordered_map<std::string, SectionLink *> globSymMapSection; // in resolveSymbols()
+    std::unordered_map<SectionLink *, ObjectFile *> sectionMapFile; // in resolveSymbols()
+    std::unordered_map<std::string, std::list<SectionLink *>> mapSameSections; // in resolveSymbols()
+    std::unordered_map<std::string, std::unique_ptr<SectionLink>> mapMergedSections; // mergeSections()
 
-    std::set<SortedMapSection> _resultSectionMapAddr; // in placeSection()
-    std::unordered_map<SectionLink *, char* > _sectionAddr; // in placeSection()
+    std::set<SortedMapSection> resultSectionMapAddr; // in placeSection()
+    std::unordered_map<SectionLink *, uintptr_t> sectionAddr; // in placeSection()
 
     ~Linker() = default;
 
@@ -53,6 +54,8 @@ public:
     static Linker &singleton();
 
     void log() const;
+
+    void mergeSections();
 
     void parseArgs(int argc, char *argv[]);
 

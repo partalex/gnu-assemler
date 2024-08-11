@@ -60,8 +60,15 @@ void SectionLink::serializeClean(std::ostream &out, uint64_t startAddress, char 
     }
 }
 
-void SectionLink::reallocateIfNeeded(uint32_t pos, uint64_t length) {
+bool SectionLink::checkSize(uint32_t pos, uint32_t length) {
     if (pos + length <= data.size())
+        return true;
+    return false;
+}
+
+
+void SectionLink::reallocateIfNeeded(uint32_t pos, uint32_t length) {
+    if (checkSize(pos, length))
         return;
     auto newSize = pos + length;
     data.resize(newSize);
@@ -79,7 +86,7 @@ int32_t SectionLink::readWord(uint32_t offset) {
     return word;
 }
 
-void SectionLink::write(void *src, uint32_t pos, uint32_t length) {
+void SectionLink::write(const void *src, uint32_t pos, uint32_t length) {
     reallocateIfNeeded(pos, length);
     std::memcpy(data.data() + pos, src, length);
 }
@@ -88,10 +95,21 @@ uint32_t SectionLink::locationCnt() const {
     return (uint32_t) data.size();
 }
 
-void SectionLink::append(void *src, uint32_t length) {
+void SectionLink::append(const void *src, uint32_t length) {
     write(src, locationCnt(), length);
 }
 
-void SectionLink::writeWord(void *src, uint32_t index) {
-    write(src, index * 4, 4);
+void SectionLink::writeWord(void *src, uint32_t offset) {
+    write(src, offset, 4);
+}
+
+void SectionLink::fixWord(void *src, uint32_t offset) {
+    if (!checkSize(offset, 4))
+        throw std::runtime_error("Writing outside of section bounds");
+    std::memcpy(data.data() + offset, src, 4);
+}
+
+SectionLink &SectionLink::operator+=(const SectionLink &other) {
+    append(other.data.data(), other.data.size());
+    return *this;
 }

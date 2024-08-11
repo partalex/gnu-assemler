@@ -2,7 +2,7 @@
 
 #include <iomanip>
 
-SymbolLink::SymbolLink(std::string name, uint32_t sectionIndex, SCOPE scope, int32_t offset, SYMBOL symbolType,
+SymbolLink::SymbolLink(std::string name, uint32_t sectionIndex, SCOPE scope, uint32_t offset, SYMBOL symbolType,
                        SOURCE source, enum DEFINED defined)
         : name(std::move(name)), sectionIndex(sectionIndex), offset(offset) {
     flags.scope = scope;
@@ -34,3 +34,5 @@ void SymbolLink::tableHeader(std::ostream &out) {
         << std::setw(11) << "Defined"
         << "\n";
 }
+
+

@@ -1,6 +1,7 @@
 # file: main.s
 
-.global handler, my_start, my_counter
+.global my_start, my_counter
+.extern handler
 
 .section my_code
 my_start:

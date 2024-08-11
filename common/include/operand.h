@@ -25,11 +25,11 @@ public:
 
 class WordOperand : public Operand {
 public:
-    WordOperand *_next = nullptr;
+    WordOperand *next = nullptr;
 
-    virtual ~WordOperand() { delete _next; }
+    virtual ~WordOperand() { delete next; }
 
-    explicit WordOperand(WordOperand *next = nullptr) : _next(next) {
+    explicit WordOperand(WordOperand *next = nullptr) : next(next) {
     }
 
     virtual void logOne(std::ostream &) = 0;
@@ -41,11 +41,10 @@ public:
 };
 
 class WordLiteral : public WordOperand {
-    int32_t _value;
+    uint32_t value;
 public:
-    explicit WordLiteral(int32_t value, WordOperand *next = nullptr) : _value(value) {
-        _next = next;
-    }
+    explicit WordLiteral(uint32_t value, WordOperand *next = nullptr)
+            : value(value), WordOperand(next) {}
 
     void *getValue() override;
 
@@ -55,11 +54,10 @@ public:
 };
 
 class WordIdent : public WordOperand {
-    std::string _ident;
+    std::string ident;
 public:
-    explicit WordIdent(std::string ident, WordOperand *next = nullptr) : _ident(std::move(ident)) {
-        _next = next;
-    }
+    explicit WordIdent(std::string ident, WordOperand *next = nullptr)
+            : ident(std::move(ident)), WordOperand(next) {}
 
     void *getValue() override;
 
@@ -85,32 +83,32 @@ public:
 
     void log(std::ostream &) override;
 
-    virtual EquResolved tryToResolve(Assembler *) = 0;
-
     virtual bool isLabel() = 0;
+
+    virtual std::string getIdent() = 0;
 
     virtual bool isResolved(Assembler *) = 0;
 
-    virtual int64_t getValue() { return 0; }
+    virtual uint32_t getValue() = 0;
 };
 
 class EquLiteral : public EquOperand {
-    int32_t _value;
+    uint32_t value;
 public:
-    explicit EquLiteral(int32_t value, unsigned char op = E_ADD, EquOperand *next = nullptr)
-            : _value(value), EquOperand(op, next) {}
+    explicit EquLiteral(uint32_t value, unsigned char op = E_ADD, EquOperand *next = nullptr)
+            : value(value), EquOperand(op, next) {}
 
-    int64_t getValue() override;
+    uint32_t getValue() override;
 
     void logOne(std::ostream &) override;
 
     Addressing addRelocation(Assembler *) override;
 
-    EquResolved tryToResolve(Assembler *) override;
-
     bool isResolved(Assembler *) override { return true; }
 
-    bool isLabel() override { return false; }
+    bool isLabel() override;
+
+    std::string getIdent() override;
 
 };
 
@@ -120,7 +118,7 @@ public:
     explicit EquIdent(std::string ident, unsigned char op = E_ADD, EquOperand *next = nullptr)
             : ident(std::move(ident)), EquOperand(op, next) {}
 
-    int64_t getValue() override;
+    uint32_t getValue() override;
 
     void logOne(std::ostream &) override;
 
@@ -128,124 +126,123 @@ public:
 
     Addressing addRelocation(Assembler *) override;
 
-    bool isLabel() override { return true; }
+    bool isLabel() override;
 
     bool isResolved(Assembler *) override;
 
-    EquResolved tryToResolve(Assembler *) override;
+    std::string getIdent() override;
 };
 
 class LiteralImm : public Operand {
 public:
-    explicit LiteralImm(int32_t value) : _value(value) {}
+    explicit LiteralImm(uint32_t value) : value(value) {}
 
     void log(std::ostream &) override;
 
     Addressing addRelocation(Assembler *) override;
 
 private:
-    int32_t _value;
+    uint32_t value;
 };
 
 class LiteralInDir : public Operand {
 public:
-    explicit LiteralInDir(int32_t value) : _value(value) {}
+    explicit LiteralInDir(uint32_t value) : value(value) {}
 
     void log(std::ostream &) override;
 
     Addressing addRelocation(Assembler *) override;
 
 private:
-    int32_t _value;
+    uint32_t value;
 };
 
-class IdentAddr : public Operand {
+class IdentImm : public Operand {
 public:
-    explicit IdentAddr(std::string ident) :
-            _ident(std::move(ident)) {}
+    explicit IdentImm(std::string ident) :
+            ident(std::move(ident)) {}
 
     void log(std::ostream &) override;
 
-    std::string stringValue() override { return _ident; }
+    std::string stringValue() override { return ident; }
 
     Addressing addRelocation(Assembler *) override;
 
 private:
-    std::string _ident;
+    std::string ident;
+};
+
+class IdentInDir : public Operand {
+public:
+    explicit IdentInDir(std::string ident) :
+            ident(std::move(ident)) {}
+
+    void log(std::ostream &) override;
+
+    std::string stringValue() override { return ident; }
+
+    Addressing addRelocation(Assembler *) override;
+
+private:
+    std::string ident;
 };
 
 class RegInDir : public Operand {
 public:
-    explicit RegInDir(uint8_t gpr) : _gpr(gpr) {}
+    explicit RegInDir(uint8_t gpr) : gpr(gpr) {}
 
     void log(std::ostream &) override;
 
     Addressing addRelocation(Assembler *) override;
 
 private:
-    uint8_t _gpr;
+    uint8_t gpr;
 };
 
 class RegDir : public Operand {
 public:
-    explicit RegDir(uint8_t gpr) : _gpr(gpr) {}
+    explicit RegDir(uint8_t gpr) : gpr(gpr) {}
 
     void log(std::ostream &) override;
 
     Addressing addRelocation(Assembler *) override;
 
 private:
-    uint8_t _gpr;
+    uint8_t gpr;
 };
 
 class RegInDirOffLiteral : public Operand {
 public:
-    explicit RegInDirOffLiteral(uint8_t gpr, int32_t offset) : _gpr(gpr), _offset(offset) {}
+    explicit RegInDirOffLiteral(uint8_t gpr, uint32_t offset) : gpr(gpr), offset(offset) {}
 
     void log(std::ostream &) override;
 
     Addressing addRelocation(Assembler *) override;
 
 private:
-    uint8_t _gpr;
-    int32_t _offset;
+    uint8_t gpr;
+    uint32_t offset;
 };
 
 class RegInDirOffIdent : public Operand {
 public:
-    explicit RegInDirOffIdent(uint8_t gpr, std::string ident) : _gpr(gpr), _ident(std::move(ident)) {}
+    explicit RegInDirOffIdent(uint8_t gpr, std::string ident) : gpr(gpr), ident(std::move(ident)) {}
 
     void log(std::ostream &) override;
 
     Addressing addRelocation(Assembler *) override;
 
 
-    std::string stringValue() override { return _ident; }
+    std::string stringValue() override { return ident; }
 
 private:
-    uint8_t _gpr;
-    std::string _ident;
-};
-
-class TwoReg : public Operand {
-public:
-    explicit TwoReg(uint8_t gpr1, uint8_t gpr2) :
-            _gpr1(gpr1), _gpr2(gpr2) {}
-
-    void log(std::ostream &) override;
-
-    uint8_t getGpr1() const { return _gpr1; }
-
-    uint8_t getGpr2() const { return _gpr2; }
-
-private:
-    uint8_t _gpr1;
-    uint8_t _gpr2;
+    uint8_t gpr;
+    std::string ident;
 };
 
 class CsrOp : public Operand {
 public:
-    explicit CsrOp(uint8_t csr) : _csr(csr) {}
+    explicit CsrOp(uint8_t csr) : csr(csr) {}
 
     void log(std::ostream &) override;
 
@@ -254,5 +251,5 @@ public:
     std::string stringValue() override;
 
 private:
-    uint8_t _csr;
+    uint8_t csr;
 };

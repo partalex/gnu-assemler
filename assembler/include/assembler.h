@@ -29,17 +29,21 @@ class WordOperand;
 
 class Assembler {
     static std::unique_ptr<Assembler> _instance;
+
+    [[nodiscard]] static bool isIndexSymbolDefined(IndexSymbol &);
+
 public:
     std::string linkerPath = "../../linker/bin/";
     std::string output = "obj.o";
     std::string outputTxt = "log.txt";
     std::string input;
+    bool parsingJmp = false;
 
     std::vector<std::unique_ptr<Symbol>> symbols;
     std::vector<std::unique_ptr<Section>> sections;
     std::vector<std::unique_ptr<Relocation>> relocations;
 
-    std::unordered_map<Symbol *, std::unique_ptr<EquOperand>> equExpr;
+    std::unordered_map<Symbol *, EquOperand *> equExpr;
     std::unordered_map<Symbol *, std::list<Instruction *>> equBackPatch;
     // tryToResolve for .word
     std::unordered_map<Symbol *, std::list<void *>> wordBackPatch;
@@ -143,18 +147,36 @@ public:
 
     Relocation *symbolAlreadyRelocated(IndexSymbol) const;
 
-    Relocation *addRelLiteral(int32_t, int = 0);
+    Relocation *addRelLiteral(uint32_t, int = 0);
 
     void insertInstr(Instruction *instr);
 
     void correctRelocations();
 
+    void deleteRelocations();
+
     void appendLiterals();
 
-    bool isSymbolDefined(Symbol *) const;
+    IndexSymbol addSymbol(const std::string &, uint32_t, SCOPE, uint32_t, enum SYMBOL, SOURCE, enum DEFINED);
 
-    RELOCATION getRelocationType(Symbol *) const;
+    [[nodiscard]] EquResolved tryToResolveEqu(EquOperand *);
 
-    int32_t getValueOfSymbol(Symbol *) const;
+    [[nodiscard]] IndexSymbol isSymbolDefined(const std::string &) const;
+
+    [[nodiscard]] static bool isSymbolDeclared(IndexSymbol &);
+
+    [[nodiscard]] bool isSymbolDeclared(const std::string &) const;
+
+    [[nodiscard]] static bool isSymbolDefined(IndexSymbol &);
+
+    [[nodiscard]] static bool isSymbolGlobal(IndexSymbol &);
+
+    static void symbolNotDefined(const std::string &);
+
+    [[nodiscard]]  bool isSymbolGlobal(const std::string &) const;
+
+    RELOCATION getRelocationType(Symbol *, bool = false) const;
+
+    uint32_t getValueOfSymbol(Symbol *) const;
 
 };

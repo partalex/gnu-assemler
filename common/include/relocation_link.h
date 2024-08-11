@@ -4,9 +4,9 @@
 
 class RelocationLink {
 public:
-    uint64_t symbolIndex;
-    uint64_t sectionIndex;
-    uint64_t offset;
+    uint32_t symbolIndex;
+    uint32_t sectionIndex;
+    int32_t offset;
     RELOCATION type;
 
     void static tableHeader(std::ostream &);

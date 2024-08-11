@@ -9,6 +9,8 @@ public:
 
     friend std::ostream &operator<<(std::ostream &, const SectionLink &);
 
+    SectionLink &operator+=(const SectionLink &);
+
     explicit SectionLink(std::string name)
             : name(std::move(name)) {}
 
@@ -20,19 +22,21 @@ public:
 
     void static tableHeader(std::ostream &);
 
-    void reallocateIfNeeded(uint32_t, uint64_t);
+    void reallocateIfNeeded(uint32_t, uint32_t);
+
+    [[nodiscard]] bool checkSize(uint32_t, uint32_t);
 
     void addToLocCounter(uint32_t);
 
     int32_t readWord(uint32_t);
 
-    void write(void *, uint32_t, uint32_t);
+    void write(const void *, uint32_t, uint32_t);
 
     void writeWord(void *, uint32_t);
 
-    void append(void *, uint32_t);
+    void fixWord(void *, uint32_t);
 
-    void appendSection(SectionLink *);
+    void append(const void *, uint32_t);
 
     [[nodiscard]] uint32_t locationCnt() const;
 

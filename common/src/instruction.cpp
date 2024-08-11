@@ -21,7 +21,7 @@ std::ostream &operator<<(std::ostream &out, Instruction &instr) {
     return out;
 }
 
-void Instruction::setDisplacement(int32_t offset) {
+void Instruction::setDisplacement(uint32_t offset) {
     if (!fitIn12Bits(offset))
         throw std::runtime_error("Displacement out of range.");
     bytes.DISPLACEMENT = offset;
@@ -94,7 +94,7 @@ Load_Instr::Load_Instr(Operand *operand, uint8_t gpr, Assembler *as)
         case REG_DIR: // RegDir, LiteralInDir, IdentImm
             setMode(0b0001);
             break;
-        case IN_DIR_OFFSET: // RegInDirOffIdent, RegInDir, LiteralInDir, IdentAddr
+        case IN_DIR_OFFSET: // RegInDirOffIdent, RegInDir, LiteralInDir, IdentInDir
             setMode(0b0010);
             break;
         case IN_DIR_INDEX: // RegInDirOffLiteral
@@ -109,7 +109,7 @@ Load_Instr::Load_Instr(Operand *operand, uint8_t gpr, Assembler *as)
     }
 }
 
-Load_Instr::Load_Instr(uint8_t gprD, uint8_t gprS, int16_t offset)
+Load_Instr::Load_Instr(uint8_t gprD, uint8_t gprS, uint32_t offset)
         : Instruction(INSTRUCTION::LD, gprD, gprS) {
     setDisplacement(offset);
 }
@@ -137,15 +137,12 @@ JmpCond_Instr::JmpCond_Instr(INSTRUCTION instr, uint8_t regS, uint8_t regD, Oper
     // MMMM==0b1010: if (gpr[B] != gpr[C]) pc<=mem32[gpr[A=PC]+D];
     // MMMM==0b1011: if (gpr[B] signed> gpr[C]) pc<=mem32[gpr[A=PC]+D];
     switch (addressing.addressing) {
-        case REG_DIR:     // LiteralInDir, IdentAddr
-            setDisplacement(addressing.value);
+        case REG_DIR:     // LiteralInDir, IdentInDir
+            setDisplacement((int32_t) addressing.value);
             andMode(0b0111);
             break;
         case IN_DIR_OFFSET:   // LiteralInDir
-            orMode(0b1000);
-            break;
         case IN_DIR_IN_DIR:   // LiteralInDir
-            isInDirInDir = true;
             orMode(0b1000);
             break;
         default:
@@ -159,15 +156,14 @@ Call_Instr::Call_Instr(enum INSTRUCTION instruction, Operand *operand, Assembler
     setRegB(GPR_R0);
     auto addressing = operand->addRelocation(as);
     delete operand;
-    setDisplacement(addressing.value);
+    setDisplacement((int32_t) addressing.value);
     // MMMM==0b0000: pc<=gpr[A=PC]+gpr[B=0]+D;
     // MMMM==0b0001: pc<=mem32[gpr[A=PC]+gpr[B=0]+D]; // not used
     switch (addressing.addressing) {
         case REG_DIR:         // LiteralImm
             setMode(0b0000);
-            setDisplacement(addressing.value);
             break;
-        case IN_DIR_OFFSET:// LiteralImm, IdentAddr
+        case IN_DIR_OFFSET:// LiteralImm, IdentInDir
             setMode(0b0001);
             // displacement will be set in by relocation
             break;
@@ -185,19 +181,16 @@ Jmp_Instr::Jmp_Instr(enum INSTRUCTION instruction, Operand *operand, Assembler *
     setRegA(15);
     auto addressing = operand->addRelocation(as);
     delete operand;
-    setDisplacement(addressing.value);
+    setDisplacement((int32_t) addressing.value);
     // MMMM==0b0000: pc<=gpr[A=PC]+D;
     // MMMM==0b1000: pc<=mem32[gpr[A=PC]+D];
     switch (addressing.addressing) {
         // will line below be executed?
-        case REG_DIR:         // LiteralImm, IdentAddr
+        case REG_DIR:         // LiteralImm, IdentInDir
             setMode(0b0000);
             break;
         case IN_DIR_OFFSET:   // LiteralImm
-            setMode(0b1000);
-            break;
         case IN_DIR_IN_DIR:
-            isInDirInDir = true;
             setMode(0b1000);
             break;
         default:
@@ -217,13 +210,13 @@ Store_Instr::Store_Instr(uint8_t gpr, Operand *operand, Assembler *as)
     // MMMM==0b0010: mem32[mem32[gpr[A=PC]+gpr[B=0]+D]]<=gpr[C];
     // MMMM==0b0001: gpr[A]<=gpr[A]+D; mem32[gpr[A]]<=gpr[C];
     setRegA(addressing.reg);
-    setDisplacement(addressing.value);
+    setDisplacement((int32_t) addressing.value);
     switch (addressing.addressing) {
         case REG_DIR:           // IdentImm, RegDir, LiteralInDir
             // MMMM==0b0000: mem32[gpr[A=reg]+gpr[B=0]+D]<=gpr[C=gpr];
             setMode(0b0000);
             break;
-        case IN_DIR_OFFSET:     // RegInDirOffIdent, RegInDir, LiteralInDir, IdentAddr
+        case IN_DIR_OFFSET:     // RegInDirOffIdent, RegInDir, LiteralInDir, IdentInDir
             // MMMM==0b0010: mem32[mem32[gpr[A=PC]+gpr[B=0]+D]]<=gpr[C];
             // st [PC+off], %r1;
             setMode(0b0010);

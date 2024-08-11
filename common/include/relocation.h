@@ -12,7 +12,7 @@ public:
     std::string symbol;
     RelocationLink core;
 
-    Relocation(std::string, uint64_t, uint64_t, uint64_t, RELOCATION);
+    Relocation(std::string, uint32_t, uint32_t, int32_t, RELOCATION);
 
     void static tableHeader(std::ostream &);
 

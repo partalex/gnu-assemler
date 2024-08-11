@@ -11,12 +11,12 @@ class SymbolLink {
 public:
     std::string name;
     uint32_t sectionIndex;
-    int32_t offset;            // for EQU this is value
+    uint32_t offset;            // for EQU this is value
     SymbolLinkFlags flags;
 
     void static tableHeader(std::ostream &);
 
-    explicit SymbolLink(std::string, uint32_t, SCOPE, int32_t, SYMBOL,
+    explicit SymbolLink(std::string, uint32_t, SCOPE, uint32_t, SYMBOL,
                         SOURCE, enum DEFINED);
 
     SymbolLink() = default;

@@ -10,7 +10,10 @@ int main(int argc, char *argv[]) {
     linker.placeSection();
     linker.link();
 
+    linker.mergeSections();
+
     linker.log();
+
     linker.writeHex();
 
     if (linker.options.relocatable)

@@ -17,9 +17,9 @@ Linker &Linker::singleton() {
 
 void Linker::log() const {
     for (auto &inputFile: inputFiles) {
-        std::ofstream output(inputFile._name + ".txt");
+        std::ofstream output(inputFile.name + ".txt");
         if (!output)
-            throw std::runtime_error("Failed to open file: " + inputFile._name + ".txt");
+            throw std::runtime_error("Failed to open file: " + inputFile.name + ".txt");
         inputFile.log(output);
         output.close();
     }
@@ -83,44 +83,44 @@ void Linker::resolveSymbols() {
     // Iterate through all inputFiles
     for (auto &file: inputFiles) {
         // Iterate through all sections in file
-        for (auto &section: file._sections) {
+        for (auto &section: file.sections) {
             // Map section to file
-            _sectionMapFile[&section] = &file;
+            sectionMapFile[&section] = &file;
             // Add section to sections
             sections.emplace_back(&section);
             // Map section with same name
-            _mapSameSections[section.name].push_back(&section);
+            mapSameSections[section.name].push_back(&section);
         }
         // Iterate through all symbols in section
-        for (auto &symbol: file._symbols)
+        for (auto &symbol: file.symbols)
             // Look for Global symbols
             if (symbol.flags.scope == GLOBAL) {
-                auto it = _globSymMapSymbol.find(symbol.name);
-                if (it == _globSymMapSymbol.end())
+                auto it = globSymMapSymbol.find(symbol.name);
+                if (it == globSymMapSymbol.end())
                     // Not found
                     if (!symbol.flags.defined)
                         // If undefined, add it to the map with value nullptr
-                        _globSymMapSymbol[symbol.name] = nullptr;
+                        globSymMapSymbol[symbol.name] = nullptr;
                     else {
                         // If defined, add it to the map with value &symbol
-                        _globSymMapSymbol[symbol.name] = &symbol;
-                        _globSymMapSection[symbol.name] = &file._sections[symbol.sectionIndex];
+                        globSymMapSymbol[symbol.name] = &symbol;
+                        globSymMapSection[symbol.name] = &file.sections[symbol.sectionIndex];
                     }
                 else if (it->second != nullptr) {
                     if (symbol.flags.defined)
                         throw std::runtime_error("Symbol " + symbol.name + " already defined");
                 } else if (!symbol.flags.defined)
-                    _globSymMapSymbol[symbol.name] = nullptr;
+                    globSymMapSymbol[symbol.name] = nullptr;
                 else {
                     // If defined, add it to the map with value &symbol
-                    _globSymMapSymbol[symbol.name] = &symbol;
-                    _globSymMapSection[symbol.name] = &file._sections[symbol.sectionIndex];
+                    globSymMapSymbol[symbol.name] = &symbol;
+                    globSymMapSection[symbol.name] = &file.sections[symbol.sectionIndex];
                 }
             }
     }
 
     // Check if all symbols are defined
-    for (auto &symbol: _globSymMapSymbol)
+    for (auto &symbol: globSymMapSymbol)
         if (symbol.second == nullptr)
             throw std::runtime_error("Symbol " + symbol.first + " not defined");
 }
@@ -131,7 +131,7 @@ void Linker::testSectionSpace() {
         auto next = std::next(it);
         if (next == _willingSectionMapAddr.end())
             break;
-        auto list = _mapSameSections[it->name];
+        auto list = mapSameSections[it->name];
         uint32_t size = 0;
         for (auto &section: list)
             size += section->data.size();
@@ -151,7 +151,6 @@ void Linker::placeSection() {
     for (auto &section: sections)
         sectionNames.insert(section->name);
 
-    // TODO
     uint32_t addr = 0x40000000;
     uint32_t lastFreeAddr = addr;
 
@@ -161,27 +160,27 @@ void Linker::placeSection() {
     for (auto &section: _willingSectionMapAddr) {
         addr = section.addr;
         // map sections in _mapSameSections
-        auto list = _mapSameSections[section.name];
+        auto list = mapSameSections[section.name];
         // write to all sections with the same name
-        for (auto &sect: list) {
-            _sectionAddr[sect] = reinterpret_cast<char *>(addr);
+        for (auto sect: list) {
+            sectionAddr[sect] = addr;
             addr += sect->data.size();
         }
         lastFreeAddr = lastFreeAddr > addr ? lastFreeAddr : addr;
         // remove from sectionNames
         sectionNames.erase(section.name);
-        _resultSectionMapAddr.insert({section.name, section.addr});
+        resultSectionMapAddr.insert({section.name, section.addr});
     }
 
     addr = lastFreeAddr;
 
     // iterate though the rest of the sections -> sectionNames
     for (auto &sectionName: sectionNames) {
-        auto list = _mapSameSections[sectionName];
+        auto list = mapSameSections[sectionName];
         // add section name and address in  _resultMapAddr
-        _resultSectionMapAddr.insert({sectionName, addr});
-        for (auto &sect: list) {
-            _sectionAddr[sect] = reinterpret_cast<char *>(addr);
+        resultSectionMapAddr.insert({sectionName, addr});
+        for (auto sect: list) {
+            sectionAddr[sect] = addr;
             addr += sect->data.size();
         }
     }
@@ -209,7 +208,7 @@ void Linker::writeRelocatable() const {
 
     // Write all symbols to the output file
     for (const auto &file: inputFiles) {
-        for (const auto &symbol: file._symbols) {
+        for (const auto &symbol: file.symbols) {
             // Write symbol name
             uint32_t name_size = symbol.name.size();
             output.write(reinterpret_cast<const char *>(&name_size), sizeof(uint32_t));
@@ -228,7 +227,7 @@ void Linker::writeRelocatable() const {
 
     // Write all relocations to the output file
     for (const auto &file: inputFiles) {
-        for (const auto &relocation: file._relocations) {
+        for (const auto &relocation: file.relocations) {
             // Write relocation data
             output.write(reinterpret_cast<const char *>(&relocation), sizeof(RelocationLink));
         }
@@ -243,32 +242,24 @@ void Linker::link() {
     for (auto &file: inputFiles)
 
         // Iterate through relocations in section
-        for (auto &rel: file._relocations) {
+        for (auto &rel: file.relocations) {
 
             // write to this section
-            auto &destSect = file._sections[rel.sectionIndex];
+            auto &destSect = file.sections[rel.sectionIndex];
 
-            auto &symbol = file._symbols[rel.symbolIndex];
-            SectionLink *srcSect;
-            if (symbol.flags.scope == GLOBAL) {
-                symbol = *_globSymMapSymbol[file._symbols[rel.symbolIndex].name];
-                srcSect = _globSymMapSection[symbol.name];
-            } else
-                srcSect = &file._sections[symbol.sectionIndex];
-
-            auto srcAddr = _sectionAddr[srcSect] + symbol.offset;
-            auto destAddr = _sectionAddr[&destSect] + rel.offset;
-            int32_t temp;
+            auto &symbol = file.symbols[rel.symbolIndex];
+            auto ptrValue = std::make_unique<uint32_t>();
+            symbol = *globSymMapSymbol[file.symbols[rel.symbolIndex].name];
+            if (symbol.flags.symbolType == EQU)
+                *ptrValue.get() = symbol.offset;
+            else {
+                auto srcAddr = sectionAddr[globSymMapSection[file.symbols[rel.symbolIndex].name]];
+                *ptrValue.get() = srcAddr + symbol.offset;
+            }
             switch (rel.type) {
-                case R_32_GLOBAL:
-                    std::memcpy(destSect.data.data() + rel.offset, srcSect->data.data() + symbol.offset, 4);
-                    break;
-//                case R_12b:
-                case R_12b:
-                    temp = (int32_t) (srcAddr - destAddr) + 2;
-                    if (!fitIn12Bits(temp))
-                        throw std::runtime_error("Displacement out of range");
-                    writeDisplacement(destSect.data.data() + rel.offset, temp);
+                case R_32_IMMEDIATE:
+                case R_32_IN_DIR:
+                    destSect.fixWord(ptrValue.get(), rel.offset);
                     break;
                 default:
                     throw std::runtime_error("Unknown relocation type");
@@ -278,22 +269,18 @@ void Linker::link() {
 }
 
 void Linker::writeHex() const {
-    std::ofstream out(_emulatorPath + outputFile, std::ios::binary);
+    std::ofstream out(emulatorPath + outputFile, std::ios::binary);
     if (!out)
-        throw std::runtime_error("Failed to open file: " + _emulatorPath + outputFile);
+        throw std::runtime_error("Failed to open file: " + emulatorPath + outputFile);
 
     out << "# Sections: \n";
-    for (const auto &sect: _resultSectionMapAddr)
+    for (const auto &sect: resultSectionMapAddr)
         out << "# \t 0x" << std::hex << sect.addr << ": " << sect.name << "\n";
 
-    for (const auto &sect: _resultSectionMapAddr) {
+    for (const auto &sect: resultSectionMapAddr) {
         auto name = sect.name;
-        auto &list = _mapSameSections.at(sect.name);
-        auto address = sect.addr;
-        for (auto &section: list) {
-            section->serializeClean(out, address);
-            address += section->data.size();
-        }
+        auto *section = mapMergedSections.at(name).get();
+        section->serializeClean(out, sect.addr);
     }
     out.close();
 }
@@ -301,32 +288,40 @@ void Linker::writeHex() const {
 void Linker::writeExe() const {
     auto exeName = outputFile;
     exeName.erase(exeName.end() - 4, exeName.end());
-    std::ofstream exeOutput(_emulatorPath + exeName);
+    std::ofstream exeOutput(emulatorPath + exeName);
     if (!exeOutput)
-        throw std::runtime_error("Failed to open file: " + _emulatorPath + exeName);
+        throw std::runtime_error("Failed to open file: " + emulatorPath + exeName);
 
-    uint32_t numSections = _resultSectionMapAddr.size();
+    uint32_t numSections = resultSectionMapAddr.size();
     // write number of section
     exeOutput.write(reinterpret_cast<const char *>(&numSections), sizeof(numSections));
 
     // write sections using _sectionAddr
-    for (const auto &sect: _resultSectionMapAddr) {
+    for (const auto &sect: resultSectionMapAddr) {
 
         uint32_t address = sect.addr;
         exeOutput.write(reinterpret_cast<const char *>(&address), sizeof(address));
 
-        auto &list = _mapSameSections.at(sect.name);
-        uint32_t sectionSize = 0;
-        // calculate sectionSize
-        for (auto &section: list)
-            sectionSize += section->data.size();
+        auto *section = mapMergedSections.at(sect.name).get();
+
+        uint32_t sectionSize = section->data.size();
         // write sectionSize
         exeOutput.write(reinterpret_cast<const char *>(&sectionSize), sizeof(sectionSize));
 
         // write sections
-        for (auto &section: list)
-            // write data
-            exeOutput.write(reinterpret_cast<const char *>(section->data.data()), section->data.size());
+        exeOutput.write(reinterpret_cast<const char *>(section->data.data()), section->data.size());
     }
     exeOutput.close();
+}
+
+void Linker::mergeSections() {
+    // iterate through mapSameSections, merge sections with the same name inside mapMergedSections
+    // use operator += for merge
+    //    SectionLink &operator=(const SectionLink &);
+    for (auto &section: mapSameSections) {
+        auto &list = section.second;
+        mapMergedSections[section.first] = std::make_unique<SectionLink>(section.first);
+        for (auto &sect: list)
+            *mapMergedSections[section.first].get() += *sect;
+    }
 }

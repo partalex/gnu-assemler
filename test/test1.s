@@ -1,58 +1,46 @@
-.global message
-.extern continue, four
+.extern value1
+# .equ value1, 0xffff
 
-.equ test, init_pc - less
-.equ init_pc, 0xFFEEDDCC
-.equ less, 128
+.section code
+#    st %r1, $0x1       # OK: REG_DIR
+#    st %r1, $0xffff    # OK: IN_DIR_OFFSET
+#    st %r1, 0x1        # OK: IN_DIR_OFFSET
+#    st %r1, $value1    # OK: IN_DIR_OFFSET
+#    st %r1, 0x1        # OK: IN_DIR_OFFSET
+#    st %r1, 0xffff     # OK: IN_DIR_IN_DIR
+#    st %r1, value1     # OK: IN_DIR_IN_DIR
 
-.section data
-.word four,1,2,init_pc
-message:
-    .ascii "Hello Aleksandar"
-.section test1
-chick:
-    jmp message
-    jmp chick
-    jmp init_pc
-    jmp 0x40000000
-    ld $four, %r2
-    ld $test, %r2
-    ld $less, %r2
-    ld $init_pc, %r2
-    ld $2047, %r2
-    ld $2048, %r2
-    add %r0, %r1
-    ld $0x291, %r4
-    ld $test, %r4
-testJmp:
-    jmp message
-    ld continue, %r1
-    jmp continue
-    jmp end
-    jmp testJmp
-    jmp testJmp
-    jmp 0x50000000
-end:
-    jmp end
+#    ld $0x1, %r1       # OK: REG_DIR
+#    ld $0xffff, %r1    # OK: IN_DIR_OFFSET
+#    ld 0x1, %r1        # OK: IN_DIR_OFFSET
+#    ld $value1, %r1    # OK: IN_DIR_OFFSET
+#    ld 0x1, %r1        # OK: IN_DIR_OFFSET
+#    ld 0xffff, %r1     # OK: IN_DIR_IN_DIR
+#    ld value1, %r1     # OK: IN_DIR_IN_DIR
+
+
 .end
 
+# .section my_data
+# value1:
+# .word 0
+# .end
 
+# 0x00000000:   st %r1, value1      # st %r1, [PC+offset]
+# 0x00000004:   st %r1, $value1
+# 0x00000008:   jmp overLiterals
+# 0x0000000C:   00 00 00 00: address(value1)
+# 0x00000010:   00 00 00 00: value(value1)
+# .. .. .. ..
+# 0x00000100:   .word 0; value1
 
-# .extern message
-# .section code
-#    push %r1
-#    jmp message         # 0x00000000
-#.end
+############## After Linker ##############
 
-# literals pool         # 0x00000008
-# 00 00 00 00           # 0x00000008 message
-# 00 00 00 00           # 0x0000000c PC+message
+# 0x00000000:   st %r1,
+# 0x00000004:   st %r1, $value1
+# 0x00000008:   jmp overLiterals
+# 0x0000000C:   00 00 01 00: address of value1
+# 0x00000010:   00 00 00 00: value(value1)
+# .. .. .. ..
+# 0x00000100:   .word 0; value1
 
-# push %r14             # 0x00000000            0
-# ld PC+message, %r14   # 0x00000004            4
-# jmp mem[%r14]         # 0x00000008            8
-# pop %r14              # 0x0000000c            12
-# jmp overLiterals      # 0x00000010            16
-
-# literals pool         # 0x00000014            20
-# 00 00 00 00           # 0x00000014 message    24

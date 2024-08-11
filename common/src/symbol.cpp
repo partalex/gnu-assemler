@@ -3,7 +3,7 @@
 #include <iostream>
 #include <utility>
 
-Symbol::Symbol(std::string name, uint32_t sectionIndex, SCOPE scope, int32_t offset,
+Symbol::Symbol(std::string name, uint32_t sectionIndex, SCOPE scope, uint32_t offset,
                enum SYMBOL symbolType, SOURCE source, enum DEFINED defined)
         : core(std::move(name), sectionIndex, scope, offset, symbolType, source, defined) {
 }

@@ -11,7 +11,7 @@ void WordOperand::log(std::ostream &out) {
     WordOperand *current = this;
     while (current != nullptr) {
         current->logOne(out);
-        current = current->_next;
+        current = current->next;
         if (current)
             out << ", ";
     }
@@ -19,7 +19,7 @@ void WordOperand::log(std::ostream &out) {
 
 Addressing WordLiteral::addRelocation(Assembler *as) {
     as->sections[as->currSection]->core.append(getValue(), 4);
-    return {ADDR_UND, (int32_t) as->sections[as->currSection]->core.locationCnt()};
+    return {ADDR_UND, as->sections[as->currSection]->core.locationCnt()};
 }
 
 Addressing WordIdent::addRelocation(Assembler *as) {
@@ -30,7 +30,7 @@ Addressing WordIdent::addRelocation(Assembler *as) {
     if (symbol.index != -1) {
         // symbols defined in other files goes to relocations
         if (symbol.symbol->core.flags.source == OTHER) {
-            auto relType = as->getRelocationType(symbol.symbol);
+            auto relType = as->getRelocationType(symbol.symbol, true);
             as->relocations.emplace_back(std::make_unique<Relocation>(
                     symbol.symbol->core.name,
                     symbol.index,
@@ -74,28 +74,32 @@ void EquOperand::log(std::ostream &out) {
     }
 }
 
-int64_t EquLiteral::getValue() {
-    return _value;
+uint32_t EquLiteral::getValue() {
+    return value;
 }
 
 void EquLiteral::logOne(std::ostream &out) {
-    out << _value;
+    out << value;
 }
 
 Addressing EquLiteral::addRelocation(Assembler *as) {
     throw std::runtime_error("EquLiteral::addRelocation() should not be used!");
 }
 
-EquResolved EquLiteral::tryToResolve(Assembler *as) {
-    return {true, _value};
+std::string EquLiteral::getIdent() {
+    throw std::runtime_error("EquLiteral::getIdent() should not be used!");
+}
+
+bool EquLiteral::isLabel() {
+    return false;
 }
 
 Addressing EquIdent::addRelocation(Assembler *as) {
     throw std::runtime_error("EquIdent::addRelocation() should not be used!");
 }
 
-int64_t EquIdent::getValue() {
-    return 0;
+uint32_t EquIdent::getValue() {
+    throw std::runtime_error("EquIdent::getValue() should not be used!");
 }
 
 void EquIdent::logOne(std::ostream &out) {
@@ -106,96 +110,83 @@ std::string EquIdent::stringValue() {
     return ident;
 }
 
-EquResolved EquIdent::tryToResolve(Assembler *as) {
-    auto symbol = as->findSymbol(ident);
-    if (symbol.index != -1) {
-        // Symbol is defined
-        if (symbol.symbol->core.flags.defined) {
-            auto sectionInd = symbol.symbol->core.sectionIndex;
-            auto section = as->sections[sectionInd].get();
-            auto ptr = section->core.data.data() + symbol.symbol->core.offset;
-            return {true, *reinterpret_cast<int32_t *>(ptr)};
-        } else if (symbol.symbol->core.flags.symbolType != NO_TYPE && symbol.symbol->core.flags.symbolType != EQU)
-            // Symbol is defined, exit
-            as->symbolDuplicate(symbol.symbol->core.name);
-    } else
-        // Symbol does not exist, add it
-        as->declareSymbol(ident);
-    return {false};
-}
-
 bool EquIdent::isResolved(Assembler *as) {
-    auto symbol = as->findSymbol(ident);
-    return symbol.index != -1 && as->isSymbolDefined(symbol.symbol);
+    auto indexSymbol = as->findSymbol(ident);
+    return Assembler::isSymbolDefined(indexSymbol);
 }
 
-void TwoReg::log(std::ostream &out) {
-    out << "%r" << static_cast<int>(_gpr1);
-    out << ", %r" << static_cast<int>(_gpr2);
+bool EquIdent::isLabel() {
+    return true;
+}
+
+std::string EquIdent::getIdent() {
+    return ident;
 }
 
 void LiteralImm::log(std::ostream &out) {
-    out << _value;
+    out << value;
 }
 
 Addressing LiteralImm::addRelocation(Assembler *as) {
-    if (fitIn12Bits(_value))
-        return {REG_DIR, _value};
-    as->addRelLiteral(_value);
+    if (fitIn12Bits(value))
+        return {REG_DIR, value};
+    as->addRelLiteral(value);
     return {IN_DIR_OFFSET, 0, REG_PC};
 }
 
 void LiteralInDir::log(std::ostream &out) {
-    out << _value;
+    out << value;
 }
 
 Addressing LiteralInDir::addRelocation(Assembler *as) {
-    if (fitIn12Bits(_value))
-        return {REG_DIR, _value};
-    as->addRelLiteral(_value, 8);
+    if (fitIn12Bits(value))
+        return {IN_DIR_OFFSET, value};
+    as->addRelLiteral(value, 4);
     return {IN_DIR_IN_DIR, 0, GPR_TEMP};
 }
 
 void RegInDir::log(std::ostream &out) {
-    out << "[%r" << _gpr << "]";
+    out << "[%r" << gpr << "]";
 }
 
 Addressing RegInDir::addRelocation(Assembler *as) {
-    return {IN_DIR_OFFSET, 0, _gpr};
+    return {IN_DIR_OFFSET, 0, gpr};
 }
 
 void RegDir::log(std::ostream &out) {
-    out << "%r" << _gpr;
+    out << "%r" << gpr;
 }
 
 Addressing RegDir::addRelocation(Assembler *as) {
-    return {REG_DIR, 0, _gpr};
+    return {REG_DIR, 0, gpr};
 }
 
 void RegInDirOffLiteral::log(std::ostream &out) {
-    out << "[%r" << _gpr << "+" << _offset << "]";
+    out << "[%r" << gpr << "+" << offset << "]";
 }
 
 Addressing RegInDirOffLiteral::addRelocation(Assembler *as) {
-    if (!fitIn12Bits(_offset))
-        throw std::runtime_error("Error: Offset " + std::to_string(_offset) + " is too big.");
-    return {IN_DIR_INDEX, _offset};
+    if (!fitIn12Bits((int32_t) offset))
+        displacementToBig((int32_t) offset);
+    return {IN_DIR_INDEX, offset};
 }
 
 void RegInDirOffIdent::log(std::ostream &out) {
-    out << "[%r" << _gpr << "+" << _ident << "]";
+    out << "[%r" << gpr << "+" << ident << "]";
 }
 
 Addressing RegInDirOffIdent::addRelocation(Assembler *as) {
-    auto symbol = as->findSymbol(_ident);
-    if (symbol.index == -1)
-        symbol = as->declareSymbol(_ident);
-    as->addRelSymbol(symbol);
-    return {IN_DIR_OFFSET, 0, REG_PC};
+    auto indexSymbol = as->isSymbolDefined(ident);
+    if (!Assembler::isSymbolDefined(indexSymbol))
+        as->symbolNotDefined(ident);
+    auto value = as->getValueOfSymbol(indexSymbol.symbol);
+    if (!fitIn12Bits(value))
+        displacementToBig((int32_t) value);
+    return {REG_DIR, value, REG_PC};
 }
 
 void CsrOp::log(std::ostream &out) {
-    out << "%" << static_cast<REG_GPR>(_csr);
+    out << "%" << static_cast<REG_GPR>(csr);
 }
 
 std::string CsrOp::stringValue() {
@@ -203,15 +194,15 @@ std::string CsrOp::stringValue() {
 }
 
 Addressing CsrOp::addRelocation(Assembler *as) {
-    return {CSR_OP, 0, _csr};
+    return {CSR_OP, 0, csr};
 }
 
 void *WordLiteral::getValue() {
-    return &_value;
+    return &value;
 }
 
 void WordLiteral::logOne(std::ostream &out) {
-    out << _value;
+    out << value;
 }
 
 void *WordIdent::getValue() {
@@ -219,42 +210,60 @@ void *WordIdent::getValue() {
 }
 
 void WordIdent::logOne(std::ostream &out) {
-    out << _ident;
+    out << ident;
 }
 
 std::string WordIdent::stringValue() {
-    return _ident;
+    return ident;
 }
 
-void IdentAddr::log(std::ostream &out) {
-    out << _ident;
-}
-
-Addressing IdentAddr::addRelocation(Assembler *as) {
-    auto symbol = as->findSymbol(_ident);
-    int32_t value;
-    if (symbol.index == -1)
-        symbol = as->declareSymbol(_ident);
-    if (as->isSymbolDefined(symbol.symbol)) {
-        if (symbol.symbol->core.flags.symbolType == EQU) {
-            value = symbol.symbol->core.offset;
-            if (fitIn12Bits(value))
-                return {REG_DIR, value};
-            as->addRelLiteral(value, 4);
-            return {IN_DIR_IN_DIR, 0, GPR_TEMP};
-        }
-        if (symbol.symbol->core.sectionIndex == as->currSection) {
-            value = symbol.symbol->core.offset - as->sections[as->currSection]->core.locationCnt();
-            if (fitIn12Bits(value))
-                return {REG_DIR, value};
-            as->addRelLiteral(value, 8);
-            return {IN_DIR_IN_DIR, 0, GPR_TEMP};
-        }
-    }
-    as->addRelSymbol(symbol, 4);
-    return {IN_DIR_IN_DIR, 0, GPR_TEMP};
+void IdentImm::log(std::ostream &out) {
+    out << "$" << ident;
 }
 
 Addressing Operand::addRelocation(Assembler *as) {
     throw std::runtime_error("Operand::addRelocation() not implemented");
 }
+
+void IdentInDir::log(std::ostream &out) {
+    out << ident;
+}
+
+Addressing IdentImm::addRelocation(Assembler *as) {
+    auto indexSymbol = as->findSymbol(ident);
+    if (!as->isSymbolDeclared(indexSymbol))
+        indexSymbol = as->declareSymbol(ident);
+    else if (Assembler::isSymbolDefined(indexSymbol)) {
+        uint32_t value = 0;
+        if (indexSymbol.symbol->core.flags.symbolType == EQU)
+            value = as->getValueOfSymbol(indexSymbol.symbol);
+        else if (indexSymbol.symbol->core.sectionIndex == as->currSection)
+            value = indexSymbol.symbol->core.offset - as->sections[as->currSection]->core.locationCnt();
+        if (fitIn12Bits(value))
+            return {REG_DIR, value};
+        as->addRelLiteral(value);
+        return {IN_DIR_OFFSET, 0, REG_PC};
+    }
+    as->addRelSymbol(indexSymbol);
+    return {IN_DIR_OFFSET, 0, REG_PC};
+}
+
+Addressing IdentInDir::addRelocation(Assembler *as) {
+    auto indexSymbol = as->findSymbol(ident);
+    if (!as->isSymbolDeclared(indexSymbol))
+        indexSymbol = as->declareSymbol(ident);
+    else if (Assembler::isSymbolDefined(indexSymbol)) {
+        uint32_t value = 0;
+        if (indexSymbol.symbol->core.flags.symbolType == EQU)
+            value = as->getValueOfSymbol(indexSymbol.symbol);
+        else if (indexSymbol.symbol->core.sectionIndex == as->currSection)
+            value = indexSymbol.symbol->core.offset - as->sections[as->currSection]->core.locationCnt();
+        if (fitIn12Bits(value))
+            return {IN_DIR_OFFSET, value};
+        as->addRelLiteral(value, 4);
+        return {IN_DIR_IN_DIR, 0, GPR_TEMP};
+    }
+    as->addRelSymbol(indexSymbol, 4);
+    return {IN_DIR_IN_DIR, 0, GPR_TEMP};
+}
+

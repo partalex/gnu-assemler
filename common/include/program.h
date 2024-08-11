@@ -23,11 +23,13 @@ public:
 
     Memory memory;
     PSW psw;
-    bool _isEnd = false;
-    bool _incrementPC = true;
-    uint32_t _instrCounter;
+    bool isEnd = false;
+    bool incrementPC = true;
+    uint32_t instrCounter;
 
     explicit Program();
+
+    void setReg0();
 
     int32_t &STATUS();
 

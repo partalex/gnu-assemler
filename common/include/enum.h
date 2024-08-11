@@ -4,16 +4,19 @@
 #include <memory>
 #include <iostream>
 
+static constexpr auto DISPLACEMENT_MAX_VALUE = 0x7FF;
+static constexpr auto DISPLACEMENT_MIN_VALUE = -0x800;
+
 class Symbol;
 
 typedef struct {
-    int32_t index;
+    uint32_t index;
     Symbol *symbol;
 } IndexSymbol;
 
 enum MARKER {
     UNDEFINED = 0xFFFFFFFF,
-    LITERALS = 0xFFFFFFFE
+    ABSOLUTE = 0xFFFFFFFE
 };
 
 enum EQU_OP {
@@ -31,37 +34,6 @@ enum ADDRESSING {
     // pop tempREG
     CSR_OP              // reg = csr[B] + D                         // noRel
 };
-
-// gpr[B] = PC, cause PC is gpr[15]
-//1. $<literal> - vrednost <literal>
-// literal fitIn12Bits ?
-// D=literal; gpr[A]<=gpr[0]+D; IMMEDIATE_LITERAL_RO:
-// : Need relocation R_PC32; D=literal; gpr[A]<=gpr[15]+D; IMMEDIATE_LITERAL_PC
-
-//2. $<simbol> - vrednost <simbol>
-// IMMEDIATE_SYMBOL:            gpr[A]<=gpr[15]+D; Need relocation
-
-//3. <literal> - vrednost iz memorije na adresi <literal>
-// literal fitIn12Bits ?
-// INDIRECT_LITERAL_12bits:            gpr[A]<=mem32[gpr[15]+gpr[0]+D]; D<=literal no relocation
-// INDIRECT_LITERAL:                   gpr[A]<=mem32[gpr[15]+gpr[0]+D]; Need relocation R_PC32 for D
-
-//4. <simbol> - vrednost iz memorije na adresi <simbol>
-// literal fitIn12Bits ?
-// INDIRECT_SYMBOL:             gpr[A]<=mem32[gpr[15]+gpr[0]+D]; D=literal; Need relocation R_PC32
-// : :                          gpr[A]<=mem32[gpr[B]+gpr[0]+D]; D=mem32[symbol] <= 12bits ? mem32[symbol]: relocation
-
-//5. %<reg> - vrednost u registru <reg>
-// DIRECT_REGISTER:             gpr[A]<=gpr[B]+D, D<=0
-
-//6. [%<reg>] - vrednost iz memorije na adresi <reg>
-// INDIRECT_REGISTER:           gpr[A]<=mem32[gpr[B]+gpr[0]+D]; D<=0
-
-//7. [%<reg> + <literal>] - vrednost iz memorije na adresi <reg> + <literal>1
-// INDIRECT_REG_LITERAL:        gpr[A]<=mem32[gpr[B]+gpr[0]+D]; D= literal <= 12bits ? literal: error
-
-//8. [%<reg> + <simbol>] - vrednost iz memorije na adresi <reg> + <simbol>2
-// INDIRECT_REG_SYMBOL:         gpr[A]<=mem32[gpr[B]+gpr[0]+D]; D= mem32[symbol] <= 12bits ? mem32[symbol]: error
 
 enum SOURCE {
     THIS,
@@ -101,10 +73,11 @@ enum REG_CSR {
 };
 
 enum RELOCATION {
-    R_12b,          // fill highest 12 bits of 2 bytes
-    R_32b_LOCAL,          //  copy 4 bytes
-    R_32_GLOBAL,   //  correctRelocations
-    R_32_UND,   //  correctRelocations
+    R_12b,                  // fill highest 12 bits of 2 bytes
+    R_32b_LOCAL,            //  copy 4 bytes
+    R_32_IMMEDIATE,         //  correctRelocations
+    R_32_IN_DIR,            //  correctRelocations
+    R_32_UND,               //  correctRelocations
 };
 
 enum STATUS {
@@ -131,13 +104,13 @@ typedef union {
 
 struct Addressing {
     ADDRESSING addressing = ADDR_UND;
-    int32_t value = 0;
+    uint32_t value = 0;
     uint8_t reg = 0;
 };
 
 struct EquResolved {
     bool resolved = false;
-    int32_t value = 0;
+    uint32_t value = 0;
 };
 
 enum INSTRUCTION {
@@ -196,7 +169,9 @@ typedef union {
     uint32_t value;
 } Mnemonic;
 
-[[nodiscard]] bool fitIn12Bits(int32_t value);
+[[nodiscard]] bool fitIn12Bits(uint32_t value);
+
+void displacementToBig(int32_t);
 
 void writeDisplacement(void *, int32_t);
 
@@ -219,4 +194,3 @@ std::ostream &operator<<(std::ostream &, SCOPE);
 std::ostream &operator<<(std::ostream &, enum INSTRUCTION);
 
 std::ostream &operator<<(std::ostream &, RELOCATION);
-

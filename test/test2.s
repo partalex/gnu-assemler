@@ -1,13 +1,10 @@
-.extern message
-.global four, continue
-.equ four, 4
+.extern four
+.global continue
 
-.section test2
-    .word 10
+.section code
+    .word 0xffaaaaff
+    .word four
 continue:
-    pop %r0
-    ld message, %r1
-    add %r2, %r1
+    pop %r4
     halt
 .end
-

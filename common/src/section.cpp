@@ -4,7 +4,7 @@
 #include <iostream>
 #include <utility>
 
-Section::Section(std::string _name) : core(std::move(_name)) {}
+Section::Section(std::string name) : core(std::move(name)) {}
 
 void Section::appendInstr(void *src) {
     core.append(src, 4);
@@ -22,15 +22,11 @@ void Section::tableHeader(std::ostream &out) {
     SectionLink::tableHeader(out);
 }
 
-uint32_t Section::getSize() const {
-    return core.locationCnt() + literalsSection.locationCnt();
-}
-
 int32_t Section::readWord(uint32_t offset) {
     return core.readWord(offset);
 }
 
-uint32_t Section::addLiteral(int32_t literal) {
+uint32_t Section::addLiteral(uint32_t literal) {
     if (literalsMap.find(literal) != literalsMap.end())
         return literalsMap[literal];
     literalsMap[literal] = literalsSection.data.size();
@@ -50,6 +46,15 @@ uint32_t Section::addLabel(const std::string &label) {
     literalsSection.append(&fill, 4);
     return labelsMap[label];
 }
+
+uint32_t Section::literalsSize() const {
+    return literalsSection.locationCnt();
+}
+
+uint32_t Section::coreSize() const {
+    return core.locationCnt();
+}
+
 
 
 

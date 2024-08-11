@@ -26,9 +26,10 @@ void Emulator::execute() {
     program->initNew();
     while (true) {
         program->executeCurrent();
-        if (program->_isEnd)
+        if (program->isEnd)
             break;
         program->readNext();
+        program->setReg0();
     }
 }
 

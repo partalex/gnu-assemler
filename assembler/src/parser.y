@@ -247,7 +247,7 @@ oneRegOperand
   { $$ = new LiteralImm($2); }
 
   | T_DOLLAR T_IDENT
-  { $$ = new IdentAddr($2); }
+  { $$ = new IdentImm($2); }
 
   | csr
   { $$ = new CsrOp($1); }
@@ -256,7 +256,7 @@ oneRegOperand
   { $$ = new LiteralInDir($1); }
 
   | T_IDENT
-  { $$ = new IdentAddr($1); }
+  { $$ = new IdentInDir($1); }
 
   | gpr
   { $$ = new RegDir($1); }
@@ -328,6 +328,6 @@ jmpOperand
   { $$ = new LiteralImm($1); }
 
   | T_IDENT
-  { $$ = new IdentAddr($1); };
+  { $$ = new IdentImm($1); };
 
 %%
